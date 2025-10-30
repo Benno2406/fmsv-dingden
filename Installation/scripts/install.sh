@@ -93,7 +93,8 @@ cloudflare_login_with_help() {
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Deine Wahl (1/2): " -n 1 -r LOGIN_METHOD
+        echo -ne "Deine Wahl (1/2): "
+        read -n 1 -r LOGIN_METHOD
         echo
         echo ""
         
@@ -117,7 +118,8 @@ cloudflare_login_with_help() {
             echo -e "  ${CYAN}sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared${NC}"
             echo -e "  ${CYAN}sudo chmod +x /usr/local/bin/cloudflared${NC}"
             echo ""
-            read -p "Drücke ${GREEN}Enter${NC} wenn cloudflared installiert ist..."
+            echo -ne "Drücke ${GREEN}Enter${NC} wenn cloudflared installiert ist..."
+            read
             echo ""
             
             echo -e "${YELLOW}SCHRITT 2: Login auf deinem PC durchführen${NC}"
@@ -132,7 +134,8 @@ cloudflare_login_with_help() {
             echo -e "  ${GREEN}→${NC} ${GREEN}\"Authorize\"${NC} klicken"
             echo -e "  ${GREEN}→${NC} \"Success\" Meldung erscheint"
             echo ""
-            read -p "Drücke ${GREEN}Enter${NC} wenn Login erfolgreich war..."
+            echo -ne "Drücke ${GREEN}Enter${NC} wenn Login erfolgreich war..."
+            read
             echo ""
             
             echo -e "${YELLOW}SCHRITT 3: Zertifikat-Pfad finden${NC}"
@@ -544,14 +547,15 @@ sleep 1
 echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
 echo -e "${YELLOW}📋 Zusammenfassung:${NC}"
 echo ""
-echo "  ${BLUE}•${NC} Update-Kanal:        ${GREEN}$CHANNEL_NAME${NC}"
-echo "  ${BLUE}•${NC} Cloudflare Tunnel:   $( [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
-echo "  ${BLUE}•${NC} GitHub Repo:         $GITHUB_REPO"
-echo "  ${BLUE}•${NC} Auto-Update:         ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
+echo -e "  ${BLUE}•${NC} Update-Kanal:        ${GREEN}$CHANNEL_NAME${NC}"
+echo -e "  ${BLUE}•${NC} Cloudflare Tunnel:   $( [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
+echo -e "  ${BLUE}•${NC} GitHub Repo:         $GITHUB_REPO"
+echo -e "  ${BLUE}•${NC} Auto-Update:         ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
 echo ""
 echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
 echo ""
-read -p "Installation mit diesen Einstellungen starten? (j/n) " -n 1 -r
+echo -ne "Installation mit diesen Einstellungen starten? (j/n) "
+read -n 1 -r
 echo
 [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
 
@@ -717,16 +721,20 @@ print_header 8 "Datenbank-Setup"
 echo -e "${YELLOW}Datenbank-Konfiguration:${NC}"
 echo ""
 
-read -p "   ${BLUE}►${NC} Datenbank-Name [fmsv_database]: " DB_NAME
+echo -ne "   ${BLUE}►${NC} Datenbank-Name [fmsv_database]: "
+read DB_NAME
 DB_NAME=${DB_NAME:-fmsv_database}
 
-read -p "   ${BLUE}►${NC} Datenbank-Benutzer [fmsv_user]: " DB_USER
+echo -ne "   ${BLUE}►${NC} Datenbank-Benutzer [fmsv_user]: "
+read DB_USER
 DB_USER=${DB_USER:-fmsv_user}
 
 while true; do
-    read -sp "   ${BLUE}►${NC} Datenbank-Passwort: " DB_PASSWORD
+    echo -ne "   ${BLUE}►${NC} Datenbank-Passwort: "
+    read -s DB_PASSWORD
     echo
-    read -sp "   ${BLUE}►${NC} Passwort wiederholen: " DB_PASSWORD2
+    echo -ne "   ${BLUE}►${NC} Passwort wiederholen: "
+    read -s DB_PASSWORD2
     echo
     [ "$DB_PASSWORD" = "$DB_PASSWORD2" ] && break
     warning "Passwörter stimmen nicht überein"
@@ -1107,7 +1115,8 @@ node scripts/initDatabase.js
 success "Datenbank-Schema initialisiert"
 
 echo ""
-read -p "Test-Daten einfügen? (j/n) " -n 1 -r
+echo -ne "Test-Daten einfügen? (j/n) "
+read -n 1 -r
 echo
 if [[ $REPLY =~ ^[Jj]$ ]]; then
     info "Füge Test-Daten ein..."
@@ -1338,6 +1347,17 @@ if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
     netstat -tulpn | grep ':80 ' || true
     echo ""
     
+    # Prüfe ob Apache läuft
+    if netstat -tulpn 2>/dev/null | grep -q 'apache'; then
+        info "Apache blockiert Port 80 - stoppe Apache..."
+        systemctl stop apache2 2>/dev/null || systemctl stop httpd 2>/dev/null || true
+        systemctl disable apache2 2>/dev/null || systemctl disable httpd 2>/dev/null || true
+        pkill -9 apache2 2>/dev/null || true
+        pkill -9 httpd 2>/dev/null || true
+        sleep 2
+        success "Apache gestoppt und deaktiviert"
+    fi
+    
     # Versuche alle nginx-Prozesse zu killen
     info "Versuche alle nginx-Prozesse zu beenden..."
     pkill -9 nginx 2>/dev/null || true
@@ -1349,10 +1369,18 @@ if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
         warning "Port 80 ist immer noch belegt!"
         netstat -tulpn | grep ':80 ' || true
         echo ""
-        echo -ne "   ${BLUE}►${NC} Trotzdem nginx starten versuchen? (j/N): "
+        echo -ne "   ${BLUE}►${NC} Port-Blockierer killen und fortfahren? (j/N): "
         read TRY_NGINX
         echo ""
-        if [[ ! $TRY_NGINX =~ ^[Jj]$ ]]; then
+        if [[ $TRY_NGINX =~ ^[Jj]$ ]]; then
+            # Versuche den Prozess zu killen
+            PORT_PID=$(netstat -tulpn 2>/dev/null | grep ':80 ' | awk '{print $7}' | cut -d'/' -f1 | head -1)
+            if [ -n "$PORT_PID" ]; then
+                info "Beende Prozess $PORT_PID..."
+                kill -9 "$PORT_PID" 2>/dev/null || true
+                sleep 2
+            fi
+        else
             error "Installation abgebrochen - Port 80 Konflikt muss behoben werden"
         fi
     else
