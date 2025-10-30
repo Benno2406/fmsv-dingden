@@ -1141,6 +1141,35 @@ EOF
 chmod 600 .env
 success "Backend-Konfiguration erstellt"
 
+# Prüfe ob schema.sql existiert
+info "Prüfe Datenbank-Schema Datei..."
+SCHEMA_FILE="$INSTALL_DIR/backend/database/schema.sql"
+
+if [ ! -f "$SCHEMA_FILE" ]; then
+    echo ""
+    error "Schema-Datei nicht gefunden: $SCHEMA_FILE"
+    echo ""
+    echo -e "${YELLOW}Das Repository wurde möglicherweise nicht vollständig geklont!${NC}"
+    echo ""
+    echo -e "${YELLOW}Lösungen:${NC}"
+    echo -e "  ${GREEN}1.${NC} Prüfe Repository-Inhalt:"
+    echo -e "      ${CYAN}ls -la $INSTALL_DIR/backend/database/${NC}"
+    echo ""
+    echo -e "  ${GREEN}2.${NC} Verzeichnisstruktur prüfen:"
+    echo -e "      ${CYAN}find $INSTALL_DIR/backend -name 'schema.sql'${NC}"
+    echo ""
+    echo -e "  ${GREEN}3.${NC} Repository neu klonen:"
+    echo -e "      ${CYAN}rm -rf $INSTALL_DIR${NC}"
+    echo -e "      ${CYAN}git clone -b $BRANCH $GITHUB_REPO $INSTALL_DIR${NC}"
+    echo ""
+    echo -e "  ${GREEN}4.${NC} Git-Status prüfen:"
+    echo -e "      ${CYAN}cd $INSTALL_DIR && git status${NC}"
+    echo ""
+    exit 1
+fi
+
+success "Schema-Datei gefunden: $(du -h $SCHEMA_FILE | cut -f1)"
+
 info "Initialisiere Datenbank-Schema..."
 if node scripts/initDatabase.js; then
     success "Datenbank-Schema initialisiert"
@@ -1149,18 +1178,16 @@ else
     error "Datenbank-Initialisierung fehlgeschlagen!"
     echo ""
     echo -e "${YELLOW}Häufige Ursachen:${NC}"
-    echo -e "  ${RED}1.${NC} schema.sql Datei fehlt"
-    echo -e "  ${RED}2.${NC} PostgreSQL läuft nicht"
-    echo -e "  ${RED}3.${NC} Datenbank existiert nicht"
-    echo -e "  ${RED}4.${NC} Falsche Credentials in .env"
+    echo -e "  ${RED}1.${NC} PostgreSQL läuft nicht"
+    echo -e "  ${RED}2.${NC} Datenbank existiert nicht"
+    echo -e "  ${RED}3.${NC} Falsche Credentials in .env"
+    echo -e "  ${RED}4.${NC} SQL-Syntax Fehler"
     echo ""
-    echo -e "${YELLOW}Lösungen:${NC}"
-    echo -e "  ${GREEN}1.${NC} Prüfe PostgreSQL: ${CYAN}systemctl status postgresql${NC}"
-    echo -e "  ${GREEN}2.${NC} Prüfe schema.sql: ${CYAN}ls -la $INSTALL_DIR/backend/database/schema.sql${NC}"
-    echo -e "  ${GREEN}3.${NC} Prüfe .env: ${CYAN}cat $INSTALL_DIR/backend/.env | grep DB_${NC}"
-    echo -e "  ${GREEN}4.${NC} Manuell testen: ${CYAN}cd $INSTALL_DIR/backend && node scripts/initDatabase.js${NC}"
-    echo ""
-    echo -e "  ${BLUE}Oder neu installieren:${NC} ${GREEN}./install.sh${NC}"
+    echo -e "${YELLOW}Debug-Befehle:${NC}"
+    echo -e "  ${GREEN}1.${NC} PostgreSQL Status: ${CYAN}systemctl status postgresql${NC}"
+    echo -e "  ${GREEN}2.${NC} .env prüfen: ${CYAN}cat $INSTALL_DIR/backend/.env | grep DB_${NC}"
+    echo -e "  ${GREEN}3.${NC} Manuell testen: ${CYAN}cd $INSTALL_DIR/backend && node scripts/initDatabase.js${NC}"
+    echo -e "  ${GREEN}4.${NC} Datenbank-Logs: ${CYAN}journalctl -u postgresql -n 50${NC}"
     echo ""
     exit 1
 fi

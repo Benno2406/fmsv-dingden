@@ -40,6 +40,9 @@ show_menu() {
     echo -e "  ${GREEN}[5]${NC} Logs anzeigen"
     echo -e "      ${CYAN}→ Backend/Nginx/Postgres Logs${NC}"
     echo ""
+    echo -e "  ${GREEN}[6]${NC} Fehlende Dateien reparieren"
+    echo -e "      ${CYAN}→ Repository-Dateien wiederherstellen${NC}"
+    echo ""
     echo -e "  ${GREEN}[0]${NC} Beenden"
     echo ""
     echo -ne "${BLUE}►${NC} Deine Wahl: "
@@ -317,6 +320,17 @@ EOF
     # 3. Initialisiere Datenbank-Schema
     echo -e "${BLUE}[3/4]${NC} Initialisiere Datenbank-Schema..."
     cd /var/www/fmsv-dingden/backend
+    
+    # Prüfe ob schema.sql existiert
+    if [ ! -f "database/schema.sql" ]; then
+        echo -e "      ${RED}❌ schema.sql nicht gefunden!${NC}"
+        echo ""
+        echo -e "      ${YELLOW}Das Repository ist unvollständig.${NC}"
+        echo -e "      ${YELLOW}Führe bitte eine komplette Neuinstallation durch:${NC}"
+        echo -e "      ${CYAN}./install.sh${NC}"
+        echo ""
+        return 1
+    fi
     
     if node scripts/initDatabase.js 2>&1 | grep -q "erfolgreich"; then
         echo -e "      ${GREEN}✅ Schema initialisiert${NC}"
@@ -810,6 +824,31 @@ while true; do
         5)
             clear
             show_logs
+            clear
+            ;;
+        6)
+            clear
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+            echo -e "${YELLOW}Fehlende Dateien reparieren${NC}"
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+            echo ""
+            
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            REPAIR_SCRIPT="$SCRIPT_DIR/repair-files.sh"
+            
+            if [ -f "$REPAIR_SCRIPT" ]; then
+                chmod +x "$REPAIR_SCRIPT"
+                "$REPAIR_SCRIPT"
+            else
+                echo -e "${RED}❌ Reparatur-Script nicht gefunden!${NC}"
+                echo ""
+                echo "Erwarteter Pfad: $REPAIR_SCRIPT"
+                echo ""
+                echo "Bitte installiere das System neu:"
+                echo -e "  ${CYAN}./install.sh${NC}"
+            fi
+            echo ""
+            read -p "Zurück zum Menü mit Enter..."
             clear
             ;;
         0)
