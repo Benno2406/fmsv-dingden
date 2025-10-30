@@ -209,10 +209,8 @@ fi
 echo "Teste ob server.js ohne Fehler lädt..."
 echo ""
 
-# Erstelle Test-Script
-cat > /tmp/test-server-load.js << 'EOF'
-const path = require('path');
-process.chdir('/var/www/fmsv-dingden/backend');
+# Erstelle Test-Script im Backend-Verzeichnis
+cat > test-server-load.js << 'EOF'
 
 // Lade .env
 require('dotenv').config();
@@ -258,12 +256,14 @@ try {
 }
 EOF
 
-if node /tmp/test-server-load.js 2>&1; then
+if node test-server-load.js 2>&1; then
     echo -e "${GREEN}✅ Node.js Runtime OK${NC}"
+    rm -f test-server-load.js
 else
     echo -e "${RED}❌ Node.js Runtime Fehler!${NC}"
     echo ""
     echo "Siehe Fehlerausgabe oben"
+    rm -f test-server-load.js
     exit 1
 fi
 
@@ -318,7 +318,7 @@ echo -e "${CYAN}═════════════════════�
 echo ""
 
 # Cleanup
-rm -f /tmp/backend-response.txt /tmp/test-server-load.js
+rm -f /tmp/backend-response.txt
 
 echo -e "${YELLOW}Nächste Schritte:${NC}"
 echo ""
