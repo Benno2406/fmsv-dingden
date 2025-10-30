@@ -1608,11 +1608,15 @@ cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-de
 cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
 cp -f /var/www/fmsv-dingden/Installation/scripts/test-backend.sh /usr/local/bin/fmsv-test
 cp -f /var/www/fmsv-dingden/Installation/scripts/show-backend-errors.sh /usr/local/bin/fmsv-errors
+cp -f /var/www/fmsv-dingden/Installation/scripts/manual-start.sh /usr/local/bin/fmsv-manual
+cp -f /var/www/fmsv-dingden/Installation/scripts/quick-fix.sh /usr/local/bin/fmsv-fix
 chmod +x /usr/local/bin/fmsv-debug
 chmod +x /usr/local/bin/fmsv-update
 chmod +x /usr/local/bin/fmsv-test
 chmod +x /usr/local/bin/fmsv-errors
-success "Wartungs-Scripts installiert (fmsv-debug, fmsv-update, fmsv-test, fmsv-errors)"
+chmod +x /usr/local/bin/fmsv-manual
+chmod +x /usr/local/bin/fmsv-fix
+success "Wartungs-Scripts installiert"
 sleep 1
 
 ################################################################################
@@ -1677,7 +1681,9 @@ echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
 echo ""
 echo -e "  ${BLUE}Updates & Wartung:${NC}"
 echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
-echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Diagnose & Fehlersuche${NC}"
+echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose${NC}"
+echo -e "    ${GREEN}fmsv-fix${NC}     ${CYAN}# Probleme automatisch beheben${NC}"
+echo -e "    ${GREEN}fmsv-manual${NC}  ${CYAN}# Backend manuell starten${NC}"
 echo -e "    ${GREEN}fmsv-test${NC}    ${CYAN}# Backend-Tests ausführen${NC}"
 echo -e "    ${GREEN}fmsv-errors${NC}  ${CYAN}# Backend-Fehler anzeigen${NC}"
 echo ""
