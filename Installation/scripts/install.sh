@@ -5,7 +5,15 @@
 # Systematische Installation mit Fortschrittsanzeige
 ################################################################################
 
-set -e  # Exit on error
+# Exit on error disabled - we handle errors manually
+# set -e  # Would exit immediately on any error
+
+# Logging
+LOG_FILE="/var/log/fmsv-install.log"
+touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/tmp/fmsv-install.log"
+echo "=====================================" >> "$LOG_FILE"
+echo "Installation gestartet: $(date)" >> "$LOG_FILE"
+echo "=====================================" >> "$LOG_FILE"
 
 # Colors
 RED='\033[0;31m'
@@ -32,10 +40,30 @@ print_header() {
     echo ""
 }
 
-info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
-success() { echo -e "${GREEN}✅ $1${NC}"; }
-warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
-error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
+info() { 
+    echo -e "${BLUE}ℹ️  $1${NC}"; 
+    echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+success() { 
+    echo -e "${GREEN}✅ $1${NC}"; 
+    echo "[SUCCESS] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+warning() { 
+    echo -e "${YELLOW}⚠️  $1${NC}"; 
+    echo "[WARNING] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+error() { 
+    echo -e "${RED}❌ $1${NC}"; 
+    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+    echo ""
+    echo -e "${RED}Installation fehlgeschlagen!${NC}"
+    echo -e "${YELLOW}Logs ansehen:${NC} cat $LOG_FILE"
+    echo ""
+    exit 1
+}
 
 # Welcome Screen
 clear
@@ -202,12 +230,21 @@ echo
 print_header 3 "System-Updates"
 
 info "Aktualisiere Paket-Listen..."
-apt-get update -qq > /dev/null 2>&1
+if apt-get update -qq 2>&1 | tee -a /var/log/fmsv-install.log; then
+    success "Paket-Listen aktualisiert"
+else
+    warning "Paket-Listen konnten nicht vollständig aktualisiert werden"
+    echo "   Fahre trotzdem fort..."
+fi
 
 info "Installiere System-Updates..."
-apt-get upgrade -y -qq > /dev/null 2>&1
+if apt-get upgrade -y -qq 2>&1 | tee -a /var/log/fmsv-install.log; then
+    success "System aktualisiert"
+else
+    warning "System-Updates teilweise fehlgeschlagen"
+    echo "   Fahre trotzdem fort..."
+fi
 
-success "System aktualisiert"
 sleep 1
 
 ################################################################################
@@ -221,10 +258,15 @@ PACKAGES="curl wget git nano ufw lsb-release gnupg software-properties-common"
 
 for package in $PACKAGES; do
     echo -n "   • $package... "
-    apt-get install -y -qq "$package" > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}"
+    if apt-get install -y -qq "$package" 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        warning "   Fehler bei Installation von $package"
+    fi
 done
 
-success "Basis-Tools installiert"
+success "Basis-Tools installiert (oder übersprungen)"
 sleep 1
 
 ################################################################################
@@ -234,14 +276,22 @@ sleep 1
 print_header 5 "PostgreSQL Installation"
 
 info "Installiere PostgreSQL..."
-apt-get install -y -qq postgresql postgresql-contrib > /dev/null 2>&1
+if apt-get install -y -qq postgresql postgresql-contrib 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+    success "PostgreSQL installiert"
+else
+    error "PostgreSQL Installation fehlgeschlagen! Siehe /var/log/fmsv-install.log"
+fi
 
 info "Starte PostgreSQL Service..."
 systemctl start postgresql
-systemctl enable postgresql > /dev/null 2>&1
+if systemctl enable postgresql > /dev/null 2>&1; then
+    success "PostgreSQL Service aktiviert"
+else
+    warning "PostgreSQL konnte nicht automatisch aktiviert werden"
+fi
 
-PG_VERSION=$(sudo -u postgres psql --version | grep -oP '\d+' | head -1)
-success "PostgreSQL $PG_VERSION installiert und gestartet"
+PG_VERSION=$(sudo -u postgres psql --version | grep -oP '\d+' | head -1 2>/dev/null || echo "unbekannt")
+success "PostgreSQL $PG_VERSION läuft"
 sleep 1
 
 ################################################################################
@@ -251,15 +301,22 @@ sleep 1
 print_header 6 "Node.js Installation"
 
 info "Füge NodeSource Repository hinzu..."
-curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - > /dev/null 2>&1
+if curl -fsSL https://deb.nodesource.com/setup_lts.x 2>&1 | bash - 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+    success "NodeSource Repository hinzugefügt"
+else
+    error "NodeSource Repository konnte nicht hinzugefügt werden! Siehe /var/log/fmsv-install.log"
+fi
 
 info "Installiere Node.js LTS..."
-apt-get install -y -qq nodejs > /dev/null 2>&1
+if apt-get install -y -qq nodejs 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+    NODE_VERSION=$(node --version 2>/dev/null || echo "unbekannt")
+    NPM_VERSION=$(npm --version 2>/dev/null || echo "unbekannt")
+    success "Node.js $NODE_VERSION installiert"
+    success "npm $NPM_VERSION installiert"
+else
+    error "Node.js Installation fehlgeschlagen! Siehe /var/log/fmsv-install.log"
+fi
 
-NODE_VERSION=$(node --version)
-NPM_VERSION=$(npm --version)
-success "Node.js $NODE_VERSION installiert"
-success "npm $NPM_VERSION installiert"
 sleep 1
 
 ################################################################################
@@ -290,14 +347,21 @@ if [ -d "$INSTALL_DIR" ]; then
     fi
 else
     info "Klone Repository (Branch: $BRANCH)..."
-    git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" > /dev/null 2>&1
-    success "Repository geklont"
+    if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+        success "Repository geklont"
+    else
+        error "Repository konnte nicht geklont werden! Prüfe GitHub URL und Zugangsdaten."
+    fi
 fi
 
-cd "$INSTALL_DIR"
+if cd "$INSTALL_DIR" 2>/dev/null; then
+    success "Wechsel zu $INSTALL_DIR"
+else
+    error "Verzeichnis $INSTALL_DIR nicht gefunden!"
+fi
 
 info "Konfiguriere Git..."
-git config --local pull.rebase false
+git config --local pull.rebase false 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null
 git config --local --add safe.directory "$INSTALL_DIR"
 success "Git konfiguriert"
 sleep 1

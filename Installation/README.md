@@ -6,6 +6,50 @@ FMSV Dingden Installation & Update-System.
 
 ## ⚠️ WICHTIG - ZUERST LESEN!
 
+### 🆘 Probleme beim Start?
+
+### Script wartet auf Eingabe?
+
+**Siehst du das?**
+```
+Installation mit diesen Einstellungen starten? (J/n) :
+```
+
+**Das ist normal!** Script wartet auf deine Bestätigung.
+
+**Eingeben:**
+- `J` oder `j` (Ja) → Installation startet
+- `n` oder `N` (Nein) → Abbruch
+
+---
+
+### Script bricht ab nach "Aktualisiere Paket-Listen"?
+
+**Lösung 1: Debug-Script ausführen**
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+chmod +x debug-install.sh
+sudo ./debug-install.sh
+```
+
+**Lösung 2: Logs ansehen**
+```bash
+cat /var/log/fmsv-install.log
+```
+
+**Lösung 3: apt manuell testen**
+```bash
+sudo apt-get update
+# Fehler beheben, dann:
+sudo ./install.sh
+```
+
+**Mehr Hilfe:** [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md)
+
+---
+
+## 📋 Vor der Installation
+
 ### 🔧 Schritt 1: Dateien umbenennen (EINMALIG, VOR DER INSTALLATION)
 
 Einige Dateien liegen als `.txt` vor und müssen umbenannt werden:
@@ -189,6 +233,17 @@ tail -f /var/log/fmsv-auto-update.log
 ---
 
 ## 🆘 Probleme?
+
+### Script wartet und macht nichts
+
+**Siehe:** [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - "Script scheint zu hängen"
+
+**Häufigste Ursache:** Script wartet auf deine Eingabe!
+
+Scrolle nach oben und suche nach einer Frage wie:
+```
+Domain oder Subdomain: _
+```
 
 ### Dateien können nicht umbenannt werden
 
