@@ -722,20 +722,39 @@ if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     info "Füge Cloudflare GPG Key hinzu..."
     mkdir -p --mode=0755 /usr/share/keyrings
     
-    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null; then
+    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null 2>&1; then
         echo ""
         error "Cloudflare GPG Key konnte nicht heruntergeladen werden!"
         echo ""
         echo -e "${YELLOW}Mögliche Ursachen:${NC}"
-        echo -e "  ${RED}1.${NC} Keine Internetverbindung"
+        echo -e "  ${RED}1.${NC} Keine Internetverbindung zu Cloudflare"
         echo -e "  ${RED}2.${NC} Cloudflare Server nicht erreichbar"
         echo -e "  ${RED}3.${NC} Firewall blockiert Zugriff"
         echo ""
-        echo -e "${YELLOW}Lösung:${NC}"
+        echo -e "${YELLOW}Optionen:${NC}"
         echo -e "  ${GREEN}1.${NC} Internetverbindung prüfen: ${CYAN}ping cloudflare.com${NC}"
-        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo -e "  ${GREEN}2.${NC} Installation ohne Cloudflare: ${CYAN}./install.sh --no-cloudflare${NC}"
+        echo -e "  ${GREEN}3.${NC} Cloudflare später manuell einrichten"
         echo ""
-        exit 1
+        
+        read -p "   ${BLUE}►${NC} Cloudflare überspringen und fortfahren? (j/N): " SKIP_CF
+        echo ""
+        
+        if [[ $SKIP_CF =~ ^[Jj]$ ]]; then
+            warning "Cloudflare wird übersprungen - du kannst es später manuell einrichten!"
+            echo ""
+            echo -e "  ${CYAN}Siehe: Installation/CLOUDFLARE-LOKALER-PC.md${NC}"
+            echo ""
+            sleep 2
+            return 0
+        else
+            echo ""
+            info "Installation wird abgebrochen."
+            echo ""
+            echo -e "${YELLOW}Starte neu mit:${NC} ${GREEN}./install.sh --no-cloudflare${NC}"
+            echo ""
+            exit 1
+        fi
     fi
     
     info "Füge Cloudflare Repository hinzu..."
@@ -749,7 +768,9 @@ if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     fi
     
     info "Installiere cloudflared..."
-    if ! apt-get install -y -qq cloudflared > /dev/null 2>&1; then
+    
+    # Zeige Installation-Output (nicht komplett silent)
+    if ! apt-get install -y cloudflared 2>&1 | grep -v "^Selecting\|^Preparing\|^Unpacking\|^Setting up" | grep -v "^$"; then
         echo ""
         error "cloudflared Installation fehlgeschlagen!"
         echo ""
@@ -758,40 +779,67 @@ if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
         echo -e "  ${RED}2.${NC} Internetverbindung unterbrochen"
         echo -e "  ${RED}3.${NC} Cloudflare Repository nicht erreichbar"
         echo ""
-        echo -e "${YELLOW}Lösung:${NC}"
-        echo -e "  ${GREEN}1.${NC} Internetverbindung prüfen"
-        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo -e "${YELLOW}Optionen:${NC}"
+        echo -e "  ${GREEN}1.${NC} Manuelle Installation versuchen: ${CYAN}apt-get install -y cloudflared${NC}"
+        echo -e "  ${GREEN}2.${NC} Installation ohne Cloudflare: ${CYAN}./install.sh --no-cloudflare${NC}"
+        echo -e "  ${GREEN}3.${NC} Siehe: ${CYAN}Installation/CLOUDFLARED-INSTALLATION-FEHLER.md${NC}"
         echo ""
-        echo -e "${YELLOW}Manuelle Installation:${NC}"
-        echo -e "  ${CYAN}apt-get update${NC}"
-        echo -e "  ${CYAN}apt-get install -y cloudflared${NC}"
+        
+        read -p "   ${BLUE}►${NC} Cloudflare überspringen und fortfahren? (j/N): " SKIP_CF2
         echo ""
-        exit 1
+        
+        if [[ $SKIP_CF2 =~ ^[Jj]$ ]]; then
+            warning "Cloudflare wird übersprungen!"
+            echo ""
+            return 0
+        else
+            exit 1
+        fi
     fi
     
     # Prüfe ob cloudflared wirklich verfügbar ist
     if ! command -v cloudflared &> /dev/null; then
         echo ""
-        error "cloudflared wurde installiert, aber der Befehl ist nicht verfügbar!"
+        warning "cloudflared Installation abgeschlossen, aber Befehl nicht gefunden!"
         echo ""
-        echo -e "${YELLOW}Lösung:${NC}"
-        echo -e "  ${GREEN}1.${NC} Terminal schließen und neu öffnen"
-        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo -e "${YELLOW}Dies ist normal nach der ersten Installation.${NC}"
+        echo -e "${YELLOW}Lösung: Shell neu laden oder Server neu starten.${NC}"
         echo ""
-        exit 1
+        
+        read -p "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): " CONTINUE_CF
+        echo ""
+        
+        if [[ ! $CONTINUE_CF =~ ^[Nn]$ ]]; then
+            warning "Fahre fort - Cloudflare kann später konfiguriert werden"
+            echo ""
+            return 0
+        else
+            exit 1
+        fi
     fi
     
-    CF_VERSION=$(cloudflared --version | head -1)
-    success "Cloudflared installiert: $CF_VERSION"
-    
-    echo ""
-    echo -e "${YELLOW}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║${NC}  ${CYAN}Cloudflare Login erforderlich${NC}                        ${YELLOW}║${NC}"
-    echo -e "${YELLOW}╚════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # Call our intelligent login function
-    cloudflare_login_with_help
+    # Wenn cloudflared verfügbar ist, Version anzeigen
+    if command -v cloudflared &> /dev/null; then
+        CF_VERSION=$(cloudflared --version 2>/dev/null | head -1)
+        success "Cloudflared installiert: $CF_VERSION"
+        
+        echo ""
+        echo -e "${YELLOW}╔════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║${NC}  ${CYAN}Cloudflare Login erforderlich${NC}                        ${YELLOW}║${NC}"
+        echo -e "${YELLOW}╚════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        
+        # Call our intelligent login function
+        cloudflare_login_with_help
+    else
+        # cloudflared nicht verfügbar - wurde übersprungen
+        warning "Cloudflare wurde übersprungen - Setup kann später nachgeholt werden"
+        echo ""
+        echo -e "  ${CYAN}Siehe: Installation/CLOUDFLARE-LOKALER-PC.md${NC}"
+        echo ""
+        sleep 2
+        return 0
+    fi
     
     echo ""
     

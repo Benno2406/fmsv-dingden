@@ -20,6 +20,7 @@ Schnellzugriff auf alle Hilfe-Dokumente.
 
 | Problem | Lösung |
 |---------|--------|
+| **Script bricht einfach ab** | [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) ⭐ **NEU!** |
 | **Script wartet auf Eingabe** | Normal! `J` drücken. Siehe [`README.md`](README.md#-wichtig---zuerst-lesen) |
 | **apt update Fehler** | [`APT-UPDATE-FIX.md`](APT-UPDATE-FIX.md) |
 | **Git Clone schlägt fehl** | [`GIT-CLONE-FEHLER.md`](GIT-CLONE-FEHLER.md) |
@@ -44,6 +45,9 @@ Schnellzugriff auf alle Hilfe-Dokumente.
 | **Browser öffnet sich nicht (SSH/PuTTY)** | [`CLOUDFLARE-SSH-LOGIN.md`](CLOUDFLARE-SSH-LOGIN.md) |
 | **PuTTY Schritt-für-Schritt (mit Bildern)** | [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) ⭐ |
 | **URL manuell öffnen** | [`CLOUDFLARE-URL-MANUELL.md`](CLOUDFLARE-URL-MANUELL.md) |
+| **.cloudflared Ordner nicht sichtbar** | [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md) |
+| **cloudflared Installation fehlgeschlagen** | [`CLOUDFLARED-INSTALLATION-FEHLER.md`](CLOUDFLARED-INSTALLATION-FEHLER.md) ⭐ **NEU!** |
+| **WinSCP Upload Guide** | [`WINSCP-QUICK-GUIDE.md`](WINSCP-QUICK-GUIDE.md) |
 | **Quick Guide** | [`CLOUDFLARE-QUICK-GUIDE.md`](CLOUDFLARE-QUICK-GUIDE.md) |
 | **Setup-Script** | `scripts/cloudflare-setup-manual.sh` |
 | **Vollständige Anleitung** | [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) |
