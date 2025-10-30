@@ -83,9 +83,23 @@ hostname -I
 
 #### Kopiere das Zertifikat
 
+Du hast **zwei einfache Optionen**:
+
+##### 🎯 **Option A: WinSCP (Windows - EMPFOHLEN)** ⭐
+
+**Mit grafischer Oberfläche - keine Terminal-Befehle nötig!**
+
+Perfekt für Windows-Nutzer! Einfach per Drag & Drop hochladen.
+
+**📖 Komplette Schritt-für-Schritt-Anleitung:** [`CLOUDFLARE-WINSCP.md`](CLOUDFLARE-WINSCP.md)
+
+---
+
+##### 🔧 **Option B: SCP im Terminal**
+
 **Öffne ein NEUES Terminal/CMD** auf **deinem PC**:
 
-##### Windows (PowerShell)
+**Windows (PowerShell):**
 
 ```powershell
 # Ersetze DEINE_SERVER_IP mit echter IP!
@@ -95,7 +109,7 @@ scp C:\Users\DEIN_NAME\.cloudflared\cert.pem root@DEINE_SERVER_IP:/root/.cloudfl
 scp C:\Users\Max\.cloudflared\cert.pem root@192.168.1.100:/root/.cloudflared/
 ```
 
-##### Mac/Linux
+**Mac/Linux:**
 
 ```bash
 # Ersetze DEINE_SERVER_IP mit echter IP!

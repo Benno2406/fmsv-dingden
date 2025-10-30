@@ -79,9 +79,18 @@ cloudflared tunnel login
 → Bei Cloudflare einloggen
 → Domain wählen → "Authorize"
 
-**Zertifikat zum Server kopieren (NEUES Terminal auf PC):**
+**Zertifikat zum Server kopieren:**
+
+Du hast **zwei Optionen**:
+
+**Option A: WinSCP (Windows - EINFACH)** ⭐
+- WinSCP öffnen → Mit Server verbinden
+- `cert.pem` per **Drag & Drop** hochladen
+- **📖 Anleitung:** [`CLOUDFLARE-WINSCP.md`](CLOUDFLARE-WINSCP.md)
+
+**Option B: SCP im Terminal**
 ```bash
-# Windows
+# Windows (NEUES Terminal)
 scp C:\Users\DEIN_NAME\.cloudflared\cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/
 
 # Mac/Linux

@@ -150,22 +150,57 @@ cloudflare_login_with_help() {
             
             echo -e "${YELLOW}SCHRITT 4: Zertifikat zum Server kopieren${NC}"
             echo ""
-            echo -e "  ${GREEN}Öffne ein NEUES Terminal/CMD${NC} auf deinem PC und führe aus:"
+            
+            # Zeige Server-IP
+            SERVER_IP=$(hostname -I | awk '{print $1}')
+            echo -e "  ${GREEN}Deine Server-IP:${NC} ${CYAN}$SERVER_IP${NC}"
+            echo ""
+            
+            echo -e "  ${GREEN}Wähle deine Methode:${NC}"
+            echo ""
+            echo -e "  ${BLUE}Option A: WinSCP (Windows - mit GUI)${NC} ${YELLOW}← EINFACH!${NC}"
+            echo -e "  ${BLUE}Option B: SCP (Terminal/CMD)${NC}"
+            echo ""
+            
+            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${CYAN}║  OPTION A: WinSCP (Windows)                              ║${NC}"
+            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+            echo ""
+            echo -e "  ${GREEN}1.${NC} WinSCP herunterladen:"
+            echo -e "     ${CYAN}https://winscp.net/eng/download.php${NC}"
+            echo ""
+            echo -e "  ${GREEN}2.${NC} WinSCP öffnen und verbinden:"
+            echo -e "     Host:     ${CYAN}$SERVER_IP${NC}"
+            echo -e "     Port:     ${CYAN}22${NC}"
+            echo -e "     Benutzer: ${CYAN}root${NC}"
+            echo -e "     Passwort: ${CYAN}[Dein Server-Passwort]${NC}"
+            echo ""
+            echo -e "  ${GREEN}3.${NC} Im WinSCP-Fenster:"
+            echo -e "     ${BLUE}Links${NC}  (PC):    ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
+            echo -e "     ${BLUE}Rechts${NC} (Server): ${CYAN}/root/.cloudflared/${NC}"
+            echo ""
+            echo -e "  ${GREEN}4.${NC} Datei ${CYAN}cert.pem${NC} von links nach rechts ziehen"
+            echo ""
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+            echo ""
+            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${CYAN}║  OPTION B: SCP im Terminal                               ║${NC}"
+            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
             echo ""
             echo -e "  ${BLUE}Windows (PowerShell):${NC}"
-            echo -e "  ${CYAN}scp C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/${NC}"
+            echo -e "  ${CYAN}scp C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem root@$SERVER_IP:/root/.cloudflared/${NC}"
             echo ""
             echo -e "  ${BLUE}Mac/Linux:${NC}"
-            echo -e "  ${CYAN}scp ~/.cloudflared/cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/${NC}"
+            echo -e "  ${CYAN}scp ~/.cloudflared/cert.pem root@$SERVER_IP:/root/.cloudflared/${NC}"
             echo ""
-            echo -e "  ${YELLOW}⚠️  Ersetze DEINE_SERVER_IP mit deiner echten Server-IP!${NC}"
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
             echo ""
             
             # Erstelle das Zielverzeichnis
             mkdir -p ~/.cloudflared
             chmod 700 ~/.cloudflared
             
-            echo -e "  ${GREEN}Warte auf Zertifikat...${NC}"
+            echo -e "  ${GREEN}✅ Server ist bereit - warte auf Zertifikat...${NC}"
             echo ""
             
             # Warte bis Zertifikat existiert

@@ -40,7 +40,15 @@ winget install --id Cloudflare.cloudflared
 cloudflared tunnel login
 # → Browser öffnet sich automatisch
 
-# 2. Zertifikat kopieren (NEUES Terminal auf PC)
+# 2. Zertifikat kopieren - ZWEI OPTIONEN:
+
+# Option A: WinSCP (EINFACH - mit GUI) ⭐
+# - WinSCP öffnen
+# - Mit Server verbinden
+# - cert.pem per Drag & Drop hochladen
+# Details: /Installation/CLOUDFLARE-WINSCP.md
+
+# Option B: SCP (Terminal)
 scp C:\Users\DEIN_NAME\.cloudflared\cert.pem root@SERVER_IP:/root/.cloudflared/
 
 # 3. Im Server-Terminal

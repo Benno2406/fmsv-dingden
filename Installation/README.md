@@ -205,8 +205,11 @@ cloudflared auf **deinem PC** installieren, dort einloggen, Zertifikat zum Serve
 - ✅ Funktioniert **immer** zuverlässig
 - ✅ Browser auf PC funktioniert normal
 - ✅ Keine URL-Kopierei
+- ✅ Mit WinSCP per Drag & Drop (Windows)
 
-**Anleitung:** [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) (10 Minuten)
+**Anleitungen:**
+- **Windows (GUI):** [`CLOUDFLARE-WINSCP.md`](CLOUDFLARE-WINSCP.md) - Einfach per Drag & Drop! ⭐
+- **Alle Systeme:** [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) (10 Minuten)
 
 #### 🔧 Lösung 2: URL manuell öffnen
 
