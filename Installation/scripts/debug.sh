@@ -67,9 +67,10 @@ show_menu() {
     echo -e "  ${GREEN}7${NC}) Datenbank testen"
     echo -e "  ${GREEN}8${NC}) .env Konfiguration prüfen"
     echo -e "  ${GREEN}9${NC}) HTTP-Endpoint testen"
+    echo -e "  ${CYAN}10${NC}) Backend-HTTP-Problem beheben ${YELLOW}⭐${NC}"
     echo -e "  ${GREEN}0${NC}) Beenden"
     echo ""
-    read -p "Auswahl [1-9]: " choice
+    read -p "Auswahl [0-10]: " choice
     echo ""
     
     case $choice in
@@ -82,6 +83,7 @@ show_menu() {
         7) test_database ;;
         8) check_env ;;
         9) test_http ;;
+        10) fix_backend_http ;;
         0) exit 0 ;;
         *) echo -e "${RED}Ungültige Auswahl${NC}"; sleep 2; show_menu ;;
     esac
@@ -341,22 +343,50 @@ quick_fix() {
     systemctl restart fmsv-backend 2>/dev/null
     fix_applied "Backend neu gestartet"
     
-    sleep 3
+    sleep 5
     
     # Prüfe Ergebnis
     echo ""
     if systemctl is-active --quiet fmsv-backend; then
         success "Backend läuft jetzt!"
         
+        # Warte bis Backend bereit ist
+        info "Warte auf Backend-Start..."
+        for i in {1..10}; do
+            HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+            if [ "$HTTP_RESPONSE" = "200" ]; then
+                success "HTTP-Endpoint antwortet!"
+                break
+            fi
+            echo -n "."
+            sleep 1
+        done
+        echo ""
+        
+        # Finaler Check
         HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
-        if [ "$HTTP_RESPONSE" = "200" ]; then
-            success "HTTP-Endpoint antwortet!"
-        else
-            warning "HTTP-Endpoint antwortet nicht (noch)"
+        if [ "$HTTP_RESPONSE" != "200" ]; then
+            warning "HTTP-Endpoint antwortet NICHT (Code: $HTTP_RESPONSE)"
+            echo ""
+            echo -e "${YELLOW}Mögliche Ursachen:${NC}"
+            echo -e "  ${RED}1.${NC} Backend startet noch (warte 10-20 Sekunden)"
+            echo -e "  ${RED}2.${NC} Backend hört auf falschem Port"
+            echo -e "  ${RED}3.${NC} Backend-Fehler beim Start"
+            echo ""
+            echo -e "${CYAN}Empfohlene Schritte:${NC}"
+            echo -e "  ${GREEN}1.${NC} Logs ansehen: Menü Option 3"
+            echo -e "  ${GREEN}2.${NC} Backend manuell starten: Menü Option 4"
+            echo -e "  ${GREEN}3.${NC} Port prüfen: ${CYAN}netstat -tlnp | grep 5000${NC}"
         fi
     else
         error "Backend läuft NICHT"
-        warning "Führe 'Vollständige Diagnose' aus"
+        echo ""
+        echo -e "${YELLOW}Backend-Service konnte nicht gestartet werden!${NC}"
+        echo ""
+        echo -e "${CYAN}Nächste Schritte:${NC}"
+        echo -e "  ${GREEN}1.${NC} Logs ansehen: Menü Option 3"
+        echo -e "  ${GREEN}2.${NC} Service Status: ${CYAN}systemctl status fmsv-backend${NC}"
+        echo -e "  ${GREEN}3.${NC} Vollständige Diagnose: Menü Option 1"
     fi
     
     echo ""
@@ -639,6 +669,181 @@ test_http() {
     # Test mit curl verbose
     echo -e "${YELLOW}Detaillierter Request:${NC}"
     curl -v http://localhost:5000/api/health 2>&1 | head -n 20
+    
+    echo ""
+    read -p "Zurück zum Menü (Enter)" -r
+    show_menu
+}
+
+################################################################################
+# 10. Backend-HTTP-Problem beheben
+################################################################################
+
+fix_backend_http() {
+    print_section "BACKEND-HTTP-PROBLEM BEHEBEN"
+    
+    cd "$BACKEND_DIR"
+    
+    echo -e "${YELLOW}Diagnose: Warum antwortet das Backend nicht auf HTTP?${NC}"
+    echo ""
+    
+    # Check 1: Läuft der Service?
+    echo -e "${CYAN}[1/7] Backend Service Status...${NC}"
+    if systemctl is-active --quiet fmsv-backend; then
+        success "Backend-Service läuft"
+    else
+        error "Backend-Service läuft NICHT!"
+        echo ""
+        warning "Starte Backend-Service..."
+        systemctl start fmsv-backend
+        sleep 3
+        if systemctl is-active --quiet fmsv-backend; then
+            success "Backend-Service gestartet"
+        else
+            error "Backend-Service Start fehlgeschlagen!"
+            echo ""
+            echo -e "${YELLOW}Logs:${NC}"
+            journalctl -u fmsv-backend -n 20 --no-pager
+            echo ""
+            read -p "Zurück zum Menü (Enter)" -r
+            show_menu
+            return
+        fi
+    fi
+    echo ""
+    
+    # Check 2: Läuft der Node-Prozess?
+    echo -e "${CYAN}[2/7] Node.js Prozess...${NC}"
+    if pgrep -f "node.*server.js" > /dev/null; then
+        PID=$(pgrep -f "node.*server.js")
+        success "Node.js läuft (PID: $PID)"
+    else
+        error "Kein Node.js Prozess gefunden!"
+        warning "Backend ist gestartet, aber Node läuft nicht"
+    fi
+    echo ""
+    
+    # Check 3: Port 5000 belegt?
+    echo -e "${CYAN}[3/7] Port 5000...${NC}"
+    if netstat -tlnp 2>/dev/null | grep -q :5000; then
+        PORT_INFO=$(netstat -tlnp 2>/dev/null | grep :5000)
+        success "Port 5000 ist belegt"
+        echo -e "${YELLOW}Details:${NC}"
+        echo "$PORT_INFO"
+    else
+        error "Port 5000 ist FREI!"
+        echo ""
+        warning "Backend hört nicht auf Port 5000!"
+        echo ""
+        echo -e "${YELLOW}Prüfe .env Konfiguration...${NC}"
+        if grep -q "^PORT=" .env 2>/dev/null; then
+            CONFIGURED_PORT=$(grep "^PORT=" .env | cut -d= -f2)
+            if [ "$CONFIGURED_PORT" != "5000" ]; then
+                error "PORT in .env ist $CONFIGURED_PORT (sollte 5000 sein)"
+                echo ""
+                read -p "Soll PORT auf 5000 gesetzt werden? (j/N): " -n 1 -r
+                echo ""
+                if [[ $REPLY =~ ^[Jj]$ ]]; then
+                    sed -i 's/^PORT=.*/PORT=5000/' .env
+                    success "PORT auf 5000 gesetzt"
+                    systemctl restart fmsv-backend
+                    sleep 3
+                fi
+            fi
+        else
+            warning "PORT nicht in .env gesetzt (verwendet Default 5000)"
+        fi
+    fi
+    echo ""
+    
+    # Check 4: HTTP Test
+    echo -e "${CYAN}[4/7] HTTP Verbindung...${NC}"
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
+        success "HTTP antwortet (200 OK)"
+        echo ""
+        echo -e "${GREEN}✅ PROBLEM GELÖST!${NC}"
+        echo -e "${GREEN}Backend antwortet jetzt korrekt auf HTTP!${NC}"
+    elif [ "$HTTP_CODE" = "000" ]; then
+        error "Keine Verbindung möglich (Code: 000)"
+        echo ""
+        echo -e "${YELLOW}Dies bedeutet:${NC}"
+        echo -e "  ${RED}•${NC} Backend ist nicht erreichbar"
+        echo -e "  ${RED}•${NC} Port falsch oder Backend läuft nicht"
+    else
+        warning "Unerwarteter HTTP Code: $HTTP_CODE"
+    fi
+    echo ""
+    
+    # Check 5: Letzte Logs
+    echo -e "${CYAN}[5/7] Backend Logs (letzte 10 Zeilen)...${NC}"
+    journalctl -u fmsv-backend -n 10 --no-pager
+    echo ""
+    
+    # Check 6: Fehler in Logs?
+    echo -e "${CYAN}[6/7] Suche nach Fehlern in Logs...${NC}"
+    if journalctl -u fmsv-backend -n 50 --no-pager | grep -i "error\|failed\|exception" > /dev/null; then
+        error "Fehler in Logs gefunden:"
+        journalctl -u fmsv-backend -n 50 --no-pager | grep -i "error\|failed\|exception" | tail -n 5
+    else
+        success "Keine offensichtlichen Fehler in Logs"
+    fi
+    echo ""
+    
+    # Check 7: Lösungsvorschläge
+    echo -e "${CYAN}[7/7] Lösungsvorschläge...${NC}"
+    echo ""
+    
+    if [ "$HTTP_CODE" != "200" ]; then
+        echo -e "${YELLOW}Versuche folgende Schritte:${NC}"
+        echo ""
+        echo -e "${GREEN}1.${NC} Backend neu starten:"
+        echo -e "   ${CYAN}systemctl restart fmsv-backend${NC}"
+        echo ""
+        echo -e "${GREEN}2.${NC} Backend manuell starten (für genaue Fehlermeldung):"
+        echo -e "   ${CYAN}Menü Option 4${NC}"
+        echo ""
+        echo -e "${GREEN}3.${NC} Logs live ansehen:"
+        echo -e "   ${CYAN}Menü Option 3${NC}"
+        echo ""
+        echo -e "${GREEN}4.${NC} .env prüfen:"
+        echo -e "   ${CYAN}Menü Option 8${NC}"
+        echo ""
+        
+        read -p "Soll ich Backend neu starten? (J/n): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            echo ""
+            info "Starte Backend neu..."
+            systemctl restart fmsv-backend
+            echo ""
+            info "Warte 10 Sekunden..."
+            for i in {10..1}; do
+                echo -n "$i "
+                sleep 1
+            done
+            echo ""
+            echo ""
+            
+            # Teste erneut
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+                echo ""
+                success "✅ PROBLEM GELÖST!"
+                success "Backend antwortet jetzt!"
+                echo ""
+            else
+                echo ""
+                error "Backend antwortet immer noch nicht (Code: $HTTP_CODE)"
+                echo ""
+                warning "Empfehlung: Backend manuell starten (Menü Option 4)"
+                echo -e "${YELLOW}Das zeigt dir die genaue Fehlermeldung!${NC}"
+                echo ""
+            fi
+        fi
+    else
+        success "✅ Alles funktioniert!"
+    fi
     
     echo ""
     read -p "Zurück zum Menü (Enter)" -r

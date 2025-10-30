@@ -15,9 +15,15 @@ Alle anderen Debug-Tools wurden **gelöscht** und in **ein umfassendes debug.sh*
 
 ---
 
-## 🚀 Dein aktuelles Problem: Backend startet nicht
+## 🚀 Dein aktuelles Problem: Backend antwortet nicht auf HTTP
 
-### Lösung in 2 Schritten:
+**Fehler:**
+```
+Teste /api/health...
+✗ Endpoint antwortet nicht (Code: 000)
+```
+
+### ⚡ Lösung in 2 Schritten:
 
 ```bash
 # 1. Gehe ins Script-Verzeichnis
@@ -29,16 +35,21 @@ sudo ./debug.sh
 
 ### Im Menü dann:
 
-**Erste Option:** Wähle **2** (Quick-Fix)
+**BESTE Option:** Wähle **10** (Backend-HTTP-Problem beheben) ⭐
+- Speziell für dieses Problem!
+- Prüft Service, Node-Prozess, Port, HTTP
+- Bietet automatischen Fix an
+- Zeigt Logs und Fehler
+
+**Alternative:** Wähle **2** (Quick-Fix)
 - Behebt automatisch häufige Probleme
 - node_modules installieren
 - .env erstellen falls fehlt
 - Services neu starten
 
-**Wenn das nicht hilft:** Wähle **1** (Vollständige Diagnose)
-- Zeigt GENAU was fehlt
-- Prüft alle 10 wichtigen Punkte
-- Gibt dir konkrete Handlungsanweisungen
+**Wenn das nicht hilft:** Wähle **4** (Backend manuell starten)
+- Zeigt GENAUE Fehlermeldung
+- Siehst sofort was das Problem ist
 
 ---
 
@@ -141,22 +152,31 @@ sudo ./install.sh
 
 ## 🆘 Zusammenfassung
 
-**Dein Problem:** Backend startet nicht (node_modules fehlen)
+**Dein Problem:** Backend antwortet nicht auf HTTP (Code: 000)
 
-**Lösung:**
+**Beste Lösung:**
 ```bash
 cd /var/www/fmsv-dingden/Installation/scripts
 sudo ./debug.sh
-# Wähle: 2 (Quick-Fix)
+# Wähle: 10 (Backend-HTTP-Problem beheben)
 ```
 
 **Das passiert dann:**
-1. npm install läuft durch
-2. Alle Module werden installiert
-3. Backend wird neu gestartet
-4. Test ob alles funktioniert
+1. ✅ Prüft ob Service läuft
+2. ✅ Prüft ob Node.js läuft
+3. ✅ Prüft Port 5000
+4. ✅ Testet HTTP-Verbindung
+5. ✅ Zeigt Logs
+6. ✅ Bietet automatischen Fix an (Backend-Neustart)
 
-**Dauer:** 2-5 Minuten
+**Dauer:** 1-2 Minuten
+
+**Alternative (wenn Option 10 nicht hilft):**
+```bash
+sudo ./debug.sh
+# Wähle: 4 (Backend manuell starten)
+```
+Das zeigt dir die **genaue Fehlermeldung**!
 
 **Dann sollte es laufen!** ✅
 
