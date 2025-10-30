@@ -20,8 +20,9 @@ Schnellzugriff auf alle Hilfe-Dokumente.
 
 | Problem | Lösung |
 |---------|--------|
+| **"Ungültige Auswahl" Fehler** | [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) ⭐ **BEHOBEN!** |
 | **Script bricht einfach ab** | [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) ⭐ |
-| **Nginx startet nicht** | [`NGINX-FEHLER.md`](NGINX-FEHLER.md) ⭐ **NEU!** |
+| **Nginx startet nicht** | [`NGINX-FEHLER.md`](NGINX-FEHLER.md) ⭐ |
 | **Script wartet auf Eingabe** | Normal! `J` drücken. Siehe [`README.md`](README.md#-wichtig---zuerst-lesen) |
 | **apt update Fehler** | [`APT-UPDATE-FIX.md`](APT-UPDATE-FIX.md) |
 | **Git Clone schlägt fehl** | [`GIT-CLONE-FEHLER.md`](GIT-CLONE-FEHLER.md) |

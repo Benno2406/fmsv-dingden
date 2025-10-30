@@ -79,6 +79,7 @@ apt-get update
 
 **Mehr Hilfe:** 
 - [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - Allgemeine Probleme
+- [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) - "Ungültige Auswahl" Fehler ⚡ **BEHOBEN**
 - [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) - Script bricht ab (Debug Guide)
 - [`NGINX-FEHLER.md`](NGINX-FEHLER.md) - Nginx startet nicht
 

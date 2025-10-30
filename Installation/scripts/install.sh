@@ -318,6 +318,7 @@ error() {
     echo -e "  ${CYAN}1.${NC} Logs ansehen: ${GREEN}cat $LOG_FILE${NC}"
     echo -e "  ${CYAN}2.${NC} Hilfe-Übersicht: ${GREEN}cat /var/www/fmsv-dingden/Installation/HILFE-UEBERSICHT.md${NC}"
     echo -e "  ${CYAN}3.${NC} Häufige Probleme:"
+    echo -e "     • Eingabe-Fehler: ${CYAN}Installation/EINGABE-FEHLER.md${NC}"
     echo -e "     • Script bricht ab: ${CYAN}Installation/SCRIPT-BRICHT-AB.md${NC}"
     echo -e "     • Nginx Fehler: ${CYAN}Installation/NGINX-FEHLER.md${NC}"
     echo -e "     • Cloudflare: ${CYAN}Installation/CLOUDFLARED-INSTALLATION-FEHLER.md${NC}"
@@ -431,22 +432,32 @@ print_header 2 "Installations-Optionen"
 # Option 1: Update Channel
 echo -e "${YELLOW}1️⃣  Update-Kanal wählen:${NC}"
 echo ""
-echo "   ${GREEN}[1]${NC} Stable   - Stabile Releases (empfohlen für Production)"
-echo "   ${YELLOW}[2]${NC} Testing  - Neueste Features (für Entwicklung/Testing)"
+echo -e "   ${GREEN}[1]${NC} Stable   - Stabile Releases (empfohlen für Production)"
+echo -e "   ${YELLOW}[2]${NC} Testing  - Neueste Features (für Entwicklung/Testing)"
 echo ""
 read -p "   ${BLUE}►${NC} Deine Wahl (1/2): " UPDATE_CHANNEL
 
-case $UPDATE_CHANNEL in
-  1)
+# Trim whitespace und normalisieren
+UPDATE_CHANNEL=$(echo "$UPDATE_CHANNEL" | xargs)
+
+case "$UPDATE_CHANNEL" in
+  1|"1"|stable|Stable|STABLE)
     BRANCH="main"
     CHANNEL_NAME="Stable"
     ;;
-  2)
+  2|"2"|testing|Testing|TESTING)
     BRANCH="testing"
     CHANNEL_NAME="Testing"
     ;;
+  "")
+    # Default bei leerem Input
+    BRANCH="main"
+    CHANNEL_NAME="Stable"
+    warning "Keine Auswahl - verwende Standard: Stable"
+    ;;
   *)
-    error "Ungültige Auswahl"
+    echo ""
+    error "Ungültige Auswahl: '$UPDATE_CHANNEL' - Bitte 1 oder 2 eingeben"
     ;;
 esac
 
@@ -458,7 +469,7 @@ sleep 1
 if [ $SKIP_CLOUDFLARE -eq 0 ]; then
     echo -e "${YELLOW}2️⃣  Cloudflare Tunnel:${NC}"
     echo ""
-    echo "   ${GREEN}Vorteile:${NC}"
+    echo -e "   ${GREEN}Vorteile:${NC}"
     echo "   ✅ Keine Port-Weiterleitungen nötig"
     echo "   ✅ Automatisches SSL/TLS"
     echo "   ✅ DDoS-Schutz"
@@ -477,7 +488,7 @@ sleep 1
 # Option 3: GitHub Repository
 echo -e "${YELLOW}3️⃣  GitHub Repository:${NC}"
 echo ""
-echo "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
+echo -e "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
 echo ""
 read -p "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: " GITHUB_REPO
 if [ -z "$GITHUB_REPO" ]; then
@@ -490,17 +501,34 @@ sleep 1
 # Option 4: Auto-Update
 echo -e "${YELLOW}4️⃣  Automatische Updates:${NC}"
 echo ""
-echo "   ${GREEN}[1]${NC} Täglich um 03:00 Uhr"
-echo "   ${YELLOW}[2]${NC} Wöchentlich (Sonntag 03:00 Uhr)"
-echo "   ${MAGENTA}[3]${NC} Manuell (keine automatischen Updates)"
+echo -e "   ${GREEN}[1]${NC} Täglich um 03:00 Uhr"
+echo -e "   ${YELLOW}[2]${NC} Wöchentlich (Sonntag 03:00 Uhr)"
+echo -e "   ${MAGENTA}[3]${NC} Manuell (keine automatischen Updates)"
 echo ""
 read -p "   ${BLUE}►${NC} Deine Wahl (1/2/3): " AUTO_UPDATE_CHOICE
 
-case $AUTO_UPDATE_CHOICE in
-  1) AUTO_UPDATE_SCHEDULE="daily" ;;
-  2) AUTO_UPDATE_SCHEDULE="weekly" ;;
-  3) AUTO_UPDATE_SCHEDULE="manual" ;;
-  *) error "Ungültige Auswahl" ;;
+# Trim whitespace und normalisieren
+AUTO_UPDATE_CHOICE=$(echo "$AUTO_UPDATE_CHOICE" | xargs)
+
+case "$AUTO_UPDATE_CHOICE" in
+  1|"1"|daily|täglich|Täglich)
+    AUTO_UPDATE_SCHEDULE="daily"
+    ;;
+  2|"2"|weekly|wöchentlich|Wöchentlich)
+    AUTO_UPDATE_SCHEDULE="weekly"
+    ;;
+  3|"3"|manual|manuell|Manuell)
+    AUTO_UPDATE_SCHEDULE="manual"
+    ;;
+  "")
+    # Default bei leerem Input
+    AUTO_UPDATE_SCHEDULE="weekly"
+    warning "Keine Auswahl - verwende Standard: wöchentlich"
+    ;;
+  *)
+    echo ""
+    error "Ungültige Auswahl: '$AUTO_UPDATE_CHOICE' - Bitte 1, 2 oder 3 eingeben"
+    ;;
 esac
 
 success "Auto-Update: $AUTO_UPDATE_SCHEDULE"

@@ -1,328 +1,366 @@
-# Installations-Scripts
+# Installation Scripts
 
-Automatisierte Installation und Updates für FMSV Dingden.
+Dieses Verzeichnis enthält alle Installations- und Wartungs-Scripts für FMSV Dingden.
 
-## 🚀 Scripts
+---
 
-### install.sh - Haupt-Installation
+## 📜 Verfügbare Scripts
 
-**Das eine Script für alles!**
+### 🚀 Haupt-Scripts
+
+| Script | Beschreibung | Verwendung |
+|--------|--------------|------------|
+| **install.sh** | Komplette Installation | `./install.sh` |
+| **update.sh** | System-Update | `./update.sh` |
+| **debug-install.sh** | Debug-Modus Installation | `./debug-install.sh` |
+
+### 🔧 Hilfs-Scripts
+
+| Script | Beschreibung | Verwendung |
+|--------|--------------|------------|
+| **fix-install-script.sh** | Behebt "Ungültige Auswahl" Fehler | `./fix-install-script.sh` |
+| **test-cloudflare.sh** | Testet Cloudflare Installation | `./test-cloudflare.sh` |
+| **cloudflare-setup-manual.sh** | Manuelle Cloudflare Konfiguration | `./cloudflare-setup-manual.sh` |
+
+---
+
+## 🚀 install.sh
+
+**Hauptinstallations-Script mit allen Features:**
 
 ```bash
+# Standard Installation
+./install.sh
+
+# Installation ohne Cloudflare
+./install.sh --no-cloudflare
+
+# Installation überspringt Cloudflare
+# (nützlich wenn cloudflared Installation Probleme macht)
+```
+
+**Was macht es:**
+1. System-Prüfung (Debian Version, Internet, Speicherplatz)
+2. Installations-Optionen abfragen
+3. System-Updates installieren
+4. PostgreSQL installieren und konfigurieren
+5. Node.js installieren
+6. Cloudflare Tunnel einrichten (optional)
+7. Nginx installieren und konfigurieren
+8. Backend einrichten
+9. Frontend bauen
+10. Auto-Update System konfigurieren (optional)
+11. Services starten
+
+**Logs:** `/var/log/fmsv-install.log`
+
+---
+
+## 🔄 update.sh
+
+**Update-Script für bestehende Installationen:**
+
+```bash
+./update.sh
+```
+
+**Was macht es:**
+- Zieht neueste Änderungen von GitHub
+- Aktualisiert Backend-Dependencies
+- Baut Frontend neu
+- Startet Services neu
+- Erstellt Backup vor Update
+
+**Logs:** `/var/log/fmsv-update.log`
+
+---
+
+## 🐛 debug-install.sh
+
+**Installation mit ausführlichem Debug-Output:**
+
+```bash
+./debug-install.sh
+```
+
+**Verwendung:**
+- Wenn install.sh fehlschlägt
+- Um genaue Fehlermeldungen zu sehen
+- Bei unerklärlichen Problemen
+
+**Unterschied zu install.sh:**
+- Zeigt alle Befehls-Ausgaben
+- Kein `> /dev/null`
+- Detaillierte Logs
+- Pausiert bei Fehlern
+
+---
+
+## 🔧 fix-install-script.sh
+
+**Behebt das "Ungültige Auswahl" Problem:**
+
+```bash
+./fix-install-script.sh
+```
+
+**Wann verwenden:**
+- Bei "Ungültige Auswahl" Fehlern
+- Wenn Eingaben nicht akzeptiert werden
+- Wenn Farben nicht korrekt angezeigt werden
+
+**Was macht es:**
+1. Erstellt Backup von install.sh
+2. Lädt neueste Version
+3. Macht Script ausführbar
+
+**Siehe auch:** [`../EINGABE-FEHLER.md`](../EINGABE-FEHLER.md)
+
+---
+
+## ☁️ cloudflare-setup-manual.sh
+
+**Manuelle Cloudflare Tunnel Konfiguration:**
+
+```bash
+./cloudflare-setup-manual.sh
+```
+
+**Wann verwenden:**
+- Wenn automatische Cloudflare-Installation fehlschlägt
+- Für manuelle Konfiguration
+- Bei Problemen mit cloudflared
+
+**Was macht es:**
+- Installiert cloudflared
+- Führt durch Login-Prozess
+- Erstellt und konfiguriert Tunnel
+- Erstellt systemd Service
+
+---
+
+## 🧪 test-cloudflare.sh
+
+**Testet Cloudflare Installation:**
+
+```bash
+./test-cloudflare.sh
+```
+
+**Prüft:**
+- ✅ cloudflared installiert?
+- ✅ Zertifikat vorhanden?
+- ✅ Tunnel konfiguriert?
+- ✅ Service läuft?
+- ✅ Tunnel erreichbar?
+
+**Gibt Diagnose-Informationen aus**
+
+---
+
+## 🛡️ Alle Scripts als root ausführen
+
+**WICHTIG:** Alle Scripts müssen als root ausgeführt werden!
+
+```bash
+# Option 1: Als root einloggen
+su -
 cd /var/www/fmsv-dingden/Installation/scripts
-chmod +x install.sh
+./install.sh
+
+# Option 2: sudo (nicht empfohlen)
 sudo ./install.sh
 ```
 
-**Features:**
-- ✅ Systematische Installation mit 14 Schritten
-- ✅ Fortschrittsanzeige für jeden Schritt
-- ✅ Farbcodierte Ausgabe (Info/Erfolg/Warnung/Fehler)
-- ✅ PostgreSQL + Node.js Installation
-- ✅ Wahl zwischen Stable/Testing
-- ✅ Optional: Cloudflare Tunnel
-- ✅ GitHub Auto-Update System
-- ✅ Interaktiver Dialog
-
-**Installiert:**
-- Backend (Node.js, Express, PostgreSQL)
-- Frontend (React, Vite)
-- Nginx (Webserver)
-- Cloudflare Tunnel (optional)
-- Auto-Update Timer (optional)
-
-**Dauer:** ~10-15 Minuten
-
-**Beispiel-Ausgabe:** Siehe [`/Installation/BEISPIEL-AUSGABE.md`](../BEISPIEL-AUSGABE.md)
+**Warum root?**
+- Installiert System-Pakete (apt)
+- Konfiguriert Services (systemd)
+- Ändert System-Dateien (/etc/nginx, /etc/systemd)
+- Erstellt Datenbank-Benutzer
 
 ---
 
-### update.sh - Manuelle Updates
+## 📝 Script-Optionen
+
+### install.sh Optionen
 
 ```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-chmod +x update.sh
-sudo ./update.sh
-```
+# Keine Cloudflare Installation
+./install.sh --no-cloudflare
 
-**Features:**
-- ✅ Systematische Updates mit Fortschrittsanzeige
-- ✅ Update von GitHub ziehen
-- ✅ Zwischen Stable/Testing wechseln
-- ✅ Automatisches Backup vor Update
-- ✅ Service-Neustart
-- ✅ Farbcodierte Ausgabe
-
-**Optionen:**
-1. Update durchführen (7 Schritte)
-   - Auf Updates prüfen
-   - Backup erstellen
-   - Updates ziehen
-   - Backend aktualisieren
-   - Frontend bauen
-   - Services neu starten
-   - Überprüfung
-
-2. Branch wechseln (8 Schritte)
-   - Branch auswählen
-   - Backup erstellen
-   - Branch wechseln
-   - Konfiguration anpassen
-   - Backend aktualisieren
-   - Frontend bauen
-   - Services neu starten
-   - Überprüfung
-
-3. Abbrechen
-
----
-
-### auto-update.sh - Automatische Updates
-
-**Automatisch erstellt** durch `install.sh` (falls Auto-Update aktiviert).
-
-```bash
-# Manuell ausführen
-/var/www/fmsv-dingden/Installation/scripts/auto-update.sh
-
-# Via systemd
-systemctl start fmsv-auto-update.service
-
-# Timer-Status
-systemctl status fmsv-auto-update.timer
-```
-
-**Läuft automatisch:**
-- Täglich um 03:00 Uhr (oder)
-- Wöchentlich Sonntag 03:00 Uhr
-
-**Macht:**
-- Git Pull vom konfigurierten Branch
-- Backend-Update (npm install)
-- Frontend-Update (npm build)
-- Service-Neustart
-
-**Logs:**
-```bash
-tail -f /var/log/fmsv-auto-update.log
+# (Weitere Optionen können hinzugefügt werden)
 ```
 
 ---
 
-## 🎯 Empfohlener Workflow
+## 🔍 Logs ansehen
 
-### Erstinstallation
-
+**Installation Log:**
 ```bash
-# 1. Repository klonen
-cd /var/www
-git clone https://github.com/Benno2406/fmsv-dingden.git
+cat /var/log/fmsv-install.log
 
-# 2. Installation starten
-cd fmsv-dingden/Installation/scripts
-chmod +x install.sh
-sudo ./install.sh
+# Live ansehen (während Installation läuft)
+tail -f /var/log/fmsv-install.log
 ```
 
-### Manuelle Updates
-
+**Update Log:**
 ```bash
-# Update-Script ausführen
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./update.sh
-# Option 1 wählen
+cat /var/log/fmsv-update.log
 ```
 
-### Branch wechseln
-
+**Service Logs:**
 ```bash
-# Update-Script ausführen
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./update.sh
-# Option 2 wählen
+# Backend
+journalctl -u fmsv-backend -n 50
+
+# Nginx
+journalctl -u nginx -n 50
+
+# Cloudflare
+journalctl -u cloudflared -n 50
+
+# PostgreSQL
+journalctl -u postgresql -n 50
 ```
 
 ---
 
-## 📋 Update-Kanäle
+## ❌ Bei Fehlern
 
-### Stable (main)
+### "Ungültige Auswahl" bei Eingaben
 
-**Empfohlen für:**
-- Production-Server
-- Vereins-Website
-- Maximale Stabilität
+```bash
+./fix-install-script.sh
+```
 
-**Updates:**
-- Nur getestete Features
-- Seltenere Updates
-- Release-Notes
-
-**Branch:** `main`
-
-### Testing (testing)
-
-**Empfohlen für:**
-- Entwicklungs-Server
-- Test-Umgebungen
-- Feature-Preview
-
-**Updates:**
-- Neueste Features
-- Häufigere Updates
-- Kann instabil sein
-
-**Branch:** `testing`
+**Siehe:** [`../EINGABE-FEHLER.md`](../EINGABE-FEHLER.md)
 
 ---
 
-## 🔄 GitHub Integration
+### Script bricht ab
 
-### Lokaler PC ↔ GitHub ↔ Server
-
-```
-┌──────────────┐
-│  Lokaler PC  │
-└──────┬───────┘
-       │ git push
-       ▼
-┌──────────────┐
-│   GitHub     │ ← main (Stable)
-│              │ ← testing (Testing)
-└──────┬───────┘
-       │ auto-update
-       ▼
-┌──────────────┐
-│   Server     │
-└──────────────┘
-```
-
-### Workflow
-
-**Lokaler PC:**
 ```bash
-# Feature entwickeln
-git checkout testing
-git add .
-git commit -m "Neues Feature"
-git push origin testing
+# Debug-Modus verwenden
+./debug-install.sh
 
-# Nach Testing → Stable
-git checkout main
-git merge testing
-git push origin main
+# Logs ansehen
+cat /var/log/fmsv-install.log
 ```
 
-**Server:**
-```bash
-# Testing-Server (auto-update von testing)
-# Zieht automatisch neueste Changes
-
-# Production-Server (auto-update von main)
-# Zieht nur stabile Releases
-```
+**Siehe:** [`../SCRIPT-BRICHT-AB.md`](../SCRIPT-BRICHT-AB.md)
 
 ---
 
-## ⚙️ Konfiguration
-
-### Auto-Update aktivieren/deaktivieren
-
-**Stoppen:**
-```bash
-systemctl stop fmsv-auto-update.timer
-systemctl disable fmsv-auto-update.timer
-```
-
-**Starten:**
-```bash
-systemctl start fmsv-auto-update.timer
-systemctl enable fmsv-auto-update.timer
-```
-
-**Zeitplan ändern:**
-```bash
-# Timer-Konfiguration bearbeiten
-nano /etc/systemd/system/fmsv-auto-update.timer
-
-# Reload
-systemctl daemon-reload
-systemctl restart fmsv-auto-update.timer
-```
-
-### Branch manuell wechseln
+### Nginx startet nicht
 
 ```bash
-cd /var/www/fmsv-dingden
+# Status prüfen
+systemctl status nginx
 
-# Zu Testing
-git checkout testing
-git pull origin testing
+# Konfiguration testen
+nginx -t
 
-# Zu Stable
-git checkout main
-git pull origin main
-
-# .env anpassen
-nano backend/.env
-# UPDATE_BRANCH=main (oder testing)
-# UPDATE_CHANNEL=Stable (oder Testing)
-
-# Services neu starten
-systemctl restart fmsv-backend
-systemctl restart nginx
+# Logs ansehen
+tail /var/log/nginx/error.log
 ```
+
+**Siehe:** [`../NGINX-FEHLER.md`](../NGINX-FEHLER.md)
 
 ---
 
-## 🆘 Troubleshooting
-
-### Installation schlägt fehl
+### Cloudflare Probleme
 
 ```bash
-# Logs prüfen
-journalctl -xe
+# Test-Script ausführen
+./test-cloudflare.sh
 
-# Script mit Debug
-bash -x install.sh
+# Manuelle Konfiguration
+./cloudflare-setup-manual.sh
 ```
 
-### Update funktioniert nicht
-
-```bash
-# Git-Status prüfen
-cd /var/www/fmsv-dingden
-git status
-git fetch origin
-
-# Lokale Änderungen verwerfen
-git reset --hard origin/main
-
-# Update erneut versuchen
-./Installation/scripts/update.sh
-```
-
-### Auto-Update läuft nicht
-
-```bash
-# Timer aktiv?
-systemctl status fmsv-auto-update.timer
-
-# Service-Logs
-journalctl -u fmsv-auto-update.service -f
-
-# Manuell testen
-/var/www/fmsv-dingden/Installation/scripts/auto-update.sh
-```
+**Siehe:** [`../CLOUDFLARED-INSTALLATION-FEHLER.md`](../CLOUDFLARED-INSTALLATION-FEHLER.md)
 
 ---
 
 ## 📚 Weitere Dokumentation
 
-- **Installation:** [`/Installation/Anleitung/Installation.md`](../Anleitung/Installation.md)
-- **E-Mail Setup:** [`/Installation/Anleitung/E-Mail-Setup.md`](../Anleitung/E-Mail-Setup.md)
-- **Cloudflare Tunnel:** [`/Installation/Anleitung/Cloudflare-Tunnel-Setup.md`](../Anleitung/Cloudflare-Tunnel-Setup.md)
+| Thema | Dokumentation |
+|-------|---------------|
+| **Installations-Übersicht** | [`../README.md`](../README.md) |
+| **Hilfe-Übersicht** | [`../HILFE-UEBERSICHT.md`](../HILFE-UEBERSICHT.md) |
+| **Schritt-für-Schritt** | [`../Anleitung/Installation.md`](../Anleitung/Installation.md) |
+| **Häufige Probleme** | [`../INSTALLATIONS-HILFE.md`](../INSTALLATIONS-HILFE.md) |
 
 ---
 
-**Ein Script. Alles drin. Einfach.** 🚀
+## 🎯 Quick Commands
+
+```bash
+# Als root einloggen
+su -
+
+# Zum Script-Verzeichnis
+cd /var/www/fmsv-dingden/Installation/scripts
+
+# Installation starten
+./install.sh
+
+# Bei Problemen: Debug-Modus
+./debug-install.sh
+
+# Bei "Ungültige Auswahl": Fix
+./fix-install-script.sh
+
+# Logs ansehen
+tail -f /var/log/fmsv-install.log
+
+# Services prüfen
+systemctl status fmsv-backend nginx postgresql
+```
+
+---
+
+## ⚙️ Script-Entwicklung
+
+Wenn du die Scripts anpassen möchtest:
+
+### Script-Struktur
+
+```bash
+#!/bin/bash
+set -e  # Bei Fehler abbrechen
+
+# Farben definieren
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Hilfsfunktionen
+error() { ... }
+success() { ... }
+info() { ... }
+
+# Hauptlogik
+...
+```
+
+### Best Practices
+
+1. **Immer `set -e` verwenden** (bricht bei Fehler ab)
+2. **Farben für bessere Lesbarkeit** verwenden
+3. **Logs schreiben** für Debugging
+4. **Root-Check** am Anfang
+5. **Backups erstellen** vor Änderungen
+6. **Hilfreiche Fehlermeldungen** mit Lösungsvorschlägen
+
+---
+
+## 🆘 Hilfe benötigt?
+
+1. **Hilfe-Übersicht:** [`../HILFE-UEBERSICHT.md`](../HILFE-UEBERSICHT.md)
+2. **Installations-Hilfe:** [`../INSTALLATIONS-HILFE.md`](../INSTALLATIONS-HILFE.md)
+3. **GitHub Issues:** [github.com/Benno2406/fmsv-dingden/issues](https://github.com/Benno2406/fmsv-dingden/issues)
+
+---
+
+**Viel Erfolg!** 🚀
