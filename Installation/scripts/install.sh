@@ -447,7 +447,7 @@ UPDATE_CHANNEL=$(echo "$UPDATE_CHANNEL" | xargs)
 
 case "$UPDATE_CHANNEL" in
   1|"1"|stable|Stable|STABLE)
-    BRANCH="main"
+    BRANCH="stable"
     CHANNEL_NAME="Stable"
     ;;
   2|"2"|testing|Testing|TESTING)
@@ -456,7 +456,7 @@ case "$UPDATE_CHANNEL" in
     ;;
   "")
     # Default bei leerem Input
-    BRANCH="main"
+    BRANCH="stable"
     CHANNEL_NAME="Stable"
     warning "Keine Auswahl - verwende Standard: Stable"
     ;;
@@ -675,38 +675,14 @@ print_header 7 "Repository klonen"
 INSTALL_DIR="/var/www/fmsv-dingden"
 
 if [ -d "$INSTALL_DIR" ]; then
-    warning "Verzeichnis existiert bereits: $INSTALL_DIR"
-    read -p "   Neu klonen? Bestehende Daten gehen verloren! (j/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Jj]$ ]]; then
-        info "Erstelle Backup..."
-        mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%s)" 2>/dev/null || rm -rf "$INSTALL_DIR"
-        
-        info "Klone Repository (Branch: $BRANCH)..."
-        if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a "$LOG_FILE"; then
-            success "Repository geklont"
-            rm -rf "${INSTALL_DIR}.backup."* 2>/dev/null
-        else
-            error_with_help "Repository konnte nicht geklont werden!" \
-                "" \
-                "Mögliche Ursachen:" \
-                "• Falsche GitHub URL" \
-                "• Branch '$BRANCH' existiert nicht" \
-                "• Keine Internet-Verbindung" \
-                "" \
-                "Lösung:" \
-                "1. URL prüfen: $GITHUB_REPO" \
-                "2. Branch prüfen: $BRANCH" \
-                "3. Erneut versuchen"
-        fi
-    else
-        cd "$INSTALL_DIR" || error "Verzeichnis nicht gefunden"
-        info "Aktualisiere Repository..."
-        git fetch origin 2>&1 | tee -a "$LOG_FILE" > /dev/null
-        git checkout "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
-        git pull origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
-        success "Repository aktualisiert"
-    fi
+    info "Verzeichnis existiert bereits: $INSTALL_DIR"
+    cd "$INSTALL_DIR" || error "Verzeichnis nicht gefunden"
+    
+    info "Aktualisiere Repository..."
+    git fetch origin 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    git checkout "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    git pull origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    success "Repository aktualisiert"
 else
     info "Klone Repository (Branch: $BRANCH)..."
     if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a "$LOG_FILE"; then
@@ -714,7 +690,15 @@ else
     else
         error_with_help "Repository konnte nicht geklont werden!" \
             "" \
-            "GitHub URL prüfen und erneut versuchen"
+            "Mögliche Ursachen:" \
+            "• Falsche GitHub URL: $GITHUB_REPO" \
+            "• Branch '$BRANCH' existiert nicht" \
+            "• Keine Internet-Verbindung" \
+            "" \
+            "Lösung:" \
+            "1. Prüfe ob Repository öffentlich ist" \
+            "2. Prüfe Branch: git ls-remote --heads $GITHUB_REPO" \
+            "3. Internetverbindung testen: ping github.com"
     fi
 fi
 
