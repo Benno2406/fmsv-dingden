@@ -3,7 +3,7 @@
 ################################################################################
 # FMSV Dingden - Backend Runtime Test
 # Testet ob der Backend-Server wirklich funktioniert
-# Version: 1.0
+# Version: 1.1
 ################################################################################
 
 # Colors
@@ -206,21 +206,19 @@ else
     echo ""
 fi
 
-echo "Teste ob server.js ohne Fehler lädt..."
+echo "Teste ob Backend-Code ohne Fehler lädt..."
 echo ""
 
-# Erstelle Test-Script im Backend-Verzeichnis
-cat > test-server-load.js << 'EOF'
+# Erstelle Test-Script im Backend-Verzeichnis (als ES Module)
+cat > test-server-load.mjs << 'EOFTEST'
+import dotenv from 'dotenv';
+import pg from 'pg';
 
 // Lade .env
-require('dotenv').config();
+dotenv.config();
 
 try {
     console.log('✓ dotenv geladen');
-    
-    // Teste DB Config
-    const dbConfig = require('./config/database.js');
-    console.log('✓ database.js geladen');
     
     // Teste ob alle erforderlichen Env-Variablen da sind
     const required = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'JWT_SECRET'];
@@ -234,36 +232,40 @@ try {
     console.log('✓ Alle Env-Variablen vorhanden');
     
     // Teste PostgreSQL Client
-    const { Pool } = require('pg');
-    const pool = new Pool(dbConfig);
-    
-    pool.query('SELECT NOW()', (err, res) => {
-        if (err) {
-            console.error('✗ DB Query Fehler:', err.message);
-            process.exit(1);
-        }
-        console.log('✓ Datenbank-Query erfolgreich');
-        pool.end();
-        
-        console.log('\n✅ Alle Runtime-Checks erfolgreich!');
-        process.exit(0);
+    const { Pool } = pg;
+    const pool = new Pool({
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT),
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD
     });
+    
+    console.log('✓ Pool konfiguriert');
+    
+    // Teste DB Query (mit await)
+    const result = await pool.query('SELECT NOW()');
+    console.log('✓ Datenbank-Query erfolgreich');
+    
+    await pool.end();
+    console.log('\n✅ Alle Runtime-Checks erfolgreich!');
+    process.exit(0);
     
 } catch (error) {
     console.error('✗ Runtime Fehler:', error.message);
     console.error(error.stack);
     process.exit(1);
 }
-EOF
+EOFTEST
 
-if node test-server-load.js 2>&1; then
+if node test-server-load.mjs 2>&1; then
     echo -e "${GREEN}✅ Node.js Runtime OK${NC}"
-    rm -f test-server-load.js
+    rm -f test-server-load.mjs
 else
     echo -e "${RED}❌ Node.js Runtime Fehler!${NC}"
     echo ""
     echo "Siehe Fehlerausgabe oben"
-    rm -f test-server-load.js
+    rm -f test-server-load.mjs
     exit 1
 fi
 
