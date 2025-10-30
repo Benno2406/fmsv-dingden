@@ -734,6 +734,19 @@ fix_backend_http() {
         error "Port 5000 ist FREI!"
         echo ""
         warning "Backend hört nicht auf Port 5000!"
+        
+        # Wenn Node läuft aber Port frei ist, ist der Prozess in einem fehlerhaften Zustand
+        if pgrep -f "node.*server.js" > /dev/null; then
+            echo ""
+            warning "Node.js Prozess läuft, aber bindet nicht an Port 5000!"
+            warning "Der Prozess ist vermutlich in einem fehlerhaften Zustand."
+            echo ""
+            info "Beende fehlerhaften Node.js Prozess..."
+            pkill -9 -f "node.*server.js"
+            sleep 2
+            success "Prozess beendet"
+        fi
+        
         echo ""
         echo -e "${YELLOW}Prüfe .env Konfiguration...${NC}"
         if grep -q "^PORT=" .env 2>/dev/null; then
@@ -741,18 +754,24 @@ fix_backend_http() {
             if [ "$CONFIGURED_PORT" != "5000" ]; then
                 error "PORT in .env ist $CONFIGURED_PORT (sollte 5000 sein)"
                 echo ""
-                read -p "Soll PORT auf 5000 gesetzt werden? (j/N): " -n 1 -r
-                echo ""
-                if [[ $REPLY =~ ^[Jj]$ ]]; then
-                    sed -i 's/^PORT=.*/PORT=5000/' .env
-                    success "PORT auf 5000 gesetzt"
-                    systemctl restart fmsv-backend
-                    sleep 3
-                fi
+                info "Setze PORT auf 5000..."
+                sed -i 's/^PORT=.*/PORT=5000/' .env
+                success "PORT auf 5000 gesetzt"
+            else
+                success "PORT ist korrekt auf 5000 gesetzt"
             fi
         else
-            warning "PORT nicht in .env gesetzt (verwendet Default 5000)"
+            warning "PORT nicht in .env gesetzt"
+            info "Füge PORT=5000 zur .env hinzu..."
+            echo "PORT=5000" >> .env
+            success "PORT hinzugefügt"
         fi
+        
+        echo ""
+        info "Starte Backend neu..."
+        systemctl restart fmsv-backend
+        sleep 3
+        success "Backend neu gestartet"
     fi
     echo ""
     
@@ -814,6 +833,16 @@ fix_backend_http() {
         echo ""
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
             echo ""
+            
+            # Beende evtl. hängende Node.js Prozesse
+            if pgrep -f "node.*server.js" > /dev/null; then
+                info "Beende bestehende Node.js Prozesse..."
+                pkill -9 -f "node.*server.js"
+                sleep 2
+                success "Prozesse beendet"
+                echo ""
+            fi
+            
             info "Starte Backend neu..."
             systemctl restart fmsv-backend
             echo ""
@@ -824,6 +853,15 @@ fix_backend_http() {
             done
             echo ""
             echo ""
+            
+            # Prüfe ob Port nun belegt ist
+            if netstat -tlnp 2>/dev/null | grep -q :5000; then
+                success "Port 5000 ist jetzt belegt!"
+                echo ""
+            else
+                warning "Port 5000 ist immer noch frei..."
+                echo ""
+            fi
             
             # Teste erneut
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")

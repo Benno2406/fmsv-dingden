@@ -64,7 +64,7 @@ sudo ./debug.sh
 - 🌐 HTTP-Endpoint Test
 - ⚙️ .env Konfiguration prüfen
 
-Siehe auch: [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md)
+
 
 ---
 
@@ -128,16 +128,7 @@ cd /var/www/fmsv-dingden/Installation/scripts && sudo ./debug.sh
 
 ---
 
-## 📚 Anleitungen & Quick-Guides
-
-### Quick-Guides (schnelle Hilfe!)
-
-- **[QUICK-START.md](QUICK-START.md)** - Übersicht der 3 Scripts
-- **[QUICK-COMMANDS.md](QUICK-COMMANDS.md)** - Häufigste Befehle & One-Liners
-- **[BACKEND-HTTP-PROBLEM.md](BACKEND-HTTP-PROBLEM.md)** - Backend antwortet nicht (Code: 000)
-- **[DATEISTRUKTUR.md](DATEISTRUKTUR.md)** - Was wo ist
-
-### Detaillierte Anleitungen
+## 📚 Detaillierte Anleitungen
 
 Alle Anleitungen befinden sich im Verzeichnis `/Installation/Anleitung/`:
 
