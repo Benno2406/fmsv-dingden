@@ -1147,28 +1147,134 @@ SCHEMA_FILE="$INSTALL_DIR/backend/database/schema.sql"
 
 if [ ! -f "$SCHEMA_FILE" ]; then
     echo ""
-    error "Schema-Datei nicht gefunden: $SCHEMA_FILE"
+    warning "Schema-Datei nicht gefunden: $SCHEMA_FILE"
     echo ""
-    echo -e "${YELLOW}Das Repository wurde möglicherweise nicht vollständig geklont!${NC}"
+    echo -e "${YELLOW}Git hat die Datei möglicherweise ignoriert (.gitignore Problem)${NC}"
     echo ""
-    echo -e "${YELLOW}Lösungen:${NC}"
-    echo -e "  ${GREEN}1.${NC} Prüfe Repository-Inhalt:"
-    echo -e "      ${CYAN}ls -la $INSTALL_DIR/backend/database/${NC}"
+    info "Versuche automatische Reparatur..."
     echo ""
-    echo -e "  ${GREEN}2.${NC} Verzeichnisstruktur prüfen:"
-    echo -e "      ${CYAN}find $INSTALL_DIR/backend -name 'schema.sql'${NC}"
-    echo ""
-    echo -e "  ${GREEN}3.${NC} Repository neu klonen:"
-    echo -e "      ${CYAN}rm -rf $INSTALL_DIR${NC}"
-    echo -e "      ${CYAN}git clone -b $BRANCH $GITHUB_REPO $INSTALL_DIR${NC}"
-    echo ""
-    echo -e "  ${GREEN}4.${NC} Git-Status prüfen:"
-    echo -e "      ${CYAN}cd $INSTALL_DIR && git status${NC}"
-    echo ""
-    exit 1
+    
+    # Versuch 1: Aus Git wiederherstellen (falls im Remote vorhanden)
+    echo -ne "  ${BLUE}[1/4]${NC} Versuche aus Git zu laden... "
+    cd "$INSTALL_DIR"
+    if git checkout origin/$BRANCH -- backend/database/schema.sql > /dev/null 2>&1; then
+        if [ -f "$SCHEMA_FILE" ]; then
+            echo -e "${GREEN}✓ Erfolgreich${NC}"
+            success "Schema-Datei aus Git wiederhergestellt"
+        else
+            echo -e "${RED}✗ Fehlgeschlagen${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Nicht im Git gefunden${NC}"
+    fi
+    
+    # Versuch 2: Mit git restore (neuere Git-Version)
+    if [ ! -f "$SCHEMA_FILE" ]; then
+        echo -ne "  ${BLUE}[2/4]${NC} Versuche git restore... "
+        if git restore --source=origin/$BRANCH backend/database/schema.sql > /dev/null 2>&1; then
+            if [ -f "$SCHEMA_FILE" ]; then
+                echo -e "${GREEN}✓ Erfolgreich${NC}"
+                success "Schema-Datei wiederhergestellt"
+            else
+                echo -e "${RED}✗ Fehlgeschlagen${NC}"
+            fi
+        else
+            echo -e "${RED}✗ Nicht verfügbar${NC}"
+        fi
+    fi
+    
+    # Versuch 3: Direkt von GitHub laden (falls öffentlich)
+    if [ ! -f "$SCHEMA_FILE" ]; then
+        echo -ne "  ${BLUE}[3/4]${NC} Versuche von GitHub zu laden... "
+        GITHUB_RAW_URL="https://raw.githubusercontent.com/Achim-Sommer/fmsv-dingden/$BRANCH/backend/database/schema.sql"
+        if curl -f -s -o "$SCHEMA_FILE" "$GITHUB_RAW_URL" 2>/dev/null; then
+            if [ -f "$SCHEMA_FILE" ] && [ -s "$SCHEMA_FILE" ]; then
+                echo -e "${GREEN}✓ Erfolgreich${NC}"
+                success "Schema-Datei von GitHub geladen"
+            else
+                echo -e "${RED}✗ Datei leer${NC}"
+                rm -f "$SCHEMA_FILE"
+            fi
+        else
+            echo -e "${RED}✗ Fehlgeschlagen${NC}"
+        fi
+    fi
+    
+    # Versuch 4: Aus repair-files.sh Script holen
+    if [ ! -f "$SCHEMA_FILE" ]; then
+        echo -ne "  ${BLUE}[4/4]${NC} Versuche Reparatur-Script... "
+        REPAIR_SCRIPT="$INSTALL_DIR/Installation/scripts/repair-files.sh"
+        if [ -f "$REPAIR_SCRIPT" ]; then
+            chmod +x "$REPAIR_SCRIPT"
+            cd "$INSTALL_DIR"
+            # Automatischer Git Pull ohne Interaktion
+            git pull origin $BRANCH > /dev/null 2>&1
+            if [ -f "$SCHEMA_FILE" ]; then
+                echo -e "${GREEN}✓ Erfolgreich${NC}"
+                success "Schema-Datei durch Git Pull wiederhergestellt"
+            else
+                echo -e "${RED}✗ Fehlgeschlagen${NC}"
+            fi
+        else
+            echo -e "${RED}✗ Script nicht gefunden${NC}"
+        fi
+    fi
+    
+    # Prüfung nach allen Versuchen
+    if [ ! -f "$SCHEMA_FILE" ]; then
+        echo ""
+        error "Schema-Datei konnte nicht automatisch wiederhergestellt werden!"
+        echo ""
+        echo -e "${RED}╔═══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║  KRITISCHER FEHLER: schema.sql fehlt!                     ║${NC}"
+        echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${YELLOW}Die Datei wurde durch Git ignoriert (.gitignore Problem)${NC}"
+        echo ""
+        echo -e "${YELLOW}Lösung 1: Manuelle Reparatur (EMPFOHLEN)${NC}"
+        echo -e "  ${CYAN}cd $INSTALL_DIR/Installation/scripts${NC}"
+        echo -e "  ${CYAN}chmod +x repair-files.sh${NC}"
+        echo -e "  ${CYAN}./repair-files.sh${NC}"
+        echo -e "  ${CYAN}# Wähle Option [1]: Git Pull${NC}"
+        echo ""
+        echo -e "${YELLOW}Lösung 2: Repository neu klonen${NC}"
+        echo -e "  ${CYAN}cd /tmp${NC}"
+        echo -e "  ${CYAN}rm -rf $INSTALL_DIR${NC}"
+        echo -e "  ${CYAN}git clone -b $BRANCH $GITHUB_REPO $INSTALL_DIR${NC}"
+        echo -e "  ${CYAN}cd $INSTALL_DIR/Installation/scripts${NC}"
+        echo -e "  ${CYAN}./install.sh${NC}"
+        echo ""
+        echo -e "${YELLOW}Lösung 3: Von lokalem PC kopieren${NC}"
+        echo -e "  ${CYAN}scp backend/database/schema.sql root@server:$INSTALL_DIR/backend/database/${NC}"
+        echo ""
+        echo -e "${YELLOW}Hinweis:${NC} Wenn du das Repository besitzt, führe aus:"
+        echo -e "  ${CYAN}cd $INSTALL_DIR${NC}"
+        echo -e "  ${CYAN}chmod +x fix-schema-git.sh${NC}"
+        echo -e "  ${CYAN}./fix-schema-git.sh${NC}"
+        echo -e "  ${CYAN}git push${NC}"
+        echo ""
+        exit 1
+    fi
 fi
 
 success "Schema-Datei gefunden: $(du -h $SCHEMA_FILE | cut -f1)"
+
+# Zusätzliche Validierung: Prüfe ob die Datei nicht leer ist
+SCHEMA_SIZE=$(stat -f%z "$SCHEMA_FILE" 2>/dev/null || stat -c%s "$SCHEMA_FILE" 2>/dev/null)
+if [ "$SCHEMA_SIZE" -lt 100 ]; then
+    error "Schema-Datei ist zu klein ($SCHEMA_SIZE Bytes) - möglicherweise korrupt!"
+    echo ""
+    echo "Versuche erneut von Git zu laden..."
+    rm -f "$SCHEMA_FILE"
+    cd "$INSTALL_DIR"
+    git pull origin $BRANCH
+    
+    if [ ! -f "$SCHEMA_FILE" ] || [ $(stat -f%z "$SCHEMA_FILE" 2>/dev/null || stat -c%s "$SCHEMA_FILE" 2>/dev/null) -lt 100 ]; then
+        error "Schema-Datei konnte nicht repariert werden!"
+        exit 1
+    fi
+    success "Schema-Datei erfolgreich repariert"
+fi
 
 info "Initialisiere Datenbank-Schema..."
 if node scripts/initDatabase.js; then

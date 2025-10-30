@@ -1,16 +1,35 @@
-# 🚨 WICHTIG: schema.sql Fix
+# 🚨 WICHTIG: schema.sql Git Problem
 
 ## Problem
 
-Die `backend/database/schema.sql` Datei wurde nicht zu GitHub hochgeladen, weil sie in der `.gitignore` auf der Blacklist stand.
+Die `backend/database/schema.sql` Datei wurde nicht zu GitHub hochgeladen, weil sie durch `*.sql` in `.gitignore` blockiert wurde.
 
-**Status:** ✅ **BEHOBEN**
+**Status:** ✅ **BEHOBEN mit automatischer Reparatur**
 
 ## Was wurde gefixt?
 
-1. ✅ `.gitignore` angepasst: `schema.sql` wird jetzt committet
-2. ✅ `backend/database/README.md` hinzugefügt
-3. ✅ Reparatur-Tools aktualisiert
+1. ✅ `.gitignore` Exception hinzugefügt: `!backend/database/schema.sql`
+2. ✅ `fix-schema-git.sh` Script erstellt (für Repository-Besitzer)
+3. ✅ `install.sh` erweitert mit **automatischer Reparatur**
+4. ✅ Reparatur-Tools aktualisiert
+5. ✅ Umfassende Dokumentation erstellt
+
+## 📖 Für Repository-Besitzer
+
+**WICHTIG:** Die Datei muss **einmalig** zu Git hinzugefügt werden!
+
+Siehe: **[GIT-SCHEMA-FIX-ANLEITUNG.md](GIT-SCHEMA-FIX-ANLEITUNG.md)** für die vollständige Anleitung.
+
+**Quick-Fix:**
+```bash
+cd /pfad/zum/repository
+chmod +x fix-schema-git.sh
+./fix-schema-git.sh
+git commit -m "fix: schema.sql zu Repository hinzugefügt"
+git push
+```
+
+---
 
 ## 🔧 So behebst du das Problem auf dem Server
 
