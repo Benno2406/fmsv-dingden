@@ -48,34 +48,23 @@ Das wars! Das Script führt dich durch:
 
 ## 🆘 Probleme?
 
-### 🚨 500 Internal Server Error
+### 🔧 Debug Tool - Deine erste Anlaufstelle!
 
-**Schnelle Lösung:**
-```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./quick-500-debug.sh
-```
-
-Siehe auch: [**500-ERROR-LÖSUNG.md**](500-ERROR-LÖSUNG.md)
-
-### 🔧 Allgemeine Probleme
-
-**Vollständiges Troubleshooting:**
+**Bei JEDEM Problem zuerst ausführen:**
 ```bash
 cd /var/www/fmsv-dingden/Installation/scripts
 sudo ./debug.sh
 ```
 
+**Features:**
+- 🔍 Vollständige Diagnose
+- ⚡ Quick-Fix (automatische Reparatur)
+- 📋 Live-Logs
+- 🗄️ Datenbank-Test
+- 🌐 HTTP-Endpoint Test
+- ⚙️ .env Konfiguration prüfen
+
 Siehe auch: [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md)
-
-### 📁 Fehlende Dateien (z.B. schema.sql)
-
-```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./repair-files.sh
-```
-
-Siehe auch: [**WICHTIG-SCHEMA-FIX.md**](WICHTIG-SCHEMA-FIX.md)
 
 ---
 
@@ -98,34 +87,43 @@ sudo fmsv-update
 - Service Neustart
 - Rollback bei Fehlern
 
-### fmsv-debug
+### fmsv-debug / debug.sh
 
 Interaktives Diagnose-Tool für Problemsuche.
 
 ```bash
 sudo fmsv-debug
+# oder direkt:
+cd /var/www/fmsv-dingden/Installation/scripts && sudo ./debug.sh
 ```
 
 **Menü-Optionen:**
-1. **Pre-Installation Check** - System-Voraussetzungen prüfen
-2. **500 Error Diagnose** - Backend/Nginx/DB Probleme finden + **Quick-Fix**
-3. **Cloudflare Tunnel Test** - Cloudflare Konfiguration prüfen
-4. **Vollständige System-Diagnose** - Alle Tests durchführen
-5. **Logs anzeigen** - Backend/Nginx/Postgres/Cloudflare Logs
+1. **Vollständige Diagnose** - Prüft alles (empfohlen)
+2. **Quick-Fix** - Behebt häufige Probleme automatisch
+3. **Backend-Logs anzeigen** - Live-Logs
+4. **Backend manuell starten** - Für Debugging
+5. **Dienste-Status prüfen** - PostgreSQL, Backend, Nginx
+6. **Node Modules installieren** - Dependencies neu installieren
+7. **Datenbank testen** - Verbindung und Tabellen prüfen
+8. **.env Konfiguration prüfen** - Zeigt und validiert .env
+9. **HTTP-Endpoint testen** - Testet /api/health
 
-**Neu: Quick-Fix Feature**
-- Automatische Reparatur bei fehlender `.env` Datei
-- Datenbank-Erstellung wenn nicht vorhanden
-- Schema-Initialisierung
-- Service-Neustart
+**Quick-Fix behebt automatisch:**
+- ✅ Fehlende node_modules
+- ✅ Fehlende .env Datei
+- ✅ Log-Verzeichnisse
+- ✅ PostgreSQL Start
+- ✅ Backend Neustart
 
 **Beispiel-Ausgabe:**
 ```
-✓ Root-Rechte
-✓ Internet-Verbindung
-✓ DNS (github.com)
-✓ apt update Test
-✓ Freier Speicherplatz (15GB)
+✓ Backend-Verzeichnis vorhanden
+✓ .env vorhanden
+✓ node_modules vorhanden (247 Pakete)
+✓ PostgreSQL läuft
+✓ Datenbankverbindung OK
+✓ Backend läuft
+✓ HTTP /api/health antwortet (200 OK)
 ```
 
 ---
@@ -219,24 +217,22 @@ sudo ./install.sh
 **Lösung:**
 ```bash
 # 1. Debug-Tool starten (empfohlen!)
-sudo fmsv-debug
-# Option 2 wählen: 500 Error Diagnose
-# → Quick-Fix wird automatisch angeboten wenn .env oder DB fehlen
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./debug.sh
+# Option 2 wählen: Quick-Fix
 
-# 2. Manuell: Services prüfen
-systemctl status fmsv-backend
-systemctl status nginx
-systemctl status postgresql
+# 2. Wenn Quick-Fix nicht hilft: Vollständige Diagnose
+# Option 1 wählen: Vollständige Diagnose
 
-# 3. Services neustarten
-systemctl restart fmsv-backend
-systemctl restart nginx
+# 3. Logs ansehen
+# Option 3 wählen: Backend-Logs anzeigen
 ```
 
-**Häufige Ursachen:**
-- `.env` Datei fehlt → Quick-Fix repariert automatisch
-- Datenbank nicht erstellt → Quick-Fix erstellt DB
-- Backend-Port belegt → Service neustart mit `systemctl restart fmsv-backend`
+**Häufige Ursachen & Fixes:**
+- ✅ `.env` Datei fehlt → Quick-Fix erstellt sie
+- ✅ node_modules fehlen → Quick-Fix installiert sie
+- ✅ Datenbank nicht erstellt → Option 7 im Menü
+- ✅ Backend-Port belegt → Quick-Fix startet neu
 
 ### Backend startet nicht
 
@@ -244,24 +240,26 @@ systemctl restart nginx
 
 **Lösung:**
 ```bash
-# 1. Logs ansehen
-journalctl -u fmsv-backend -n 50
+# 1. Debug-Tool starten
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./debug.sh
 
-# 2. Häufige Ursachen:
-# - Datenbank nicht erreichbar
-# - Port 3000 belegt
-# - Fehler in .env
+# Wähle:
+# Option 1 - Vollständige Diagnose (findet das Problem)
+# Option 2 - Quick-Fix (versucht automatische Reparatur)
+# Option 3 - Logs anzeigen (zeigt genauen Fehler)
+# Option 7 - Datenbank testen (wenn DB-Fehler)
+# Option 8 - .env prüfen (wenn Config-Fehler)
 
-# 3. .env prüfen
-nano /var/www/fmsv-dingden/backend/.env
-
-# 4. Datenbank testen
-su - postgres -c "psql -d fmsv_database -c 'SELECT 1;'"
-
-# 5. Manuelle Berechtigungen reparieren
-sudo fmsv-debug
-# Option 2 wählen
+# 2. Wenn das nicht hilft: Manueller Start für genaue Fehlermeldung
+# Option 4 - Backend manuell starten
 ```
+
+**Das Debug-Tool zeigt dir genau:**
+- ❌ Was fehlt (node_modules, .env, etc.)
+- ❌ Welcher Service nicht läuft
+- ❌ Welche Datenbank-Verbindung fehlt
+- ✅ Und behebt viele Probleme automatisch!
 
 ### Cloudflare Tunnel funktioniert nicht
 

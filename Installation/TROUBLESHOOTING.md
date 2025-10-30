@@ -10,10 +10,14 @@ Umfassende Fehlersuche und Problemlösungen für das FMSV Dingden System.
 
 ```bash
 cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./quick-500-debug.sh
+sudo ./debug.sh
 ```
 
-Dieser Befehl findet automatisch die häufigsten Probleme und zeigt Lösungen.
+**Wähle dann:**
+- **Option 1** - Vollständige Diagnose (empfohlen)
+- **Option 2** - Quick-Fix (behebt automatisch häufige Probleme)
+
+Dieser Befehl findet automatisch die häufigsten Probleme und behebt viele davon automatisch!
 
 ---
 

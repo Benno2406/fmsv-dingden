@@ -28,9 +28,6 @@ SCRIPTS=(
     "install.sh"
     "update.sh"
     "debug.sh"
-    "test-backend.sh"
-    "quick-500-debug.sh"
-    "repair-files.sh"
     "make-executable.sh"
 )
 
@@ -52,7 +49,7 @@ echo -e "${CYAN}═════════════════════�
 echo ""
 
 echo "Du kannst nun die Scripts ausführen mit:"
-echo -e "  ${BLUE}sudo ./install.sh${NC}"
-echo -e "  ${BLUE}sudo ./debug.sh${NC}"
-echo -e "  ${BLUE}sudo ./quick-500-debug.sh${NC}"
+echo -e "  ${BLUE}sudo ./install.sh${NC}   ${CYAN}# Erstinstallation${NC}"
+echo -e "  ${BLUE}sudo ./debug.sh${NC}     ${CYAN}# Fehlersuche & Fixes${NC}"
+echo -e "  ${BLUE}sudo ./update.sh${NC}    ${CYAN}# System aktualisieren${NC}"
 echo ""
