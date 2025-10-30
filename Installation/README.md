@@ -75,10 +75,16 @@ sudo fmsv-debug
 
 **Menü-Optionen:**
 1. **Pre-Installation Check** - System-Voraussetzungen prüfen
-2. **500 Error Diagnose** - Backend/Nginx/DB Probleme finden
+2. **500 Error Diagnose** - Backend/Nginx/DB Probleme finden + **Quick-Fix**
 3. **Cloudflare Tunnel Test** - Cloudflare Konfiguration prüfen
 4. **Vollständige System-Diagnose** - Alle Tests durchführen
 5. **Logs anzeigen** - Backend/Nginx/Postgres/Cloudflare Logs
+
+**Neu: Quick-Fix Feature**
+- Automatische Reparatur bei fehlender `.env` Datei
+- Datenbank-Erstellung wenn nicht vorhanden
+- Schema-Initialisierung
+- Service-Neustart
 
 **Beispiel-Ausgabe:**
 ```
@@ -179,11 +185,12 @@ sudo ./install.sh
 
 **Lösung:**
 ```bash
-# 1. Debug-Tool starten
+# 1. Debug-Tool starten (empfohlen!)
 sudo fmsv-debug
 # Option 2 wählen: 500 Error Diagnose
+# → Quick-Fix wird automatisch angeboten wenn .env oder DB fehlen
 
-# 2. Services prüfen
+# 2. Manuell: Services prüfen
 systemctl status fmsv-backend
 systemctl status nginx
 systemctl status postgresql
@@ -192,6 +199,11 @@ systemctl status postgresql
 systemctl restart fmsv-backend
 systemctl restart nginx
 ```
+
+**Häufige Ursachen:**
+- `.env` Datei fehlt → Quick-Fix repariert automatisch
+- Datenbank nicht erstellt → Quick-Fix erstellt DB
+- Backend-Port belegt → Service neustart mit `systemctl restart fmsv-backend`
 
 ### Backend startet nicht
 

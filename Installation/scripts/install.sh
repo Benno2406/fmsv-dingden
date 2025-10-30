@@ -566,10 +566,20 @@ echo
 print_header 3 "System-Updates"
 
 info "Aktualisiere Paket-Listen..."
-if apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    success "Paket-Listen aktualisiert"
-else
+APT_OUTPUT=$(apt-get update 2>&1 | tee -a "$LOG_FILE")
+APT_ERRORS=$(echo "$APT_OUTPUT" | grep "^E:" || true)
+APT_WARNINGS=$(echo "$APT_OUTPUT" | grep "^W:" || true)
+
+if [ -n "$APT_WARNINGS" ] && [ -z "$APT_ERRORS" ]; then
+    # Nur Warnungen, keine Fehler - das ist OK
+    success "Paket-Listen aktualisiert (mit Warnungen)"
+    warning "Einige Repositories haben Warnungen (nicht kritisch)"
+elif [ -n "$APT_ERRORS" ]; then
+    # Echte Fehler vorhanden
     warning "Paket-Listen konnten nicht vollständig aktualisiert werden"
+    echo ""
+    echo -e "${YELLOW}Gefundene Fehler:${NC}"
+    echo "$APT_ERRORS" | sed 's/^/  /'
     echo ""
     echo -e "${YELLOW}Häufige Ursachen:${NC}"
     echo "  • Repository nicht erreichbar"
@@ -580,6 +590,8 @@ else
     read -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
+else
+    success "Paket-Listen aktualisiert"
 fi
 
 info "Installiere System-Updates..."
@@ -813,13 +825,25 @@ if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     fi
     
     info "Füge Cloudflare Repository hinzu..."
-    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
+    # Cloudflare unterstützt aktuell nur bookworm, nicht trixie
+    # Daher verwenden wir bookworm auch bei Debian 13
+    CLOUDFLARE_DIST="bookworm"
+    if [ "$DEBIAN_VERSION" -lt 12 ]; then
+        # Für ältere Versionen versuchen wir die aktuelle Distribution
+        CLOUDFLARE_DIST=$(lsb_release -cs)
+    fi
+    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $CLOUDFLARE_DIST main" | tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
     
     info "Aktualisiere Paket-Listen..."
-    if ! apt-get update -qq > /dev/null 2>&1; then
+    APT_CF_OUTPUT=$(apt-get update 2>&1)
+    APT_CF_ERRORS=$(echo "$APT_CF_OUTPUT" | grep "^E:" || true)
+    
+    if [ -n "$APT_CF_ERRORS" ]; then
         echo ""
-        warning "apt-get update hatte Probleme - versuche Installation trotzdem..."
+        warning "apt-get update hatte Fehler - versuche Installation trotzdem..."
         echo ""
+    else
+        success "Paket-Listen aktualisiert"
     fi
     
     info "Installiere cloudflared..."
