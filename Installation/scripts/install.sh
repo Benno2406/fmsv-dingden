@@ -237,7 +237,8 @@ cloudflare_login_with_help() {
             echo -e "  ${GREEN}5.${NC} Domain wählen → ${GREEN}\"Authorize\"${NC} klicken"
             echo -e "  ${GREEN}6.${NC} Terminal wartet bis Login fertig ist"
             echo ""
-            read -p "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
+            echo -ne "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
+            read
             echo ""
             echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼${NC}"
             echo ""
@@ -435,7 +436,8 @@ echo ""
 echo -e "   ${GREEN}[1]${NC} Stable   - Stabile Releases (empfohlen für Production)"
 echo -e "   ${YELLOW}[2]${NC} Testing  - Neueste Features (für Entwicklung/Testing)"
 echo ""
-read -p "   ${BLUE}►${NC} Deine Wahl (1/2): " UPDATE_CHANNEL
+echo -ne "   ${BLUE}►${NC} Deine Wahl (1/2): "
+read UPDATE_CHANNEL
 
 # Trim whitespace und normalisieren
 UPDATE_CHANNEL=$(echo "$UPDATE_CHANNEL" | xargs)
@@ -475,7 +477,8 @@ if [ $SKIP_CLOUDFLARE -eq 0 ]; then
     echo "   ✅ DDoS-Schutz"
     echo "   ✅ Kostenlos"
     echo ""
-    read -p "   ${BLUE}►${NC} Cloudflare Tunnel einrichten? (j/n): " -n 1 -r
+    echo -ne "   ${BLUE}►${NC} Cloudflare Tunnel einrichten? (j/n): "
+    read -n 1 -r
     echo
     USE_CLOUDFLARE=$REPLY
 else
@@ -490,7 +493,8 @@ echo -e "${YELLOW}3️⃣  GitHub Repository:${NC}"
 echo ""
 echo -e "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
 echo ""
-read -p "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: " GITHUB_REPO
+echo -ne "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: "
+read GITHUB_REPO
 if [ -z "$GITHUB_REPO" ]; then
     GITHUB_REPO="https://github.com/Benno2406/fmsv-dingden.git"
     info "Standard-URL verwendet"
@@ -505,7 +509,8 @@ echo -e "   ${GREEN}[1]${NC} Täglich um 03:00 Uhr"
 echo -e "   ${YELLOW}[2]${NC} Wöchentlich (Sonntag 03:00 Uhr)"
 echo -e "   ${MAGENTA}[3]${NC} Manuell (keine automatischen Updates)"
 echo ""
-read -p "   ${BLUE}►${NC} Deine Wahl (1/2/3): " AUTO_UPDATE_CHOICE
+echo -ne "   ${BLUE}►${NC} Deine Wahl (1/2/3): "
+read AUTO_UPDATE_CHOICE
 
 # Trim whitespace und normalisieren
 AUTO_UPDATE_CHOICE=$(echo "$AUTO_UPDATE_CHOICE" | xargs)
@@ -567,8 +572,8 @@ else
     echo "  • GPG-Key fehlt"
     echo "  • Netzwerk-Problem"
     echo ""
-    echo -e "${CYAN}Trotzdem fortfahren?${NC}"
-    read -p "  (j/n) " -n 1 -r
+    echo -ne "${CYAN}Trotzdem fortfahren? (j/n):${NC} "
+    read -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
 fi
@@ -585,7 +590,7 @@ sleep 1
 print_header 4 "Basis-Tools Installation"
 
 info "Installiere grundlegende Tools..."
-PACKAGES="curl wget git nano ufw lsb-release gnupg software-properties-common"
+PACKAGES="curl wget git nano ufw lsb-release gnupg software-properties-common net-tools"
 
 for package in $PACKAGES; do
     echo -n "   • $package... "
@@ -1165,7 +1170,8 @@ else
     echo -e "${YELLOW}Detaillierte Ausgabe:${NC}"
     nginx -t
     echo ""
-    read -p "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): " NGINX_CONTINUE
+    echo -ne "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): "
+    read NGINX_CONTINUE
     echo ""
     if [[ $NGINX_CONTINUE =~ ^[Nn]$ ]]; then
         error "Installation abgebrochen"
@@ -1317,8 +1323,42 @@ fi
 
 info "Starte Nginx..."
 
-# Stoppe nginx falls läuft um neu zu laden
-systemctl stop nginx > /dev/null 2>&1
+# Prüfe ob nginx bereits läuft
+if systemctl is-active --quiet nginx; then
+    info "Nginx läuft bereits - stoppe für Neustart..."
+    systemctl stop nginx > /dev/null 2>&1
+    sleep 1
+fi
+
+# Prüfe ob Port 80 belegt ist
+if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
+    warning "Port 80 ist bereits belegt!"
+    echo ""
+    echo -e "${YELLOW}Prozesse auf Port 80:${NC}"
+    netstat -tulpn | grep ':80 ' || true
+    echo ""
+    
+    # Versuche alle nginx-Prozesse zu killen
+    info "Versuche alle nginx-Prozesse zu beenden..."
+    pkill -9 nginx 2>/dev/null || true
+    sleep 2
+    
+    # Prüfe nochmal
+    if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
+        echo ""
+        warning "Port 80 ist immer noch belegt!"
+        netstat -tulpn | grep ':80 ' || true
+        echo ""
+        echo -ne "   ${BLUE}►${NC} Trotzdem nginx starten versuchen? (j/N): "
+        read TRY_NGINX
+        echo ""
+        if [[ ! $TRY_NGINX =~ ^[Jj]$ ]]; then
+            error "Installation abgebrochen - Port 80 Konflikt muss behoben werden"
+        fi
+    else
+        success "Port 80 freigegeben"
+    fi
+fi
 
 # Starte nginx
 if systemctl start nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
@@ -1336,7 +1376,8 @@ if systemctl start nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
         tail -20 /var/log/nginx/error.log 2>/dev/null || echo "Keine Logs gefunden"
         echo ""
         
-        read -p "   ${BLUE}►${NC} Nginx-Fehler ignorieren und fortfahren? (j/N): " IGNORE_NGINX
+        echo -ne "   ${BLUE}►${NC} Nginx-Fehler ignorieren und fortfahren? (j/N): "
+        read IGNORE_NGINX
         echo ""
         
         if [[ ! $IGNORE_NGINX =~ ^[Jj]$ ]]; then

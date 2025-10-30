@@ -43,6 +43,24 @@ Die Änderungen:
 
 ## 🔄 Was tun?
 
+### ⚡ Quick Fix (wenn du das Problem JETZT hast)
+
+**Das Problem ist bereits behoben im neuesten install.sh!**
+
+**Hole die neue Version:**
+
+```bash
+cd /var/www/fmsv-dingden
+git pull origin main
+
+cd Installation/scripts
+./install.sh
+```
+
+**Oder verwende das Auto-Fix Script:**
+
+---
+
 ### Option 1: Automatischer Fix (Schnellste Methode) ⚡
 
 ```bash

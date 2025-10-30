@@ -79,9 +79,11 @@ apt-get update
 
 **Mehr Hilfe:** 
 - [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - Allgemeine Probleme
-- [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) - "Ungültige Auswahl" Fehler ⚡ **BEHOBEN**
+- [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) - "Ungültige Auswahl" ⚡ **BEHOBEN**
+- [`NGINX-PORT-KONFLIKT.md`](NGINX-PORT-KONFLIKT.md) - Port 80 belegt ⚡ **BEHOBEN**
 - [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) - Script bricht ab (Debug Guide)
 - [`NGINX-FEHLER.md`](NGINX-FEHLER.md) - Nginx startet nicht
+- [`BUGFIXES-2025-10-30.md`](BUGFIXES-2025-10-30.md) - Neueste Bugfixes (Changelog)
 
 ---
 

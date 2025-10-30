@@ -21,6 +21,7 @@ Schnellzugriff auf alle Hilfe-Dokumente.
 | Problem | Lösung |
 |---------|--------|
 | **"Ungültige Auswahl" Fehler** | [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) ⭐ **BEHOBEN!** |
+| **Nginx Port 80 Konflikt** | [`NGINX-PORT-KONFLIKT.md`](NGINX-PORT-KONFLIKT.md) ⭐ **BEHOBEN!** |
 | **Script bricht einfach ab** | [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) ⭐ |
 | **Nginx startet nicht** | [`NGINX-FEHLER.md`](NGINX-FEHLER.md) ⭐ |
 | **Script wartet auf Eingabe** | Normal! `J` drücken. Siehe [`README.md`](README.md#-wichtig---zuerst-lesen) |
