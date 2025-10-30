@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupRateLimiter } from './middleware/rateLimiter.js';
+import pool from './config/database.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -106,12 +107,41 @@ app.use((req, res) => {
 // Error Handler (must be last)
 app.use(errorHandler);
 
-// Start Server
-app.listen(PORT, () => {
-  logger.info(`🚀 FMSV Backend läuft auf Port ${PORT}`);
-  logger.info(`📍 Environment: ${process.env.NODE_ENV}`);
-  logger.info(`🔗 Base URL: ${process.env.BASE_URL}`);
-});
+// Test database connection before starting server
+async function startServer() {
+  try {
+    // Test DB connection
+    logger.info('🔍 Teste Datenbank-Verbindung...');
+    await pool.query('SELECT NOW()');
+    logger.info('✅ Datenbank-Verbindung erfolgreich');
+    
+    // Start Server
+    const server = app.listen(PORT, () => {
+      logger.info(`🚀 FMSV Backend läuft auf Port ${PORT}`);
+      logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🔗 Base URL: ${process.env.BASE_URL || 'http://localhost:' + PORT}`);
+    }).on('error', (err) => {
+      logger.error('❌ Server konnte nicht gestartet werden:', err);
+      if (err.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} ist bereits belegt!`);
+      }
+      process.exit(1);
+    });
+    
+  } catch (error) {
+    logger.error('❌ Datenbank-Verbindung fehlgeschlagen:', error);
+    logger.error('Überprüfe die .env Konfiguration:');
+    logger.error(`  DB_HOST: ${process.env.DB_HOST || 'nicht gesetzt'}`);
+    logger.error(`  DB_PORT: ${process.env.DB_PORT || 'nicht gesetzt'}`);
+    logger.error(`  DB_NAME: ${process.env.DB_NAME || 'nicht gesetzt'}`);
+    logger.error(`  DB_USER: ${process.env.DB_USER || 'nicht gesetzt'}`);
+    logger.error(`  DB_PASSWORD: ${process.env.DB_PASSWORD ? '[***gesetzt***]' : 'nicht gesetzt'}`);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 
 // Graceful Shutdown
 process.on('SIGTERM', () => {

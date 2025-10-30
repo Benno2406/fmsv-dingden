@@ -25,7 +25,8 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   logger.error('❌ PostgreSQL Pool Fehler:', err);
-  process.exit(-1);
+  // NICHT process.exit() - sonst stirbt der Server komplett!
+  // Der Pool wird automatisch neu verbinden
 });
 
 // Query helper with error handling and logging
