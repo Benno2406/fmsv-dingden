@@ -46,6 +46,39 @@ Das wars! Das Script führt dich durch:
 
 ---
 
+## 🆘 Probleme?
+
+### 🚨 500 Internal Server Error
+
+**Schnelle Lösung:**
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./quick-500-debug.sh
+```
+
+Siehe auch: [**500-ERROR-LÖSUNG.md**](500-ERROR-LÖSUNG.md)
+
+### 🔧 Allgemeine Probleme
+
+**Vollständiges Troubleshooting:**
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./debug.sh
+```
+
+Siehe auch: [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md)
+
+### 📁 Fehlende Dateien (z.B. schema.sql)
+
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./repair-files.sh
+```
+
+Siehe auch: [**WICHTIG-SCHEMA-FIX.md**](WICHTIG-SCHEMA-FIX.md)
+
+---
+
 ## 🛠️ Wartungs-Tools
 
 Nach der Installation stehen dir zwei wichtige Tools zur Verfügung:

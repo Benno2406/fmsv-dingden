@@ -43,6 +43,9 @@ show_menu() {
     echo -e "  ${GREEN}[6]${NC} Fehlende Dateien reparieren"
     echo -e "      ${CYAN}→ Repository-Dateien wiederherstellen${NC}"
     echo ""
+    echo -e "  ${GREEN}[7]${NC} Backend Runtime Test"
+    echo -e "      ${CYAN}→ Testet ob Backend wirklich läuft (500 Error Debug)${NC}"
+    echo ""
     echo -e "  ${GREEN}[0]${NC} Beenden"
     echo ""
     echo -ne "${BLUE}►${NC} Deine Wahl: "
@@ -378,6 +381,38 @@ diagnose_500() {
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${YELLOW}500 Error Diagnose${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Führe Quick-Debug aus
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    QUICK_DEBUG="$SCRIPT_DIR/quick-500-debug.sh"
+    
+    if [ -f "$QUICK_DEBUG" ]; then
+        chmod +x "$QUICK_DEBUG"
+        "$QUICK_DEBUG"
+        
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo ""
+        
+        # Wenn Fehler gefunden wurden, biete Quick-Fix an
+        if [ ! -f /var/www/fmsv-dingden/backend/.env ] || ! su - postgres -c "psql -lqt" 2>/dev/null | cut -d \| -f 1 | grep -qw fmsv_dingden; then
+            echo -e "${YELLOW}💡 Quick-Fix verfügbar${NC}"
+            echo ""
+            echo -ne "${BLUE}►${NC} Quick-Fix jetzt ausführen? (erstellt .env & Datenbank) (j/n): "
+            read -n 1 -r QUICKFIX
+            echo ""
+            
+            if [[ $QUICKFIX =~ ^[Jj]$ ]]; then
+                echo ""
+                run_quickfix
+            fi
+        fi
+        
+        return
+    fi
+    
+    # Fallback: Alte manuelle Diagnose
+    echo -e "${YELLOW}⚠ Quick-Debug Script nicht gefunden, manuelle Diagnose...${NC}"
     echo ""
     
     ERRORS=0
@@ -846,6 +881,28 @@ while true; do
                 echo ""
                 echo "Bitte installiere das System neu:"
                 echo -e "  ${CYAN}./install.sh${NC}"
+            fi
+            echo ""
+            read -p "Zurück zum Menü mit Enter..."
+            clear
+            ;;
+        7)
+            clear
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+            echo -e "${YELLOW}Backend Runtime Test${NC}"
+            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+            echo ""
+            
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            TEST_SCRIPT="$SCRIPT_DIR/test-backend.sh"
+            
+            if [ -f "$TEST_SCRIPT" ]; then
+                chmod +x "$TEST_SCRIPT"
+                "$TEST_SCRIPT"
+            else
+                echo -e "${RED}❌ Test-Script nicht gefunden!${NC}"
+                echo ""
+                echo "Erwarteter Pfad: $TEST_SCRIPT"
             fi
             echo ""
             read -p "Zurück zum Menü mit Enter..."
