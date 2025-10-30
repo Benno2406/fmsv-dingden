@@ -80,29 +80,131 @@ cloudflare_login_with_help() {
         warning "SSH-Verbindung erkannt - Browser öffnet sich nicht!"
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-        echo -e "${YELLOW}WICHTIG - SSH/PuTTY Cloudflare Login:${NC}"
+        echo -e "${YELLOW}Wähle deine Login-Methode:${NC}"
         echo ""
-        echo -e "  ${GREEN}1.${NC} Die URL wird ${GREEN}gleich unten angezeigt${NC}"
-        echo -e "  ${GREEN}2.${NC} URL ${GREEN}KOMPLETT kopieren${NC} (von https:// bis Ende!)"
-        echo -e "     ${YELLOW}⚠️  URL geht über mehrere Zeilen!${NC}"
-        echo -e "  ${GREEN}3.${NC} Browser auf ${GREEN}deinem PC${NC} öffnen"
-        echo -e "  ${GREEN}4.${NC} URL einfügen → Bei Cloudflare einloggen"
-        echo -e "  ${GREEN}5.${NC} Domain wählen → ${GREEN}\"Authorize\"${NC} klicken"
-        echo -e "  ${GREEN}6.${NC} Terminal wartet bis Login fertig ist"
+        echo -e "  ${GREEN}[1]${NC} Zertifikat von lokalem PC kopieren ${YELLOW}(EMPFOHLEN)${NC}"
+        echo -e "      ${CYAN}→ cloudflared auf deinem PC installieren${NC}"
+        echo -e "      ${CYAN}→ Login auf PC durchführen${NC}"
+        echo -e "      ${CYAN}→ Zertifikat zum Server kopieren${NC}"
+        echo ""
+        echo -e "  ${GREEN}[2]${NC} URL manuell öffnen"
+        echo -e "      ${CYAN}→ URL aus Terminal kopieren${NC}"
+        echo -e "      ${CYAN}→ Im Browser öffnen${NC}"
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
         echo ""
-        read -p "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
-        echo ""
-        echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼${NC}"
+        read -p "Deine Wahl (1/2): " -n 1 -r LOGIN_METHOD
+        echo
         echo ""
         
-        # WICHTIG: Output direkt durchreichen, NICHT pipen!
-        cloudflared tunnel login
-        
-        echo ""
-        echo -e "${YELLOW}▲▲▲ URL ENDET HIER ▲▲▲${NC}"
-        echo ""
+        if [[ $LOGIN_METHOD == "1" ]]; then
+            # METHODE 1: Zertifikat von lokalem PC kopieren
+            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${CYAN}║  Cloudflare Login auf lokalem PC (Windows/Mac/Linux)     ║${NC}"
+            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+            echo ""
+            echo -e "${YELLOW}SCHRITT 1: cloudflared auf deinem PC installieren${NC}"
+            echo ""
+            echo -e "  ${BLUE}Windows:${NC}"
+            echo -e "  1. Öffne PowerShell als ${GREEN}Administrator${NC}"
+            echo -e "  2. ${CYAN}winget install --id Cloudflare.cloudflared${NC}"
+            echo ""
+            echo -e "  ${BLUE}Mac:${NC}"
+            echo -e "  ${CYAN}brew install cloudflared${NC}"
+            echo ""
+            echo -e "  ${BLUE}Linux:${NC}"
+            echo -e "  ${CYAN}wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64${NC}"
+            echo -e "  ${CYAN}sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared${NC}"
+            echo -e "  ${CYAN}sudo chmod +x /usr/local/bin/cloudflared${NC}"
+            echo ""
+            read -p "Drücke ${GREEN}Enter${NC} wenn cloudflared installiert ist..."
+            echo ""
+            
+            echo -e "${YELLOW}SCHRITT 2: Login auf deinem PC durchführen${NC}"
+            echo ""
+            echo -e "  Führe auf ${GREEN}deinem PC${NC} im Terminal/CMD aus:"
+            echo ""
+            echo -e "  ${CYAN}cloudflared tunnel login${NC}"
+            echo ""
+            echo -e "  ${GREEN}→${NC} Browser öffnet sich automatisch"
+            echo -e "  ${GREEN}→${NC} Bei Cloudflare einloggen"
+            echo -e "  ${GREEN}→${NC} Domain wählen (z.B. bartholmes.eu)"
+            echo -e "  ${GREEN}→${NC} ${GREEN}\"Authorize\"${NC} klicken"
+            echo -e "  ${GREEN}→${NC} \"Success\" Meldung erscheint"
+            echo ""
+            read -p "Drücke ${GREEN}Enter${NC} wenn Login erfolgreich war..."
+            echo ""
+            
+            echo -e "${YELLOW}SCHRITT 3: Zertifikat-Pfad finden${NC}"
+            echo ""
+            echo -e "  Das Zertifikat liegt hier:"
+            echo ""
+            echo -e "  ${BLUE}Windows:${NC}"
+            echo -e "  ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
+            echo ""
+            echo -e "  ${BLUE}Mac/Linux:${NC}"
+            echo -e "  ${CYAN}~/.cloudflared/cert.pem${NC}"
+            echo ""
+            read -p "Drücke ${GREEN}Enter${NC} um fortzufahren..."
+            echo ""
+            
+            echo -e "${YELLOW}SCHRITT 4: Zertifikat zum Server kopieren${NC}"
+            echo ""
+            echo -e "  ${GREEN}Öffne ein NEUES Terminal/CMD${NC} auf deinem PC und führe aus:"
+            echo ""
+            echo -e "  ${BLUE}Windows (PowerShell):${NC}"
+            echo -e "  ${CYAN}scp C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/${NC}"
+            echo ""
+            echo -e "  ${BLUE}Mac/Linux:${NC}"
+            echo -e "  ${CYAN}scp ~/.cloudflared/cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/${NC}"
+            echo ""
+            echo -e "  ${YELLOW}⚠️  Ersetze DEINE_SERVER_IP mit deiner echten Server-IP!${NC}"
+            echo ""
+            
+            # Erstelle das Zielverzeichnis
+            mkdir -p ~/.cloudflared
+            chmod 700 ~/.cloudflared
+            
+            echo -e "  ${GREEN}Warte auf Zertifikat...${NC}"
+            echo ""
+            
+            # Warte bis Zertifikat existiert
+            while [ ! -f ~/.cloudflared/cert.pem ]; do
+                sleep 2
+            done
+            
+            chmod 600 ~/.cloudflared/cert.pem
+            
+            success "Zertifikat erfolgreich empfangen!"
+            
+        else
+            # METHODE 2: URL manuell öffnen
+            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${CYAN}║  Cloudflare Login - URL manuell öffnen                   ║${NC}"
+            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+            echo ""
+            echo -e "${YELLOW}Anleitung:${NC}"
+            echo ""
+            echo -e "  ${GREEN}1.${NC} URL wird gleich unten angezeigt"
+            echo -e "  ${GREEN}2.${NC} URL ${GREEN}KOMPLETT kopieren${NC} (von https:// bis Ende!)"
+            echo -e "     ${YELLOW}⚠️  URL geht über mehrere Zeilen!${NC}"
+            echo -e "  ${GREEN}3.${NC} Browser auf ${GREEN}deinem PC${NC} öffnen"
+            echo -e "  ${GREEN}4.${NC} URL einfügen → Bei Cloudflare einloggen"
+            echo -e "  ${GREEN}5.${NC} Domain wählen → ${GREEN}\"Authorize\"${NC} klicken"
+            echo -e "  ${GREEN}6.${NC} Terminal wartet bis Login fertig ist"
+            echo ""
+            read -p "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
+            echo ""
+            echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼${NC}"
+            echo ""
+            
+            # Output direkt durchreichen
+            cloudflared tunnel login
+            
+            echo ""
+            echo -e "${YELLOW}▲▲▲ URL ENDET HIER ▲▲▲${NC}"
+            echo ""
+        fi
         
     else
         # Kein SSH - normaler Login
@@ -118,19 +220,9 @@ cloudflare_login_with_help() {
         echo -e "${RED}║               ❌ Cloudflare Login fehlgeschlagen ❌       ║${NC}"
         echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
         echo ""
-        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
-        echo -e "  ${BLUE}•${NC} URL nicht vollständig kopiert"
-        echo -e "  ${BLUE}•${NC} Nicht bei Cloudflare eingeloggt"
-        echo -e "  ${BLUE}•${NC} Falsche Domain ausgewählt"
-        echo -e "  ${BLUE}•${NC} Keine \"Authorize\" geklickt"
-        echo ""
         echo -e "${YELLOW}Lösung:${NC}"
         echo -e "  ${GREEN}1.${NC} Installation neu starten: ${GREEN}./install.sh${NC}"
-        echo -e "  ${GREEN}2.${NC} Oder Setup-Script nutzen:"
-        echo -e "     ${CYAN}cd /var/www/fmsv-dingden/Installation/scripts${NC}"
-        echo -e "     ${CYAN}./cloudflare-setup-manual.sh${NC}"
-        echo ""
-        echo -e "${YELLOW}Logs:${NC} cat $LOG_FILE"
+        echo -e "  ${GREEN}2.${NC} Methode 1 (Lokaler PC) wählen"
         echo ""
         exit 1
     fi

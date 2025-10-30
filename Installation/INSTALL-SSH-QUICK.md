@@ -35,56 +35,66 @@ Passwort: [Sicheres Passwort eingeben]
 
 ### Schritt 5: Cloudflare Login (bei SSH)
 
-**Das Script zeigt:**
+**Das Script zeigt zwei Optionen:**
 
 ```
 ⚠️  SSH-Verbindung erkannt - Browser öffnet sich nicht!
 
 ═══════════════════════════════════════════════════════════
-WICHTIG - SSH/PuTTY Cloudflare Login:
+Wähle deine Login-Methode:
 
-  1. Die URL wird gleich unten angezeigt
-  2. URL KOMPLETT kopieren (von https:// bis Ende!)
-     ⚠️  URL geht über mehrere Zeilen!
-  3. Browser auf deinem PC öffnen
-  4. URL einfügen → Bei Cloudflare einloggen
-  5. Domain wählen → "Authorize" klicken
-  6. Terminal wartet bis Login fertig ist
+  [1] Zertifikat von lokalem PC kopieren (EMPFOHLEN)
+      → cloudflared auf deinem PC installieren
+      → Login auf PC durchführen
+      → Zertifikat zum Server kopieren
 
-Drücke Enter um URL anzuzeigen...
+  [2] URL manuell öffnen
+      → URL aus Terminal kopieren
+      → Im Browser öffnen
+
+Deine Wahl (1/2):
 ```
 
-**Dann:**
+#### **OPTION 1: Lokaler PC (EMPFOHLEN)** ✅
 
+**Auf deinem PC:**
+```bash
+# Windows (PowerShell als Admin)
+winget install --id Cloudflare.cloudflared
+
+# Mac
+brew install cloudflared
+
+# Linux
+wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
 ```
-▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼
 
-Please open the following URL and log in with your Cloudflare 
-account:
+**Login auf PC:**
+```bash
+cloudflared tunnel login
+```
+→ Browser öffnet sich automatisch
+→ Bei Cloudflare einloggen
+→ Domain wählen → "Authorize"
 
-https://dash.cloudflare.com/argotunnel?callback=https%3A%2F%2F...
-...lange URL...
+**Zertifikat zum Server kopieren (NEUES Terminal auf PC):**
+```bash
+# Windows
+scp C:\Users\DEIN_NAME\.cloudflared\cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/
 
-▲▲▲ URL ENDET HIER ▲▲▲
+# Mac/Linux
+scp ~/.cloudflared/cert.pem root@DEINE_SERVER_IP:/root/.cloudflared/
 ```
 
-**URL kopieren:**
-1. In PuTTY: **Linke Maustaste** am Anfang von `https://`
-2. **Gedrückt halten** und bis zum Ende ziehen
-3. **Loslassen** → Automatisch kopiert!
+✅ **Script erkennt Zertifikat automatisch und fährt fort!**
 
-**Browser öffnen:**
-1. Browser auf **deinem PC** öffnen
-2. `Strg+L` → URL einfügen (`Strg+V`)
-3. Bei Cloudflare einloggen
-4. Domain wählen (z.B. bartholmes.eu)
-5. **"Authorize"** klicken
+#### **OPTION 2: URL manuell öffnen**
 
-**Zurück zum Terminal:**
-```
-You have successfully logged in.
-✅ Cloudflare Login erfolgreich!
-```
+Nur wenn Option 1 nicht funktioniert. Script zeigt URL zum manuellen Kopieren.
+
+**Details:** Siehe `/Installation/CLOUDFLARE-LOKALER-PC.md`
 
 ### Schritt 6: Domain eingeben
 

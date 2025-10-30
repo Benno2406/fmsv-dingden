@@ -195,45 +195,35 @@ Bei der Installation wirst du gefragt ob du Cloudflare Tunnel nutzen möchtest.
 
 **Problem:** Browser kann sich für Cloudflare-Login nicht öffnen
 
-**Symptom:**
-```
-Failed to open browser
-Cannot open browser window
-```
+**Das ist NORMAL bei SSH!** Das install.sh Script bietet dir automatisch 2 Lösungen:
 
-**Das ist NORMAL bei SSH!** Du hast 2 einfache Lösungen:
+#### 🎯 Lösung 1: Lokaler PC (EMPFOHLEN) ⭐
 
-#### 🎯 Lösung 1: URL manuell öffnen (SCHNELL)
+cloudflared auf **deinem PC** installieren, dort einloggen, Zertifikat zum Server kopieren.
 
-```bash
-# Auf Server:
-cloudflared tunnel login
+**Vorteile:**
+- ✅ Funktioniert **immer** zuverlässig
+- ✅ Browser auf PC funktioniert normal
+- ✅ Keine URL-Kopierei
 
-# URL wird angezeigt → komplett kopieren
-# Auf deinem PC im Browser öffnen
-# Bei Cloudflare einloggen → Domain wählen → Authorize
-```
+**Anleitung:** [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) (10 Minuten)
 
-**📖 Schritt-für-Schritt mit Bildern:** [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) ⭐
+#### 🔧 Lösung 2: URL manuell öffnen
 
-#### 🚀 Lösung 2: Setup-Script (AUTOMATISCH)
+URL aus Terminal kopieren und im Browser öffnen.
 
-```bash
-cd Installation/scripts
-chmod +x cloudflare-setup-manual.sh
-./cloudflare-setup-manual.sh
-```
+**⚠️ Hinweis:** URL wird manchmal nicht angezeigt im Terminal!
 
-Das Script führt dich durch alles!
+**Besser:** Nutze Lösung 1 (Lokaler PC) ⭐
 
 #### 📚 Weitere Hilfen
 
-| Dokument | Zweck | Für wen? |
-|----------|-------|----------|
-| [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) | Bildliche Anleitung | Anfänger ⭐ |
-| [`CLOUDFLARE-URL-MANUELL.md`](CLOUDFLARE-URL-MANUELL.md) | URL öffnen Detail | Schnelleinstieg |
-| [`CLOUDFLARE-QUICK-GUIDE.md`](CLOUDFLARE-QUICK-GUIDE.md) | Kompakter Guide | Fortgeschrittene |
-| [`CLOUDFLARE-SSH-LOGIN.md`](CLOUDFLARE-SSH-LOGIN.md) | Alle Lösungen | Komplett |
+| Dokument | Zweck | Empfehlung |
+|----------|-------|------------|
+| [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) | Lokaler PC Methode | ⭐ **EMPFOHLEN** |
+| [`CLOUDFLARE-METHODEN-VERGLEICH.md`](CLOUDFLARE-METHODEN-VERGLEICH.md) | Alle Methoden vergleichen | Übersicht |
+| [`INSTALL-SSH-QUICK.md`](INSTALL-SSH-QUICK.md) | Schnellanleitung SSH | Quick Start |
+| [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) | Bildliche Anleitung | Detailliert |
 | [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) | Vollständige Doku | Nachschlagewerk |
 
 ---
