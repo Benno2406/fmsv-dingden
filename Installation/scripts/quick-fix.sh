@@ -113,16 +113,42 @@ echo ""
 echo -e "${CYAN}[4/6] Dependencies...${NC}"
 if [ ! -d node_modules ]; then
     echo -e "${RED}  ✗ node_modules fehlen${NC}"
-    echo -e "${YELLOW}  → Installiere Dependencies (dauert 1-2 Minuten)...${NC}"
-    npm install > /dev/null 2>&1
+    echo -e "${YELLOW}  → Installiere Dependencies (dauert 2-5 Minuten)...${NC}"
+    echo ""
+    
+    # Zeige Fortschritt
+    npm install
+    
     if [ $? -eq 0 ]; then
+        echo ""
         echo -e "${GREEN}  ✓ Dependencies installiert${NC}"
         FIXED=1
     else
+        echo ""
         echo -e "${RED}  ✗ npm install fehlgeschlagen${NC}"
+        echo -e "${YELLOW}  → Versuche manuell:${NC}"
+        echo -e "${CYAN}    cd $BACKEND_DIR && npm install${NC}"
     fi
 else
     echo -e "${GREEN}  ✓ node_modules vorhanden${NC}"
+    
+    # Prüfe ob wichtige Module installiert sind
+    MISSING_MODULES=""
+    for MODULE in express dotenv pg winston helmet cors; do
+        if [ ! -d "node_modules/$MODULE" ]; then
+            MISSING_MODULES="$MISSING_MODULES $MODULE"
+        fi
+    done
+    
+    if [ -n "$MISSING_MODULES" ]; then
+        echo -e "${YELLOW}  ⚠️  Fehlende Module:$MISSING_MODULES${NC}"
+        echo -e "${YELLOW}  → Führe npm install aus...${NC}"
+        npm install
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}  ✓ Module nachinstalliert${NC}"
+            FIXED=1
+        fi
+    fi
 fi
 echo ""
 
