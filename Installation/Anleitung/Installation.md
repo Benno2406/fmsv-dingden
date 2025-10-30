@@ -2,6 +2,18 @@
 
 Komplette Installations-Anleitung für Production-Server (Debian 12/13).
 
+---
+
+## 📖 Navigation
+
+- [🚀 Schnellstart](#-schnellstart-empfohlen) - Für die meisten Nutzer
+- [⚠️ SSH/PuTTY-Nutzer](#️-sshputty-nutzer-aufgepasst) - Cloudflare Browser-Problem
+- [📋 Detaillierte Schritte](#-detaillierte-schritte) - Ausführliche Anleitung
+- [⚙️ Konfiguration](#️-konfiguration) - Nach der Installation
+- [🔧 Troubleshooting](#-troubleshooting) - Probleme lösen
+
+---
+
 ## 🚀 Schnellstart (Empfohlen)
 
 ### Voraussetzungen
@@ -119,6 +131,39 @@ sudo ./install.sh
 - Port-Weiterleitungen im Router erforderlich (80, 443)
 - Cloudflare SSL manuell konfigurieren
 
+---
+
+##### ⚠️ SSH/PuTTY-Nutzer aufgepasst!
+
+Wenn du per **SSH oder PuTTY** verbunden bist, kann sich kein Browser für den Cloudflare-Login öffnen.
+
+**Du hast 2 einfache Lösungen:**
+
+**Option 1: URL manuell öffnen** (SCHNELLSTE METHODE)
+```bash
+# Auf dem Server:
+cloudflared tunnel login
+
+# URL wird angezeigt → komplett kopieren
+# Auf deinem PC im Browser öffnen
+# Bei Cloudflare einloggen → Domain wählen → Authorize
+```
+
+**📖 Schritt-für-Schritt:** [`../CLOUDFLARE-PUTTY-ANLEITUNG.md`](../CLOUDFLARE-PUTTY-ANLEITUNG.md)
+
+**Option 2: Setup-Script nutzen** (AUTOMATISCH)
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+chmod +x cloudflare-setup-manual.sh
+./cloudflare-setup-manual.sh
+```
+
+Das Script führt dich durch den kompletten Setup!
+
+**📚 Alle Lösungen:** [`../CLOUDFLARE-SSH-LOGIN.md`](../CLOUDFLARE-SSH-LOGIN.md)
+
+---
+
 #### Auto-Update
 
 **Täglich:**
@@ -215,20 +260,93 @@ systemctl restart fmsv-backend
 
 Siehe: [`Cloudflare-Tunnel-Setup.md`](Cloudflare-Tunnel-Setup.md)
 
-**Status prüfen:**
+#### Status prüfen
+
 ```bash
+# Service-Status
 systemctl status cloudflared
+
+# Tunnel-Liste
 cloudflared tunnel list
+
+# Tunnel-Info
+cloudflared tunnel info fmsv-dingden
+
+# Verbindungen
+cloudflared tunnel info fmsv-dingden | grep Connections
 ```
 
-**Logs:**
+#### Logs ansehen
+
 ```bash
+# Live-Logs
 journalctl -u cloudflared -f
+
+# Letzte 100 Zeilen
+journalctl -u cloudflared -n 100
+
+# Fehler filtern
+journalctl -u cloudflared -p err
 ```
 
-**Neu starten:**
+#### Service verwalten
+
 ```bash
+# Neu starten
 systemctl restart cloudflared
+
+# Stoppen
+systemctl stop cloudflared
+
+# Starten
+systemctl start cloudflared
+
+# Deaktivieren
+systemctl disable cloudflared
+
+# Status
+systemctl is-active cloudflared
+```
+
+#### Troubleshooting
+
+**Problem: "Connection refused"**
+```bash
+# Backend läuft?
+systemctl status fmsv-backend
+
+# Nginx läuft?
+systemctl status nginx
+
+# Config prüfen
+cat /root/.cloudflared/config.yml
+
+# Ports prüfen
+netstat -tulpn | grep -E ':(80|3000)'
+```
+
+**Problem: "Tunnel not found"**
+```bash
+# Tunnel existiert?
+cloudflared tunnel list
+
+# Credentials vorhanden?
+ls -la /root/.cloudflared/*.json
+
+# Service neu installieren
+cloudflared service uninstall
+cloudflared service install
+systemctl start cloudflared
+```
+
+**Problem: Browser öffnet sich nicht (SSH/PuTTY)**
+
+Siehe: [`../CLOUDFLARE-SSH-LOGIN.md`](../CLOUDFLARE-SSH-LOGIN.md) oder [`../CLOUDFLARE-PUTTY-ANLEITUNG.md`](../CLOUDFLARE-PUTTY-ANLEITUNG.md)
+
+Oder nutze das Setup-Script:
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+./cloudflare-setup-manual.sh
 ```
 
 ---
@@ -384,6 +502,74 @@ systemctl restart nginx
 
 ## 🆘 Troubleshooting
 
+### SSH/PuTTY: Browser öffnet sich nicht
+
+**Problem:** Cloudflare-Login scheitert bei SSH/PuTTY
+
+**Fehler:**
+```
+Failed to open browser
+Cannot open browser window
+```
+
+**Lösung 1 - URL manuell öffnen (SCHNELLSTE METHODE):**
+
+```bash
+# Auf Server:
+cloudflared tunnel login
+
+# URL kopieren → Auf PC im Browser öffnen → Einloggen
+```
+
+**📖 Schritt-für-Schritt:** [`../CLOUDFLARE-PUTTY-ANLEITUNG.md`](../CLOUDFLARE-PUTTY-ANLEITUNG.md)
+
+**Lösung 2 - Setup-Script:**
+
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+./cloudflare-setup-manual.sh
+```
+
+**📚 Alle Lösungen:** [`../CLOUDFLARE-SSH-LOGIN.md`](../CLOUDFLARE-SSH-LOGIN.md)
+
+---
+
+### Installation bricht ab
+
+**Problem:** Script stoppt bei "Aktualisiere Paket-Listen"
+
+**Debug-Script ausführen:**
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+./debug-install.sh
+```
+
+**Logs ansehen:**
+```bash
+cat /var/log/fmsv-install.log
+```
+
+**📚 Mehr Hilfe:** [`../INSTALLATIONS-HILFE.md`](../INSTALLATIONS-HILFE.md)
+
+---
+
+### Git Clone schlägt fehl
+
+**Fehler:** `authentication failed` oder `repository not found`
+
+**Lösung:**
+```bash
+# Repository ist public - keine Authentifizierung nötig!
+git clone https://github.com/Benno2406/fmsv-dingden.git
+
+# NICHT:
+git clone https://github.com/Benno2406/fmsv-dingden
+```
+
+**📚 Details:** [`../GIT-CLONE-FEHLER.md`](../GIT-CLONE-FEHLER.md)
+
+---
+
 ### Website nicht erreichbar
 
 ```bash
@@ -462,20 +648,56 @@ journalctl -u fmsv-auto-update.service -f
 
 ## 🎯 Production Checklist
 
-Nach der Installation:
+### Vor der Installation
 
+- [ ] Als root eingeloggt (`su -`)
+- [ ] Repository geklont
+- [ ] Dateien umbenannt (`./rename-files.sh`)
+- [ ] Bei SSH/PuTTY: Cloudflare-Anleitung gelesen
+
+### Während Installation
+
+- [ ] Update-Kanal gewählt (stable/testing)
+- [ ] Cloudflare Tunnel Entscheidung getroffen
+- [ ] Bei SSH: URL manuell geöffnet oder Script genutzt
+- [ ] GitHub Repository-URL eingegeben
+- [ ] Auto-Update konfiguriert
+- [ ] Datenbank-Credentials notiert
+
+### Nach der Installation
+
+- [ ] Alle Services laufen
+  ```bash
+  systemctl status fmsv-backend
+  systemctl status nginx
+  systemctl status cloudflared  # falls aktiviert
+  ```
+- [ ] Website erreichbar (`https://fmsv.bartholmes.eu`)
 - [ ] Admin-Passwort geändert
+- [ ] Test-Accounts Passwörter geändert
 - [ ] SMTP konfiguriert und getestet
-- [ ] Test-Accounts gelöscht oder Passwörter geändert
-- [ ] Backup-System eingerichtet
 - [ ] Firewall aktiviert
 - [ ] SSL/TLS funktioniert
-- [ ] Alle Services laufen
 - [ ] Auto-Update getestet (falls aktiviert)
+- [ ] Backup-System eingerichtet
 - [ ] Monitoring eingerichtet
+
+### Hilfedokumente
+
+Wenn Probleme auftreten:
+
+| Problem | Dokument |
+|---------|----------|
+| **Browser öffnet sich nicht** | [`../CLOUDFLARE-PUTTY-ANLEITUNG.md`](../CLOUDFLARE-PUTTY-ANLEITUNG.md) |
+| **Installation bricht ab** | [`../INSTALLATIONS-HILFE.md`](../INSTALLATIONS-HILFE.md) |
+| **Git Clone Fehler** | [`../GIT-CLONE-FEHLER.md`](../GIT-CLONE-FEHLER.md) |
+| **Alle Hilfen Übersicht** | [`../HILFE-UEBERSICHT.md`](../HILFE-UEBERSICHT.md) |
+| **Quick Commands** | [`../QUICK-REFERENCE.md`](../QUICK-REFERENCE.md) |
 
 ---
 
 **Installation abgeschlossen?** 🎉
 
 Öffne: `https://fmsv.bartholmes.eu` und teste alle Features!
+
+**Bei Fragen:** Siehe [Troubleshooting](#-troubleshooting) oder [`../HILFE-UEBERSICHT.md`](../HILFE-UEBERSICHT.md)

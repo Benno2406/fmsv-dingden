@@ -4,6 +4,16 @@ FMSV Dingden Installation & Update-System.
 
 ---
 
+## 🎯 Neu hier? START HIER!
+
+**📖 Kompletter Installations-Guide mit allen Links:**
+
+→ **[`START-HIER-INSTALLATION.md`](START-HIER-INSTALLATION.md)**
+
+**Führt dich zum richtigen Dokument für deine Situation!**
+
+---
+
 ## ⚠️ WICHTIG - ZUERST LESEN!
 
 ### 🔑 Root-Zugriff erforderlich!
@@ -172,6 +182,59 @@ chmod +x install.sh
 **Mehr Infos:** [`REPOSITORY-INFO.md`](REPOSITORY-INFO.md)
 
 **Kein GitHub-Setup nötig!** Einfach klonen und installieren! ✅
+
+---
+
+## 🌐 Cloudflare Tunnel (Optional)
+
+**Für Zugriff ohne Port-Weiterleitungen:**
+
+Bei der Installation wirst du gefragt ob du Cloudflare Tunnel nutzen möchtest.
+
+### ⚠️ SSH/PuTTY-Nutzer aufgepasst!
+
+**Problem:** Browser kann sich für Cloudflare-Login nicht öffnen
+
+**Symptom:**
+```
+Failed to open browser
+Cannot open browser window
+```
+
+**Das ist NORMAL bei SSH!** Du hast 2 einfache Lösungen:
+
+#### 🎯 Lösung 1: URL manuell öffnen (SCHNELL)
+
+```bash
+# Auf Server:
+cloudflared tunnel login
+
+# URL wird angezeigt → komplett kopieren
+# Auf deinem PC im Browser öffnen
+# Bei Cloudflare einloggen → Domain wählen → Authorize
+```
+
+**📖 Schritt-für-Schritt mit Bildern:** [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) ⭐
+
+#### 🚀 Lösung 2: Setup-Script (AUTOMATISCH)
+
+```bash
+cd Installation/scripts
+chmod +x cloudflare-setup-manual.sh
+./cloudflare-setup-manual.sh
+```
+
+Das Script führt dich durch alles!
+
+#### 📚 Weitere Hilfen
+
+| Dokument | Zweck | Für wen? |
+|----------|-------|----------|
+| [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) | Bildliche Anleitung | Anfänger ⭐ |
+| [`CLOUDFLARE-URL-MANUELL.md`](CLOUDFLARE-URL-MANUELL.md) | URL öffnen Detail | Schnelleinstieg |
+| [`CLOUDFLARE-QUICK-GUIDE.md`](CLOUDFLARE-QUICK-GUIDE.md) | Kompakter Guide | Fortgeschrittene |
+| [`CLOUDFLARE-SSH-LOGIN.md`](CLOUDFLARE-SSH-LOGIN.md) | Alle Lösungen | Komplett |
+| [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) | Vollständige Doku | Nachschlagewerk |
 
 ---
 
