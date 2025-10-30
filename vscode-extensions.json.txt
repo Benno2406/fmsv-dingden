@@ -1,0 +1,40 @@
+{
+  "// FMSV Dingden - Empfohlene VSCode Extensions": "",
+  "// Datei speichern als: .vscode/extensions.json": "",
+  "// (ohne .txt Endung)": "",
+
+  "recommendations": [
+    "// TypeScript & JavaScript": "",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    
+    "// React": "",
+    "dsznajder.es7-react-js-snippets",
+    
+    "// Tailwind CSS": "",
+    "bradlc.vscode-tailwindcss",
+    
+    "// Database": "",
+    "ckolkman.vscode-postgres",
+    
+    "// Git": "",
+    "eamodio.gitlens",
+    
+    "// Utilities": "",
+    "christian-kohler.path-intellisense",
+    "christian-kohler.npm-intellisense",
+    "ms-vscode.live-server",
+    
+    "// Formatting": "",
+    "editorconfig.editorconfig",
+    
+    "// Documentation": "",
+    "yzhang.markdown-all-in-one",
+    
+    "// Optional (hilfreich)": "",
+    "formulahendry.auto-rename-tag",
+    "naumovs.color-highlight",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}
