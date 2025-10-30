@@ -1,394 +1,422 @@
-# Installation
+# FMSV Dingden - Installations- & Wartungsanleitung
 
-FMSV Dingden Installation & Update-System.
+## 📋 Inhaltsverzeichnis
 
----
-
-## 🎯 Neu hier? START HIER!
-
-**📖 Kompletter Installations-Guide mit allen Links:**
-
-→ **[`START-HIER-INSTALLATION.md`](START-HIER-INSTALLATION.md)**
-
-**Führt dich zum richtigen Dokument für deine Situation!**
+- [Schnellstart](#schnellstart)
+- [Wartungs-Tools](#wartungs-tools)
+- [Detaillierte Anleitungen](#detaillierte-anleitungen)
+- [Fehlerbehebung](#fehlerbehebung)
+- [Häufige Fragen](#häufige-fragen)
 
 ---
 
-## ⚠️ WICHTIG - ZUERST LESEN!
+## 🚀 Schnellstart
 
-### 🔑 Root-Zugriff erforderlich!
+### Voraussetzungen
 
-**Alle Installations-Scripts müssen als root ausgeführt werden.**
+- **Debian 11/12** oder **Ubuntu 20.04/22.04** Server
+- **Root-Zugriff** (via SSH oder direkt)
+- **Mindestens 2GB RAM** und 10GB freier Speicher
+- **Stabile Internetverbindung**
 
-**Als root einloggen:**
-```bash
-su -
-```
-
-**ODER per SSH:**
-```bash
-ssh root@dein-server
-```
-
-**Dann Scripts OHNE `sudo` ausführen:**
-```bash
-./install.sh    # NICHT: sudo ./install.sh
-```
-
-**📚 Mehr Infos:** [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
-
----
-
-### 🆘 Probleme beim Start?
-
-#### Script wartet auf Eingabe?
-
-**Siehst du das?**
-```
-Installation mit diesen Einstellungen starten? (J/n) :
-```
-
-**Das ist normal!** Script wartet auf deine Bestätigung.
-
-**Eingeben:**
-- `J` oder `j` (Ja) → Installation startet
-- `n` oder `N` (Nein) → Abbruch
-
----
-
-#### Script bricht ab nach "Aktualisiere Paket-Listen"?
-
-**Lösung 1: Debug-Script ausführen**
-```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-chmod +x debug-install.sh
-./debug-install.sh
-```
-
-**Lösung 2: Logs ansehen**
-```bash
-cat /var/log/fmsv-install.log
-```
-
-**Lösung 3: apt manuell testen**
-```bash
-apt-get update
-# Fehler beheben, dann:
-./install.sh
-```
-
-**Mehr Hilfe:** 
-- [`SOFORT-HILFE-500.md`](SOFORT-HILFE-500.md) - 🚨 500 Fehler nach Installation **NEU!**
-- [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - Allgemeine Probleme
-- [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) - "Ungültige Auswahl" ⚡ **BEHOBEN**
-- [`NGINX-PORT-KONFLIKT.md`](NGINX-PORT-KONFLIKT.md) - Port 80 belegt ⚡ **BEHOBEN**
-- [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) - Script bricht ab (Debug Guide)
-- [`NGINX-FEHLER.md`](NGINX-FEHLER.md) - Nginx startet nicht
-- [`BUGFIXES-2025-10-30.md`](BUGFIXES-2025-10-30.md) - Neueste Bugfixes (Changelog)
-
----
-
-## 📋 Vor der Installation
-
-### 🔧 Schritt 1: Dateien umbenennen (EINMALIG, VOR DER INSTALLATION)
-
-Einige Dateien liegen als `.txt` vor und müssen umbenannt werden:
-
-```
-gitignore.txt           →  .gitignore
-Saves/gitkeep.txt       →  Saves/.gitkeep
-Logs/gitkeep.txt        →  Logs/.gitkeep
-Logs/Audit/gitkeep.txt  →  Logs/Audit/.gitkeep
-```
-
-#### ⚡ Automatisch umbenennen (EMPFOHLEN)
-
-**Windows:**
-```cmd
-rename-files.bat
-```
-
-**Linux/macOS:**
-```bash
-chmod +x rename-files.sh
-./rename-files.sh
-```
-
-#### 📝 Manuell umbenennen
-
-<details>
-<summary>Windows PowerShell (klicken zum Ausklappen)</summary>
-
-```powershell
-cd C:\Pfad\zu\fmsv-dingden
-
-Rename-Item "gitignore.txt" ".gitignore"
-Rename-Item "Saves\gitkeep.txt" "Saves\.gitkeep"
-Rename-Item "Logs\gitkeep.txt" "Logs\.gitkeep"
-Rename-Item "Logs\Audit\gitkeep.txt" "Logs\Audit\.gitkeep"
-```
-
-</details>
-
-<details>
-<summary>Linux/macOS (klicken zum Ausklappen)</summary>
+### Installation in 3 Schritten
 
 ```bash
-cd /pfad/zu/fmsv-dingden
-
-mv gitignore.txt .gitignore
-mv Saves/gitkeep.txt Saves/.gitkeep
-mv Logs/gitkeep.txt Logs/.gitkeep
-mv Logs/Audit/gitkeep.txt Logs/Audit/.gitkeep
-```
-
-</details>
-
-**Detaillierte Anleitung:** [`DATEIEN-UMBENENNEN.md`](DATEIEN-UMBENENNEN.md)
-
----
-
-### 📋 Schritt 2: GitHub Repository einrichten
-
-Nach dem Umbenennen der Dateien:
-
-1. Repository auf GitHub erstellen
-2. Code zu GitHub pushen
-3. Testing/Stable Branches einrichten
-
-**Quick Guide:** [`GitHub-QUICK-START.md`](GitHub-QUICK-START.md) (5 Minuten)
-
----
-
-### 🚀 Schritt 3: Auf Server installieren
-
-Nach GitHub Setup:
-
-```bash
-cd /var/www
-git clone https://github.com/Benno2406/fmsv-dingden.git
+# 1. Repository klonen
+cd /tmp
+git clone https://github.com/Achim-Sommer/fmsv-dingden.git
 cd fmsv-dingden/Installation/scripts
+
+# 2. Installation starten
 chmod +x install.sh
-./install.sh
+sudo ./install.sh
+
+# 3. Den Anweisungen folgen
 ```
 
-**Das wars!** Das Script führt dich durch die Installation.
+Das wars! Das Script führt dich durch:
+- Update-Kanal Auswahl (Stable/Beta)
+- Cloudflare Tunnel Setup (optional)
+- Domain-Eingabe
+- Auto-Update Konfiguration
+- Datenbank-Setup
+- Service-Installation
 
-**Hinweis:** Als root ausführen (ohne `sudo`). Siehe [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
+**Installation dauert ca. 15-30 Minuten**
 
 ---
 
-## 📍 GitHub Repository
+## 🛠️ Wartungs-Tools
 
-**Das Repository ist bereits eingerichtet und PUBLIC!**
+Nach der Installation stehen dir zwei wichtige Tools zur Verfügung:
 
-- **URL:** https://github.com/Benno2406/fmsv-dingden.git
-- **Status:** 🌍 Public (keine Authentifizierung nötig)
-- **Branches:** `main` (stable), optional `testing`
+### fmsv-update
 
-**Mehr Infos:** [`REPOSITORY-INFO.md`](REPOSITORY-INFO.md)
-
-**Kein GitHub-Setup nötig!** Einfach klonen und installieren! ✅
-
----
-
-## 🌐 Cloudflare Tunnel (Optional)
-
-**Für Zugriff ohne Port-Weiterleitungen:**
-
-Bei der Installation wirst du gefragt ob du Cloudflare Tunnel nutzen möchtest.
-
-### ⚠️ SSH/PuTTY-Nutzer aufgepasst!
-
-**Problem:** Browser kann sich für Cloudflare-Login nicht öffnen
-
-**Das ist NORMAL bei SSH!** Das install.sh Script bietet dir automatisch 2 Lösungen:
-
-#### 🎯 Lösung 1: Lokaler PC (EMPFOHLEN) ⭐
-
-cloudflared auf **deinem PC** installieren, dort einloggen, Zertifikat zum Server kopieren.
-
-**Vorteile:**
-- ✅ Funktioniert **immer** zuverlässig
-- ✅ Browser auf PC funktioniert normal
-- ✅ Keine URL-Kopierei
-- ✅ Mit WinSCP per Drag & Drop (Windows)
-
-**Anleitungen:**
-- **Windows (GUI):** [`CLOUDFLARE-WINSCP.md`](CLOUDFLARE-WINSCP.md) - Einfach per Drag & Drop! ⭐
-- **Alle Systeme:** [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) (10 Minuten)
-
-#### 🔧 Lösung 2: URL manuell öffnen
-
-URL aus Terminal kopieren und im Browser öffnen.
-
-**⚠️ Hinweis:** URL wird manchmal nicht angezeigt im Terminal!
-
-**Besser:** Nutze Lösung 1 (Lokaler PC) ⭐
-
-#### 📚 Weitere Hilfen
-
-| Dokument | Zweck | Empfehlung |
-|----------|-------|------------|
-| [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) | Lokaler PC Methode | ⭐ **EMPFOHLEN** |
-| [`WINSCP-QUICK-GUIDE.md`](WINSCP-QUICK-GUIDE.md) | WinSCP Upload (Windows) | ⭐ **Einfach!** |
-| [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md) | `.cloudflared` nicht sichtbar? | Problem-Lösung |
-| [`CLOUDFLARED-INSTALLATION-FEHLER.md`](CLOUDFLARED-INSTALLATION-FEHLER.md) | cloudflared Installation fehlgeschlagen | Problem-Lösung |
-| [`ZERTIFIKAT-UPLOAD-OPTIONEN.md`](ZERTIFIKAT-UPLOAD-OPTIONEN.md) | Alle Upload-Methoden | Vergleich |
-| [`CLOUDFLARE-METHODEN-VERGLEICH.md`](CLOUDFLARE-METHODEN-VERGLEICH.md) | Alle Methoden vergleichen | Übersicht |
-| [`INSTALL-SSH-QUICK.md`](INSTALL-SSH-QUICK.md) | Schnellanleitung SSH | Quick Start |
-| [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) | Bildliche Anleitung | Detailliert |
-| [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) | Vollständige Doku | Nachschlagewerk |
-
----
-
-## ✅ Checkliste vor Installation
-
-Stelle sicher, dass du folgende Schritte erledigt hast:
-
-- [ ] Dateien umbenannt (`.txt` → ohne `.txt`)
-  - [ ] `.gitignore` existiert
-  - [ ] `Saves/.gitkeep` existiert
-  - [ ] `Logs/.gitkeep` existiert
-  - [ ] `Logs/Audit/.gitkeep` existiert
-- [ ] `git status` zeigt die Dateien an
-- [ ] GitHub Repository erstellt
-- [ ] Code zu GitHub gepusht
-- [ ] Testing/Stable Branches angelegt
-
-**Erst dann:** Installation auf dem Server starten!
-
----
-
-## 📁 Struktur
-
-```
-Installation/
-├── scripts/
-│   ├── install.sh         # Haupt-Installations-Script
-│   ├── update.sh          # Manuelles Update-Script
-│   └── auto-update.sh     # Auto-Update (erstellt bei Installation)
-└── Anleitung/
-    ├── Installation.md    # Detaillierte Anleitung
-    ├── E-Mail-Setup.md    # SMTP-Konfiguration
-    └── Cloudflare-Tunnel-Setup.md  # Cloudflare Tunnel Details
-```
-
----
-
-## 📖 Dokumentation
-
-### Für erste Installation
-→ [`scripts/README.md`](scripts/README.md) oder [`Anleitung/Installation.md`](Anleitung/Installation.md)
-
-### Für Updates
-→ [`scripts/README.md`](scripts/README.md) - Abschnitt "Updates"
-
-### Für E-Mail-Setup
-→ [`Anleitung/E-Mail-Setup.md`](Anleitung/E-Mail-Setup.md)
-
-### Für Cloudflare Tunnel
-→ [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md)
-
----
-
-## ⚡ Quick Links
-
-**Installation:**
-```bash
-./scripts/install.sh
-```
-
-**Update:**
-```bash
-./scripts/update.sh
-```
-
-**Hinweis:** Als root ausführen. Siehe [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
-
-**Auto-Update Status:**
-```bash
-systemctl status fmsv-auto-update.timer
-```
-
-**Logs:**
-```bash
-tail -f /var/log/fmsv-auto-update.log
-```
-
----
-
-## 📚 Zusätzliche Ressourcen
-
-- **Beispiel-Ausgabe:** [`BEISPIEL-AUSGABE.md`](BEISPIEL-AUSGABE.md) - So sieht die Installation aus
-- **Quick Reference:** [`QUICK-REFERENCE.md`](QUICK-REFERENCE.md) - Alle wichtigen Befehle auf einen Blick
-- **GitHub Setup:** [`GitHub-QUICK-START.md`](GitHub-QUICK-START.md) - GitHub in 5 Minuten
-
----
-
-## 🔗 Nützliche Links
-
-| Was? | Link |
-|------|------|
-| Dateien umbenennen | [`DATEIEN-UMBENENNEN.md`](DATEIEN-UMBENENNEN.md) |
-| GitHub Setup | [`GitHub-QUICK-START.md`](GitHub-QUICK-START.md) |
-| .gitignore Erklärung | [`GITIGNORE-ERKLAERUNG.md`](GITIGNORE-ERKLAERUNG.md) |
-| Installation Details | [`Anleitung/Installation.md`](Anleitung/Installation.md) |
-| E-Mail Setup | [`Anleitung/E-Mail-Setup.md`](Anleitung/E-Mail-Setup.md) |
-| Cloudflare Tunnel | [`Anleitung/Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) |
-| Auto-Update System | [`Anleitung/Auto-Update-System.md`](Anleitung/Auto-Update-System.md) |
-
----
-
-## 🆘 Probleme?
-
-### Script wartet und macht nichts
-
-**Siehe:** [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - "Script scheint zu hängen"
-
-**Häufigste Ursache:** Script wartet auf deine Eingabe!
-
-Scrolle nach oben und suche nach einer Frage wie:
-```
-Domain oder Subdomain: _
-```
-
-### Dateien können nicht umbenannt werden
+Aktualisiert das gesamte System (Code + Dependencies).
 
 ```bash
-# Script ausführbar machen (Linux/macOS)
-chmod +x rename-files.sh
-./rename-files.sh
-
-# Oder als Administrator (Windows)
-# PowerShell als Admin öffnen, dann:
-.\rename-files.bat
+sudo fmsv-update
 ```
 
-### Git zeigt .txt Dateien als untracked
+**Features:**
+- Automatisches Backup vor Update
+- Git Pull vom gewählten Branch
+- Dependency Updates
+- Service Neustart
+- Rollback bei Fehlern
 
-Das ist normal! Nach dem Umbenennen verschwinden sie:
+### fmsv-debug
+
+Interaktives Diagnose-Tool für Problemsuche.
 
 ```bash
-# Vor Umbenennung
+sudo fmsv-debug
+```
+
+**Menü-Optionen:**
+1. **Pre-Installation Check** - System-Voraussetzungen prüfen
+2. **500 Error Diagnose** - Backend/Nginx/DB Probleme finden
+3. **Cloudflare Tunnel Test** - Cloudflare Konfiguration prüfen
+4. **Vollständige System-Diagnose** - Alle Tests durchführen
+5. **Logs anzeigen** - Backend/Nginx/Postgres/Cloudflare Logs
+
+**Beispiel-Ausgabe:**
+```
+✓ Root-Rechte
+✓ Internet-Verbindung
+✓ DNS (github.com)
+✓ apt update Test
+✓ Freier Speicherplatz (15GB)
+```
+
+---
+
+## 📚 Detaillierte Anleitungen
+
+Alle Anleitungen befinden sich im Verzeichnis `/Installation/Anleitung/`:
+
+### Installation.md
+Komplette Schritt-für-Schritt-Anleitung mit Screenshots und Erklärungen.
+
+**Wichtige Themen:**
+- SSH-Zugang einrichten
+- WinSCP/PuTTY unter Windows
+- Installations-Optionen erklärt
+- Troubleshooting während Installation
+
+[→ Installation.md lesen](Anleitung/Installation.md)
+
+### Cloudflare-Tunnel-Setup.md
+Cloudflare Tunnel für sicheren HTTPS-Zugang ohne Port-Forwarding.
+
+**Inhalte:**
+- Was ist Cloudflare Tunnel?
+- SSH vs. Lokaler PC Setup
+- Zertifikat kopieren
+- DNS-Einstellungen
+- Troubleshooting
+
+[→ Cloudflare-Tunnel-Setup.md lesen](Anleitung/Cloudflare-Tunnel-Setup.md)
+
+### GitHub-Setup.md
+Eigenes Repository für Updates und Versionskontrolle.
+
+**Inhalte:**
+- Fork erstellen
+- Deploy Keys
+- Auto-Update System
+- Branch-Strategie (stable/beta)
+- GitHub Actions
+
+[→ GitHub-Setup.md lesen](Anleitung/GitHub-Setup.md)
+
+### E-Mail-Setup.md
+SMTP-Konfiguration für E-Mail-Benachrichtigungen.
+
+**Unterstützte Dienste:**
+- SendGrid (empfohlen)
+- Gmail
+- Custom SMTP
+- Eigener Mail-Server
+
+[→ E-Mail-Setup.md lesen](Anleitung/E-Mail-Setup.md)
+
+### Auto-Update-System.md
+Automatische Updates per systemd Timer.
+
+**Konfiguration:**
+- Täglich, wöchentlich, oder manuell
+- Update-Kanal (stable/beta)
+- Backup-Strategie
+- Logs und Monitoring
+
+[→ Auto-Update-System.md lesen](Anleitung/Auto-Update-System.md)
+
+---
+
+## 🔧 Fehlerbehebung
+
+### Installation bricht ab
+
+**Problem:** Script stoppt mit Fehler
+
+**Lösung:**
+```bash
+# 1. Debug-Tool verwenden
+sudo fmsv-debug
+# Option 1 wählen: Pre-Installation Check
+
+# 2. Logs ansehen
+tail -f /var/log/fmsv-install.log
+
+# 3. Neu starten
+sudo ./install.sh
+```
+
+### 500 Server Error nach Installation
+
+**Problem:** Website zeigt 500 Fehler
+
+**Lösung:**
+```bash
+# 1. Debug-Tool starten
+sudo fmsv-debug
+# Option 2 wählen: 500 Error Diagnose
+
+# 2. Services prüfen
+systemctl status fmsv-backend
+systemctl status nginx
+systemctl status postgresql
+
+# 3. Services neustarten
+systemctl restart fmsv-backend
+systemctl restart nginx
+```
+
+### Backend startet nicht
+
+**Problem:** `systemctl status fmsv-backend` zeigt Fehler
+
+**Lösung:**
+```bash
+# 1. Logs ansehen
+journalctl -u fmsv-backend -n 50
+
+# 2. Häufige Ursachen:
+# - Datenbank nicht erreichbar
+# - Port 3000 belegt
+# - Fehler in .env
+
+# 3. .env prüfen
+nano /var/www/fmsv-dingden/backend/.env
+
+# 4. Datenbank testen
+su - postgres -c "psql -d fmsv_database -c 'SELECT 1;'"
+
+# 5. Manuelle Berechtigungen reparieren
+sudo fmsv-debug
+# Option 2 wählen
+```
+
+### Cloudflare Tunnel funktioniert nicht
+
+**Problem:** Domain nicht erreichbar
+
+**Lösung:**
+```bash
+# 1. Cloudflare Test
+sudo fmsv-debug
+# Option 3 wählen: Cloudflare Tunnel Test
+
+# 2. Service Status
+systemctl status cloudflared
+journalctl -u cloudflared -f
+
+# 3. Config prüfen
+cat /etc/cloudflared/config.yml
+
+# 4. Tunnel neu erstellen
+cloudflared tunnel delete fmsv-dingden
+cloudflared tunnel create fmsv-dingden
+```
+
+### Updates schlagen fehl
+
+**Problem:** `fmsv-update` bricht ab
+
+**Lösung:**
+```bash
+# 1. Manuelles Update
+cd /var/www/fmsv-dingden
 git status
-# zeigt: gitignore.txt, Saves/gitkeep.txt, etc.
+git pull origin main
 
-# Nach Umbenennung (Script ausführen)
-./rename-files.sh  # oder rename-files.bat
+# 2. Dependencies aktualisieren
+cd backend && npm install
+cd .. && npm install
 
-# Erneut prüfen
-git status
-# zeigt jetzt: .gitignore, Saves/.gitkeep, etc.
+# 3. Services neustarten
+systemctl restart fmsv-backend
+systemctl restart nginx
 ```
-
-### Installation schlägt fehl
-
-1. **Checkliste prüfen** (siehe oben)
-2. **Logs ansehen:** `cat /var/log/fmsv-install.log`
-3. **GitHub-Zugriff testen:** `git clone https://github.com/dein-username/fmsv-dingden.git`
-4. **Anleitung:** [`Anleitung/Installation.md`](Anleitung/Installation.md)
 
 ---
 
-**Alles klar? Dann viel Erfolg mit der Installation!** 🎯
+## ❓ Häufige Fragen
+
+### Kann ich mehrere Instanzen betreiben?
+
+Ja! Einfach andere Ports und Datenbanknamen verwenden:
+- Backend Port ändern in `.env`
+- Nginx Config anpassen
+- Eigene Datenbank erstellen
+
+### Wie sichere ich die Datenbank?
+
+```bash
+# Backup erstellen
+pg_dump -U postgres fmsv_database > backup.sql
+
+# Backup einspielen
+psql -U postgres fmsv_database < backup.sql
+```
+
+### Wo werden Uploads gespeichert?
+
+Alle Uploads landen in: `/var/www/fmsv-dingden/Saves/`
+
+**Backup-Empfehlung:** Dieses Verzeichnis regelmäßig sichern!
+
+### Wie ändere ich die Domain?
+
+1. `.env` bearbeiten: `BASE_URL=https://neue-domain.de`
+2. Cloudflare DNS anpassen
+3. Nginx Config aktualisieren
+4. Services neustarten
+
+### Kann ich ohne Cloudflare betreiben?
+
+Ja! Bei Installation `--no-cloudflare` verwenden:
+
+```bash
+./install.sh --no-cloudflare
+```
+
+Dann musst du selbst SSL-Zertifikate einrichten:
+```bash
+apt install certbot python3-certbot-nginx
+certbot --nginx -d deine-domain.de
+```
+
+### Wo finde ich die Logs?
+
+```bash
+# Installation
+tail -f /var/log/fmsv-install.log
+
+# Backend
+journalctl -u fmsv-backend -f
+
+# Nginx
+tail -f /var/log/nginx/error.log
+tail -f /var/log/nginx/access.log
+
+# PostgreSQL
+journalctl -u postgresql -f
+
+# Cloudflare
+journalctl -u cloudflared -f
+
+# Oder: fmsv-debug Tool nutzen (Option 5)
+```
+
+### Wie deinstalliere ich das System?
+
+```bash
+# Services stoppen
+systemctl stop fmsv-backend nginx cloudflared
+systemctl disable fmsv-backend nginx cloudflared
+
+# Datenbank löschen
+su - postgres -c "dropdb fmsv_database"
+su - postgres -c "dropuser fmsv_user"
+
+# Dateien löschen
+rm -rf /var/www/fmsv-dingden
+rm /etc/nginx/sites-enabled/fmsv-dingden
+rm /etc/nginx/sites-available/fmsv-dingden
+rm /etc/systemd/system/fmsv-backend.service
+rm /etc/cloudflared/config.yml
+rm /usr/local/bin/fmsv-*
+
+# Systemd neu laden
+systemctl daemon-reload
+```
+
+---
+
+## 🆘 Support
+
+### Bei Problemen
+
+1. **fmsv-debug** Tool nutzen für Diagnose
+2. **Logs ansehen** (siehe "Wo finde ich die Logs?")
+3. **Installation.md** durchlesen für Details
+4. **GitHub Issues** erstellen mit:
+   - Beschreibung des Problems
+   - Logs (fmsv-debug Ausgabe)
+   - System-Informationen (Debian/Ubuntu Version)
+
+### Nützliche Befehle
+
+```bash
+# Status aller Services
+systemctl status fmsv-backend nginx postgresql cloudflared
+
+# Alle Services neustarten
+systemctl restart fmsv-backend nginx
+
+# Debug-Tool
+sudo fmsv-debug
+
+# Update durchführen
+sudo fmsv-update
+
+# Logs live ansehen
+journalctl -u fmsv-backend -f
+
+# Config bearbeiten
+nano /var/www/fmsv-dingden/backend/.env
+```
+
+---
+
+## 📖 Projekt-Struktur
+
+```
+fmsv-dingden/
+├── Installation/
+│   ├── README.md              # Diese Datei
+│   ├── Anleitung/            # Detaillierte Anleitungen
+│   │   ├── Installation.md
+│   │   ├── Cloudflare-Tunnel-Setup.md
+│   │   ├── GitHub-Setup.md
+│   │   ├── E-Mail-Setup.md
+│   │   └── Auto-Update-System.md
+│   └── scripts/              # Installations-Scripts
+│       ├── install.sh        # Hauptinstallation
+│       ├── update.sh         # Update-Script
+│       └── debug.sh          # Debug-Tool
+├── backend/                   # Node.js Backend
+├── components/               # React Components
+├── pages/                    # React Pages
+└── Saves/                    # Upload-Verzeichnis
+```
+
+---
+
+**Version:** 3.0  
+**Letztes Update:** Oktober 2025  
+**Lizenz:** MIT
+
+**✈️ Viel Erfolg mit der FMSV Dingden Vereinshomepage! ✈️**

@@ -747,13 +747,20 @@ info "Erstelle Datenbank '$DB_NAME'..."
 su - postgres -c "psql" <<EOF > /dev/null 2>&1
 DROP DATABASE IF EXISTS $DB_NAME;
 DROP USER IF EXISTS $DB_USER;
-CREATE DATABASE $DB_NAME;
 CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
-ALTER DATABASE $DB_NAME OWNER TO $DB_USER;
+CREATE DATABASE $DB_NAME OWNER $DB_USER;
 \c $DB_NAME
 GRANT ALL ON SCHEMA public TO $DB_USER;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+GRANT USAGE ON SCHEMA public TO $DB_USER;
+GRANT CREATE ON SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $DB_USER;
+ALTER SCHEMA public OWNER TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $DB_USER;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
 EOF
 
 success "Datenbank '$DB_NAME' erstellt"
@@ -1482,6 +1489,15 @@ fi
 success "Firewall konfiguriert"
 sleep 1
 
+# Kopiere Debug und Update Scripts für späteren Gebrauch
+info "Kopiere Wartungs-Scripts..."
+cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug
+cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
+chmod +x /usr/local/bin/fmsv-debug
+chmod +x /usr/local/bin/fmsv-update
+success "Wartungs-Scripts installiert (fmsv-debug, fmsv-update)"
+sleep 1
+
 ################################################################################
 # FERTIG!
 ################################################################################
@@ -1542,9 +1558,9 @@ echo ""
 echo -e "  ${BLUE}Config bearbeiten:${NC}"
 echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
 echo ""
-echo -e "  ${BLUE}Updates:${NC}"
-echo -e "    ${GREEN}cd /var/www/fmsv-dingden/Installation/scripts${NC}"
-echo -e "    ${GREEN}./update.sh${NC}"
+echo -e "  ${BLUE}Updates & Wartung:${NC}"
+echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
+echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Diagnose & Fehlersuche${NC}"
 echo ""
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
