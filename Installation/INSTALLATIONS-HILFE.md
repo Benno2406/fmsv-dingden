@@ -508,10 +508,36 @@ Falls Script nicht funktioniert: Schritt-für-Schritt in [`Installation.md`](Anl
 
 ---
 
+## ⚠️ Häufige Warnungen (können ignoriert werden)
+
+### rsync Fehler bei npm install
+
+**Sieht so aus:**
+```
+npm WARN tarball tarball data for ... seems to be corrupted.
+rsync error: some files/attrs were not transferred
+```
+
+**Bedeutung:** npm konnte einige Symlinks in node_modules nicht kopieren.
+
+**Ist das schlimm?** ❌ **NEIN!** 
+- Das ist **normal** und **nicht kritisch**
+- Die Installation läuft trotzdem weiter
+- Das Frontend wird korrekt gebaut
+
+**Was tun?** 
+- **Nichts!** Einfach ignorieren.
+- Wenn das Script weiterläuft → Alles OK!
+
+---
+
 ## 📚 Weitere Hilfe
 
 | Problem | Dokumentation |
 |---------|---------------|
+| **Script bricht ab** | [`SCRIPT-BRICHT-AB.md`](SCRIPT-BRICHT-AB.md) ⭐ |
+| **Nginx startet nicht** | [`NGINX-FEHLER.md`](NGINX-FEHLER.md) ⭐ |
+| **cloudflared Probleme** | [`CLOUDFLARED-INSTALLATION-FEHLER.md`](CLOUDFLARED-INSTALLATION-FEHLER.md) |
 | **Installation allgemein** | [`Installation.md`](Anleitung/Installation.md) |
 | **GitHub Setup** | [`GitHub-Setup.md`](Anleitung/GitHub-Setup.md) |
 | **Cloudflare Tunnel** | [`Cloudflare-Tunnel-Setup.md`](Anleitung/Cloudflare-Tunnel-Setup.md) |

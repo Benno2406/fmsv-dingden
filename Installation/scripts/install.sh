@@ -313,7 +313,14 @@ error() {
     echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
     echo ""
     echo -e "${RED}Installation fehlgeschlagen!${NC}"
-    echo -e "${YELLOW}Logs ansehen:${NC} cat $LOG_FILE"
+    echo ""
+    echo -e "${YELLOW}Problemlösung:${NC}"
+    echo -e "  ${CYAN}1.${NC} Logs ansehen: ${GREEN}cat $LOG_FILE${NC}"
+    echo -e "  ${CYAN}2.${NC} Hilfe-Übersicht: ${GREEN}cat /var/www/fmsv-dingden/Installation/HILFE-UEBERSICHT.md${NC}"
+    echo -e "  ${CYAN}3.${NC} Häufige Probleme:"
+    echo -e "     • Script bricht ab: ${CYAN}Installation/SCRIPT-BRICHT-AB.md${NC}"
+    echo -e "     • Nginx Fehler: ${CYAN}Installation/NGINX-FEHLER.md${NC}"
+    echo -e "     • Cloudflare: ${CYAN}Installation/CLOUDFLARED-INSTALLATION-FEHLER.md${NC}"
     echo ""
     exit 1
 }
@@ -986,11 +993,9 @@ fi
 ln -sf /etc/nginx/sites-available/fmsv-dingden /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
-info "Teste Nginx-Konfiguration..."
-nginx -t > /dev/null 2>&1 || error "Nginx-Konfiguration fehlerhaft"
-
 systemctl enable nginx > /dev/null 2>&1
 success "Nginx installiert und konfiguriert"
+info "Nginx-Test erfolgt nach Frontend-Build"
 sleep 1
 
 ################################################################################
@@ -1120,6 +1125,25 @@ success "Frontend gebaut"
 info "Setze Berechtigungen..."
 chown -R www-data:www-data "$INSTALL_DIR"
 success "Berechtigungen gesetzt"
+
+# Jetzt erst nginx testen, da dist/ Verzeichnis existiert
+info "Teste Nginx-Konfiguration..."
+if nginx -t > /dev/null 2>&1; then
+    success "Nginx-Konfiguration OK"
+else
+    echo ""
+    warning "Nginx-Konfiguration hat Warnungen (kann ignoriert werden wenn nginx später startet)"
+    echo ""
+    echo -e "${YELLOW}Detaillierte Ausgabe:${NC}"
+    nginx -t
+    echo ""
+    read -p "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): " NGINX_CONTINUE
+    echo ""
+    if [[ $NGINX_CONTINUE =~ ^[Nn]$ ]]; then
+        error "Installation abgebrochen"
+    fi
+fi
+
 sleep 1
 
 ################################################################################
@@ -1264,12 +1288,52 @@ else
 fi
 
 info "Starte Nginx..."
-systemctl start nginx
 
-if systemctl is-active --quiet nginx; then
-    success "Nginx läuft"
+# Stoppe nginx falls läuft um neu zu laden
+systemctl stop nginx > /dev/null 2>&1
+
+# Starte nginx
+if systemctl start nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+    sleep 2
+    if systemctl is-active --quiet nginx; then
+        success "Nginx läuft"
+    else
+        echo ""
+        warning "Nginx wurde gestartet, ist aber nicht aktiv"
+        echo ""
+        echo -e "${YELLOW}Diagnose:${NC}"
+        systemctl status nginx --no-pager -l
+        echo ""
+        echo -e "${YELLOW}Nginx Error Log:${NC}"
+        tail -20 /var/log/nginx/error.log 2>/dev/null || echo "Keine Logs gefunden"
+        echo ""
+        
+        read -p "   ${BLUE}►${NC} Nginx-Fehler ignorieren und fortfahren? (j/N): " IGNORE_NGINX
+        echo ""
+        
+        if [[ ! $IGNORE_NGINX =~ ^[Jj]$ ]]; then
+            error "Installation abgebrochen - Nginx Fehler muss behoben werden"
+        else
+            warning "Nginx-Fehler wird ignoriert - muss später manuell behoben werden!"
+        fi
+    fi
 else
-    error "Nginx konnte nicht gestartet werden"
+    echo ""
+    error_with_help "Nginx konnte nicht gestartet werden!" \
+        "" \
+        "Diagnose-Befehle:" \
+        "  ${GREEN}systemctl status nginx${NC}" \
+        "  ${GREEN}nginx -t${NC}" \
+        "  ${GREEN}tail /var/log/nginx/error.log${NC}" \
+        "" \
+        "Häufige Ursachen:" \
+        "• Port 80 bereits belegt (prüfe: ${CYAN}netstat -tulpn | grep :80${NC})" \
+        "• Fehlende Berechtigungen auf dist/ Verzeichnis" \
+        "• Syntax-Fehler in nginx Konfiguration" \
+        "" \
+        "Manuelle Behebung:" \
+        "  ${GREEN}nginx -t${NC}  ${YELLOW}# Konfiguration testen${NC}" \
+        "  ${GREEN}systemctl start nginx${NC}  ${YELLOW}# Nginx starten${NC}"
 fi
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
