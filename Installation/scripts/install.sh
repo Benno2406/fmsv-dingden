@@ -29,154 +29,35 @@ NC='\033[0m' # No Color
 TOTAL_STEPS=14
 
 ################################################################################
-# HILFE-FUNKTIONEN - Direkt im Script integriert
+# HILFE-FUNKTIONEN
 ################################################################################
 
 show_help() {
     clear
     cat << EOF
 ${CYAN}╔════════════════════════════════════════════════════════════╗
-║                                                            ║
 ║             📖 FMSV Installation - Hilfe 📖                ║
-║                                                            ║
 ╚════════════════════════════════════════════════════════════╝${NC}
 
 ${YELLOW}Verfügbare Optionen:${NC}
-
-  ${GREEN}./install.sh${NC}            - Normale Installation
-  ${GREEN}./install.sh --help${NC}     - Diese Hilfe anzeigen
-  ${GREEN}./install.sh --debug${NC}    - Debug-Modus (verbose logging)
-  ${GREEN}./install.sh --no-cloudflare${NC}  - Cloudflare überspringen
+  ${GREEN}./install.sh${NC}                - Normale Installation
+  ${GREEN}./install.sh --help${NC}         - Diese Hilfe anzeigen
+  ${GREEN}./install.sh --no-cloudflare${NC} - Cloudflare überspringen
 
 ${YELLOW}Häufige Probleme:${NC}
-
-  ${BLUE}1. sudo: command not found${NC}
+  ${BLUE}1.${NC} sudo: command not found
      → Als root einloggen: ${GREEN}su -${NC}
      → Dann ohne sudo: ${GREEN}./install.sh${NC}
 
-  ${BLUE}2. Browser öffnet sich nicht (SSH/PuTTY)${NC}
-     → Normal bei SSH-Verbindungen!
-     → URL wird angezeigt, manuell öffnen
-     → Siehe Cloudflare-Hilfe im Script
-
-  ${BLUE}3. apt update schlägt fehl${NC}
-     → Prüfen: ${GREEN}apt-get update${NC}
-     → Repository-Probleme beheben
-     → Dann neu versuchen
-
-  ${BLUE}4. Git Clone Fehler${NC}
-     → Repository-URL prüfen
-     → Branch prüfen (main/testing)
-     → Internet-Verbindung prüfen
+  ${BLUE}2.${NC} Browser öffnet sich nicht bei Cloudflare (SSH/PuTTY)
+     → Normal bei SSH! URL wird angezeigt zum manuellen Öffnen
 
 ${YELLOW}Log-Dateien:${NC}
   ${GREEN}$LOG_FILE${NC}
 
-${YELLOW}Nach der Installation:${NC}
-  Systemd Services: ${GREEN}systemctl status fmsv-backend${NC}
-  Logs ansehen:     ${GREEN}journalctl -u fmsv-backend -f${NC}
-  Config bearbeiten: ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}
-
 Drücke ${GREEN}Enter${NC} um fortzufahren...
 EOF
     read
-}
-
-show_cloudflare_ssh_help() {
-    cat << EOF
-
-${YELLOW}╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║        ⚠️  SSH/PuTTY: Browser öffnet sich nicht! ⚠️           ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝${NC}
-
-${CYAN}Das ist NORMAL bei SSH-Verbindungen!${NC}
-
-Du hast jetzt ${GREEN}3 einfache Lösungen${NC}:
-
-${YELLOW}┌─ Lösung 1: URL manuell öffnen (SCHNELLSTE METHODE) ─────────┐${NC}
-
-  ${BLUE}1.${NC} Im Terminal wird eine ${GREEN}lange URL${NC} angezeigt:
-     ${CYAN}https://dash.cloudflare.com/argotunnel?callback=...${NC}
-
-  ${BLUE}2.${NC} URL ${GREEN}komplett kopieren${NC} (von https:// bis zum Ende!)
-     ${YELLOW}⚠️  URL geht oft über mehrere Zeilen!${NC}
-
-  ${BLUE}3.${NC} ${GREEN}Browser auf deinem PC${NC} öffnen
-
-  ${BLUE}4.${NC} ${GREEN}URL einfügen${NC} und Enter drücken
-
-  ${BLUE}5.${NC} Bei ${GREEN}Cloudflare einloggen${NC}
-
-  ${BLUE}6.${NC} ${GREEN}Domain auswählen${NC} (z.B. bartholmes.eu)
-
-  ${BLUE}7.${NC} ${GREEN}"Authorize"${NC} klicken
-
-  ${BLUE}8.${NC} Zurück zum Terminal → "Successfully logged in"
-
-${YELLOW}┌─ Lösung 2: Setup-Script nutzen (AUTOMATISCH) ───────────────┐${NC}
-
-  ${GREEN}Strg+C${NC} drücken um diese Installation abzubrechen
-
-  Dann:
-  ${CYAN}cd /var/www/fmsv-dingden/Installation/scripts
-  chmod +x cloudflare-setup-manual.sh
-  ./cloudflare-setup-manual.sh${NC}
-
-  Das Script führt dich durch den kompletten Cloudflare-Setup!
-
-${YELLOW}┌─ Lösung 3: Token auf lokalem PC erstellen (Fortgeschritten) ┐${NC}
-
-  1. cloudflared auf PC installieren
-  2. ${CYAN}cloudflared tunnel login${NC} auf PC ausführen
-  3. Dateien auf Server kopieren:
-     ${CYAN}scp ~/.cloudflared/* root@SERVER:/root/.cloudflared/${NC}
-
-${YELLOW}───────────────────────────────────────────────────────────────${NC}
-
-${GREEN}Empfohlen: Lösung 1 (URL manuell öffnen)${NC}
-${CYAN}Dauer: 2-3 Minuten${NC}
-
-EOF
-}
-
-show_cloudflare_url_help() {
-    cat << EOF
-
-${CYAN}╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║            📋 So kopierst du die URL in PuTTY 📋              ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝${NC}
-
-${YELLOW}Methode 1: Mit der Maus${NC}
-
-  1. ${GREEN}Linke Maustaste${NC} am Anfang von ${CYAN}https://${NC}
-  2. ${GREEN}Gedrückt halten${NC} und bis zum Ende ziehen
-  3. ${GREEN}Loslassen${NC} → Automatisch kopiert!
-
-  ${YELLOW}⚠️  Die URL ist sehr lang!${NC}
-  Sie geht oft über 3-4 Zeilen.
-  Bis ganz zum ${GREEN}Ende${NC} markieren!
-
-${YELLOW}Methode 2: Mit Tastatur${NC}
-
-  1. Mit Maus am ${CYAN}Anfang${NC} klicken
-  2. ${GREEN}SHIFT${NC} gedrückt halten
-  3. Mit ${GREEN}Pfeiltasten${NC} bis zum Ende
-  4. ${GREEN}Rechtsklick${NC} → Kopiert
-
-${YELLOW}In Browser einfügen:${NC}
-
-  1. ${GREEN}Browser auf deinem PC${NC} öffnen
-  2. ${GREEN}Strg+L${NC} (Adressleiste)
-  3. ${GREEN}Strg+V${NC} (Einfügen)
-  4. ${GREEN}Enter${NC}
-
-${CYAN}Tipp:${NC} In PuTTY ist ${GREEN}Rechtsklick = Einfügen${NC}
-
-EOF
 }
 
 detect_ssh_session() {
@@ -196,56 +77,31 @@ cloudflare_login_with_help() {
     detect_ssh_session && IS_SSH=1
 
     if [ $IS_SSH -eq 1 ]; then
-        warning "SSH-Verbindung erkannt - Browser kann sich nicht öffnen!"
+        warning "SSH-Verbindung erkannt - Browser öffnet sich nicht!"
         echo ""
-        show_cloudflare_ssh_help
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${YELLOW}WICHTIG - SSH/PuTTY Cloudflare Login:${NC}"
         echo ""
-        warning "Bitte JETZT die Hilfe lesen!"
+        echo -e "  ${GREEN}1.${NC} Die URL wird ${GREEN}gleich unten angezeigt${NC}"
+        echo -e "  ${GREEN}2.${NC} URL ${GREEN}KOMPLETT kopieren${NC} (von https:// bis Ende!)"
+        echo -e "     ${YELLOW}⚠️  URL geht über mehrere Zeilen!${NC}"
+        echo -e "  ${GREEN}3.${NC} Browser auf ${GREEN}deinem PC${NC} öffnen"
+        echo -e "  ${GREEN}4.${NC} URL einfügen → Bei Cloudflare einloggen"
+        echo -e "  ${GREEN}5.${NC} Domain wählen → ${GREEN}\"Authorize\"${NC} klicken"
+        echo -e "  ${GREEN}6.${NC} Terminal wartet bis Login fertig ist"
         echo ""
-        read -p "Hast du die Anleitung gelesen? (j/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Jj]$ ]]; then
-            show_cloudflare_ssh_help
-            echo ""
-            read -p "Drücke ${GREEN}Enter${NC} wenn du bereit bist..."
-        fi
-        
-        echo ""
-        info "Zeige jetzt die Cloudflare Login-URL..."
-        echo ""
-        echo -e "${YELLOW}╔═══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${YELLOW}║  ${CYAN}Folgende Schritte:${NC}                                      ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}                                                          ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  1. ${GREEN}URL komplett kopieren${NC} (siehe unten)                ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  2. ${GREEN}Browser auf deinem PC öffnen${NC}                       ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  3. ${GREEN}URL einfügen${NC} und Enter                             ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  4. ${GREEN}Bei Cloudflare einloggen${NC}                           ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  5. ${GREEN}Domain wählen${NC} → ${GREEN}"Authorize"${NC}                        ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}  6. Terminal wartet hier bis du fertig bist            ${YELLOW}║${NC}"
-        echo -e "${YELLOW}║${NC}                                                          ${YELLOW}║${NC}"
-        echo -e "${YELLOW}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
         echo ""
         read -p "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
         echo ""
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼${NC}"
+        echo ""
         
-        # Start cloudflared login in background and capture URL
-        cloudflared tunnel login 2>&1 | while IFS= read -r line; do
-            echo "$line"
-            if [[ $line == *"https://dash.cloudflare.com"* ]]; then
-                echo ""
-                echo -e "${GREEN}☝️  Diese URL komplett kopieren (von https:// bis zum Ende!)${NC}"
-                echo ""
-            fi
-        done &
-        
-        CLOUDFLARED_PID=$!
-        
-        # Wait for cloudflared to finish or user to abort
-        wait $CLOUDFLARED_PID
+        # WICHTIG: Output direkt durchreichen, NICHT pipen!
+        cloudflared tunnel login
         
         echo ""
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}▲▲▲ URL ENDET HIER ▲▲▲${NC}"
         echo ""
         
     else
@@ -258,46 +114,32 @@ cloudflare_login_with_help() {
     # Check if login was successful
     if [ ! -f ~/.cloudflared/cert.pem ]; then
         echo ""
-        error_with_help "Cloudflare Login fehlgeschlagen!" \
-            "Mögliche Ursachen:" \
-            "• URL nicht vollständig kopiert" \
-            "• Nicht bei Cloudflare eingeloggt" \
-            "• Falsche Domain ausgewählt" \
-            "• Keine \"Authorize\" geklickt" \
-            "" \
-            "Lösung:" \
-            "1. Installation neu starten: ./install.sh" \
-            "2. Oder Setup-Script nutzen:" \
-            "   cd /var/www/fmsv-dingden/Installation/scripts" \
-            "   ./cloudflare-setup-manual.sh"
+        echo -e "${RED}╔═══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║               ❌ Cloudflare Login fehlgeschlagen ❌       ║${NC}"
+        echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
+        echo -e "  ${BLUE}•${NC} URL nicht vollständig kopiert"
+        echo -e "  ${BLUE}•${NC} Nicht bei Cloudflare eingeloggt"
+        echo -e "  ${BLUE}•${NC} Falsche Domain ausgewählt"
+        echo -e "  ${BLUE}•${NC} Keine \"Authorize\" geklickt"
+        echo ""
+        echo -e "${YELLOW}Lösung:${NC}"
+        echo -e "  ${GREEN}1.${NC} Installation neu starten: ${GREEN}./install.sh${NC}"
+        echo -e "  ${GREEN}2.${NC} Oder Setup-Script nutzen:"
+        echo -e "     ${CYAN}cd /var/www/fmsv-dingden/Installation/scripts${NC}"
+        echo -e "     ${CYAN}./cloudflare-setup-manual.sh${NC}"
+        echo ""
+        echo -e "${YELLOW}Logs:${NC} cat $LOG_FILE"
+        echo ""
+        exit 1
     fi
     
     success "Cloudflare Login erfolgreich!"
     success "Zertifikat erstellt: ~/.cloudflared/cert.pem"
 }
 
-error_with_help() {
-    echo ""
-    echo -e "${RED}╔═══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║                    ❌ FEHLER ❌                            ║${NC}"
-    echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    for line in "$@"; do
-        if [[ $line == "Lösung:"* ]] || [[ $line == "Mögliche Ursachen:"* ]]; then
-            echo -e "${YELLOW}$line${NC}"
-        elif [[ $line == "•"* ]] || [[ $line == [0-9]"."* ]]; then
-            echo -e "  ${BLUE}$line${NC}"
-        else
-            echo -e "${RED}$line${NC}"
-        fi
-    done
-    
-    echo ""
-    echo -e "${YELLOW}Logs ansehen: ${GREEN}cat $LOG_FILE${NC}"
-    echo ""
-    exit 1
-}
+
 
 ################################################################################
 # HELPER FUNCTIONS
@@ -340,25 +182,12 @@ error() {
     exit 1
 }
 
-progress() {
-    local current=$1
-    local total=$2
-    local width=40
-    local percentage=$((current * 100 / total))
-    local filled=$((current * width / total))
-    local empty=$((width - filled))
-    
-    printf "\r${BLUE}["
-    printf "${GREEN}%${filled}s" | tr ' ' '▓'
-    printf "${NC}%${empty}s" | tr ' ' '░'
-    printf "${BLUE}]${NC} ${YELLOW}%3d%%${NC}" $percentage
-}
+
 
 ################################################################################
 # PARSE ARGUMENTS
 ################################################################################
 
-DEBUG_MODE=0
 SKIP_CLOUDFLARE=0
 
 for arg in "$@"; do
@@ -366,10 +195,6 @@ for arg in "$@"; do
         --help|-h)
             show_help
             exit 0
-            ;;
-        --debug)
-            DEBUG_MODE=1
-            set -x
             ;;
         --no-cloudflare)
             SKIP_CLOUDFLARE=1
@@ -396,24 +221,12 @@ cat << "EOF"
 ║        Flugmodellsportverein Dingden e.V.                 ║
 ║        Vereinshomepage mit Mitgliederverwaltung           ║
 ║                                                            ║
-║        Version 2.0 - Mit integrierter Hilfe               ║
-║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
 echo ""
 info "Willkommen zur automatischen Installation!"
 echo ""
-
-# SSH Detection
-if detect_ssh_session; then
-    warning "SSH-Verbindung erkannt"
-    echo ""
-    echo -e "  ${YELLOW}⚠️  Bei Cloudflare-Setup kann sich kein Browser öffnen!${NC}"
-    echo -e "  ${CYAN}→ Das Script zeigt dir eine URL zum manuellen Öffnen${NC}"
-    echo ""
-fi
-
 sleep 2
 
 ################################################################################
@@ -424,17 +237,7 @@ print_header 1 "System-Prüfung"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
-    error_with_help "Nicht als root ausgeführt!" \
-        "" \
-        "Mögliche Ursachen:" \
-        "• Mit normalem Benutzer angemeldet" \
-        "• sudo benutzt (nicht nötig als root)" \
-        "" \
-        "Lösung:" \
-        "1. Als root einloggen: ${GREEN}su -${NC}" \
-        "2. Script ausführen: ${GREEN}./install.sh${NC}" \
-        "" \
-        "NICHT: ${RED}sudo ./install.sh${NC}"
+    error "Bitte als root ausführen: su - && ./install.sh"
 fi
 
 success "Als root angemeldet"
@@ -459,17 +262,7 @@ fi
 # Check internet connection
 info "Prüfe Internet-Verbindung..."
 if ! ping -c 1 google.com &> /dev/null; then
-    error_with_help "Keine Internet-Verbindung!" \
-        "" \
-        "Mögliche Ursachen:" \
-        "• Netzwerk nicht verbunden" \
-        "• DNS-Probleme" \
-        "• Firewall blockiert" \
-        "" \
-        "Lösung:" \
-        "1. Netzwerk prüfen: ${GREEN}ip a${NC}" \
-        "2. DNS prüfen: ${GREEN}cat /etc/resolv.conf${NC}" \
-        "3. Ping testen: ${GREEN}ping 8.8.8.8${NC}"
+    error "Keine Internet-Verbindung"
 fi
 
 success "Internet-Verbindung OK"
@@ -528,13 +321,6 @@ if [ $SKIP_CLOUDFLARE -eq 0 ]; then
     echo "   ✅ DDoS-Schutz"
     echo "   ✅ Kostenlos"
     echo ""
-    
-    if detect_ssh_session; then
-        echo -e "   ${YELLOW}⚠️  SSH erkannt - Browser öffnet sich nicht!${NC}"
-        echo -e "   ${CYAN}→ URL wird angezeigt zum manuellen Öffnen${NC}"
-        echo ""
-    fi
-    
     read -p "   ${BLUE}►${NC} Cloudflare Tunnel einrichten? (j/n): " -n 1 -r
     echo
     USE_CLOUDFLARE=$REPLY
@@ -652,15 +438,7 @@ info "Installiere PostgreSQL..."
 if apt-get install -y -qq postgresql postgresql-contrib 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
     success "PostgreSQL installiert"
 else
-    error_with_help "PostgreSQL Installation fehlgeschlagen!" \
-        "" \
-        "Logs ansehen:" \
-        "  ${GREEN}cat $LOG_FILE${NC}" \
-        "" \
-        "Mögliche Lösungen:" \
-        "1. apt update ausführen" \
-        "2. Repository prüfen" \
-        "3. Installation neu versuchen"
+    error "PostgreSQL Installation fehlgeschlagen! Siehe $LOG_FILE"
 fi
 
 info "Starte PostgreSQL Service..."

@@ -1,0 +1,188 @@
+# FMSV Dingden - Git Ignore
+# Dateien die NICHT zu GitHub hochgeladen werden
+
+# WICHTIG: Diese Datei umbenennen zu: .gitignore (ohne .txt)
+
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+backend/node_modules/
+
+# ============================================
+# Build Output
+# ============================================
+dist/
+build/
+*.tsbuildinfo
+
+# ============================================
+# Environment Variables (SENSIBEL!)
+# ============================================
+.env
+backend/.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ============================================
+# Logs
+# ============================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Application Logs
+Logs/*.log
+Logs/Audit/*.log
+Logs/**/*.log
+
+# ABER: .gitkeep und README.md behalten!
+!Logs/.gitkeep
+!Logs/Audit/.gitkeep
+!Logs/README.md
+!Logs/Audit/README.md
+
+# ============================================
+# Uploads & User Data (WICHTIG!)
+# ============================================
+Saves/*
+
+# ABER: .gitkeep und README.md behalten!
+!Saves/.gitkeep
+!Saves/README.md
+
+# ============================================
+# Backups
+# ============================================
+*.backup
+*.bak
+*.sql
+*.sqlite
+*.db
+
+# ============================================
+# Operating System Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
+
+# ============================================
+# Coverage & Tests
+# ============================================
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+.jest/
+
+# ============================================
+# Cloudflare
+# ============================================
+.cloudflared/
+
+# ============================================
+# SSL Certificates (falls vorhanden)
+# ============================================
+*.pem
+*.key
+*.cert
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# ============================================
+# Package Manager
+# ============================================
+# NPM
+npm-debug.log*
+.npm/
+
+# Yarn
+yarn-error.log
+.yarn/
+.yarnrc.yml
+
+# PNPM
+pnpm-lock.yaml
+.pnpm-debug.log
+
+# ============================================
+# Build Tools
+# ============================================
+.vite/
+vite.config.ts.timestamp-*
+
+# ============================================
+# Docker (falls verwendet)
+# ============================================
+docker-compose.override.yml
+
+# ============================================
+# Sonstiges
+# ============================================
+*.pid
+*.seed
+*.pid.lock
