@@ -16,6 +16,14 @@ Schnellzugriff auf alle Hilfe-Dokumente.
 
 ## ❌ Probleme & Lösungen
 
+### 🚨 Nach Installation - Runtime-Fehler
+
+| Problem | Lösung |
+|---------|--------|
+| **500 Internal Server Error** | [`SOFORT-HILFE-500.md`](SOFORT-HILFE-500.md) ⭐ **NEU!** |
+| **Backend läuft nicht** | [`500-FEHLER-DIAGNOSE.md`](500-FEHLER-DIAGNOSE.md) 📖 |
+| **Diagnose-Script** | `scripts/diagnose-500.sh` 🔧 |
+
 ### Installation bricht ab
 
 | Problem | Lösung |
@@ -115,6 +123,7 @@ cd /var/www/fmsv-dingden/Installation/scripts
 | **`install.sh`** | Hauptinstallation |
 | **`update.sh`** | Updates durchführen |
 | **`debug-install.sh`** | System-Check & Debug |
+| **`diagnose-500.sh`** | 500 Fehler Diagnose ⭐ **NEU!** |
 | **`cloudflare-setup-manual.sh`** | Cloudflare für SSH-Nutzer |
 
 ---
@@ -163,14 +172,19 @@ A: URL prüfen. Siehe [`GIT-CLONE-FEHLER.md`](GIT-CLONE-FEHLER.md)
 
 ### Nach Installation
 
+**Q: 500 Internal Server Error im Browser?**  
+A: **SOFORT:** `cd Installation/scripts && ./diagnose-500.sh` ausführen!  
+Siehe auch: [`SOFORT-HILFE-500.md`](SOFORT-HILFE-500.md)
+
+**Q: Backend startet nicht?**  
+A: `systemctl status fmsv-backend` und Logs prüfen  
+Siehe: [`500-FEHLER-DIAGNOSE.md`](500-FEHLER-DIAGNOSE.md)
+
 **Q: Wie mache ich Updates?**  
 A: `cd Installation/scripts && ./update.sh`
 
 **Q: Wo sind die Logs?**  
 A: `/var/log/fmsv-install.log` oder `journalctl -u fmsv-backend`
-
-**Q: Backend startet nicht?**  
-A: `systemctl status fmsv-backend` und Logs prüfen
 
 ---
 

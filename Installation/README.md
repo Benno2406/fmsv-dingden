@@ -78,6 +78,7 @@ apt-get update
 ```
 
 **Mehr Hilfe:** 
+- [`SOFORT-HILFE-500.md`](SOFORT-HILFE-500.md) - 🚨 500 Fehler nach Installation **NEU!**
 - [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md) - Allgemeine Probleme
 - [`EINGABE-FEHLER.md`](EINGABE-FEHLER.md) - "Ungültige Auswahl" ⚡ **BEHOBEN**
 - [`NGINX-PORT-KONFLIKT.md`](NGINX-PORT-KONFLIKT.md) - Port 80 belegt ⚡ **BEHOBEN**

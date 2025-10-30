@@ -18,6 +18,7 @@ Dieses Verzeichnis enthält alle Installations- und Wartungs-Scripts für FMSV D
 
 | Script | Beschreibung | Verwendung |
 |--------|--------------|------------|
+| **diagnose-500.sh** | 500 Fehler Diagnose & Fix ⭐ **NEU!** | `./diagnose-500.sh` |
 | **fix-install-script.sh** | Behebt "Ungültige Auswahl" Fehler | `./fix-install-script.sh` |
 | **test-cloudflare.sh** | Testet Cloudflare Installation | `./test-cloudflare.sh` |
 | **cloudflare-setup-manual.sh** | Manuelle Cloudflare Konfiguration | `./cloudflare-setup-manual.sh` |
@@ -93,6 +94,35 @@ Dieses Verzeichnis enthält alle Installations- und Wartungs-Scripts für FMSV D
 - Kein `> /dev/null`
 - Detaillierte Logs
 - Pausiert bei Fehlern
+
+---
+
+## 🔍 diagnose-500.sh
+
+**Diagnose-Script für 500 Internal Server Error:**
+
+```bash
+./diagnose-500.sh
+```
+
+**Wann verwenden:**
+- Bei "500 Internal Server Error" im Browser
+- Wenn Backend nicht läuft
+- Nach Installation bei Problemen
+
+**Was macht es:**
+1. Prüft PostgreSQL Status
+2. Prüft Backend Service
+3. Prüft nginx
+4. Prüft Datenbank-Schema
+5. Prüft .env Konfiguration
+6. Prüft Port-Belegung
+7. Zeigt detaillierte Fehlermeldungen
+8. Bietet automatischen Quick-Fix an
+
+**Siehe auch:** 
+- [`../SOFORT-HILFE-500.md`](../SOFORT-HILFE-500.md) - Schnellanleitung
+- [`../500-FEHLER-DIAGNOSE.md`](../500-FEHLER-DIAGNOSE.md) - Detaillierte Diagnose
 
 ---
 
@@ -227,6 +257,18 @@ journalctl -u postgresql -n 50
 
 ## ❌ Bei Fehlern
 
+### 500 Internal Server Error (nach Installation)
+
+```bash
+./diagnose-500.sh
+```
+
+**Siehe:** 
+- [`../SOFORT-HILFE-500.md`](../SOFORT-HILFE-500.md) - **ZUERST LESEN!**
+- [`../500-FEHLER-DIAGNOSE.md`](../500-FEHLER-DIAGNOSE.md) - Detaillierte Hilfe
+
+---
+
 ### "Ungültige Auswahl" bei Eingaben
 
 ```bash
@@ -304,6 +346,9 @@ cd /var/www/fmsv-dingden/Installation/scripts
 
 # Installation starten
 ./install.sh
+
+# 🚨 Bei 500 Fehler nach Installation
+./diagnose-500.sh
 
 # Bei Problemen: Debug-Modus
 ./debug-install.sh

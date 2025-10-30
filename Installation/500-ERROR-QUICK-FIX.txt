@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════════════
+🚨 500 INTERNAL SERVER ERROR - SCHNELLE LÖSUNG
+═══════════════════════════════════════════════════════════
+
+Führe dieses Script aus (kopieren & einfügen):
+
+cd /var/www/fmsv-dingden/Installation/scripts && chmod +x diagnose-500.sh && ./diagnose-500.sh
+
+Das Script:
+• Prüft alle Komponenten automatisch
+• Zeigt genau was nicht funktioniert
+• Bietet automatischen Fix an
+
+═══════════════════════════════════════════════════════════
+ODER: One-Line Quick-Fix
+═══════════════════════════════════════════════════════════
+
+cd /var/www/fmsv-dingden/backend && node scripts/initDatabase.js && systemctl restart fmsv-backend && sleep 2 && systemctl status fmsv-backend
+
+═══════════════════════════════════════════════════════════
+AUSFÜHRLICHE HILFE
+═══════════════════════════════════════════════════════════
+
+cat /var/www/fmsv-dingden/Installation/SOFORT-HILFE-500.md
+
+═══════════════════════════════════════════════════════════

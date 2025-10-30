@@ -1111,8 +1111,28 @@ chmod 600 .env
 success "Backend-Konfiguration erstellt"
 
 info "Initialisiere Datenbank-Schema..."
-node scripts/initDatabase.js
-success "Datenbank-Schema initialisiert"
+if node scripts/initDatabase.js; then
+    success "Datenbank-Schema initialisiert"
+else
+    echo ""
+    error "Datenbank-Initialisierung fehlgeschlagen!"
+    echo ""
+    echo -e "${YELLOW}Häufige Ursachen:${NC}"
+    echo -e "  ${RED}1.${NC} schema.sql Datei fehlt"
+    echo -e "  ${RED}2.${NC} PostgreSQL läuft nicht"
+    echo -e "  ${RED}3.${NC} Datenbank existiert nicht"
+    echo -e "  ${RED}4.${NC} Falsche Credentials in .env"
+    echo ""
+    echo -e "${YELLOW}Lösungen:${NC}"
+    echo -e "  ${GREEN}1.${NC} Prüfe PostgreSQL: ${CYAN}systemctl status postgresql${NC}"
+    echo -e "  ${GREEN}2.${NC} Prüfe schema.sql: ${CYAN}ls -la $INSTALL_DIR/backend/database/schema.sql${NC}"
+    echo -e "  ${GREEN}3.${NC} Prüfe .env: ${CYAN}cat $INSTALL_DIR/backend/.env | grep DB_${NC}"
+    echo -e "  ${GREEN}4.${NC} Manuell testen: ${CYAN}cd $INSTALL_DIR/backend && node scripts/initDatabase.js${NC}"
+    echo ""
+    echo -e "  ${BLUE}Oder neu installieren:${NC} ${GREEN}./install.sh${NC}"
+    echo ""
+    exit 1
+fi
 
 echo ""
 echo -ne "Test-Daten einfügen? (j/n) "
