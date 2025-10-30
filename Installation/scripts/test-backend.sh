@@ -188,6 +188,24 @@ echo -e "${BLUE}Test 5: Node.js Runtime Test${NC}"
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
 echo ""
 
+# Prüfe ob node_modules existiert
+if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}⚠  node_modules nicht gefunden${NC}"
+    echo "Installiere Dependencies..."
+    echo ""
+    
+    if npm install 2>&1 | grep -E "(added|up to date)" > /dev/null; then
+        echo -e "${GREEN}✅ Dependencies installiert${NC}"
+    else
+        echo -e "${RED}❌ npm install fehlgeschlagen${NC}"
+        exit 1
+    fi
+    echo ""
+else
+    echo -e "${GREEN}✅ node_modules vorhanden${NC}"
+    echo ""
+fi
+
 echo "Teste ob server.js ohne Fehler lädt..."
 echo ""
 

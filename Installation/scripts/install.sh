@@ -1224,6 +1224,14 @@ if [ "$SCHEMA_SIZE" -lt 100 ]; then
     success "Schema-Datei erfolgreich nachgeladen"
 fi
 
+info "Installiere Backend-Dependencies..."
+cd "$INSTALL_DIR/backend"
+if npm install 2>&1 | tee -a "$LOG_FILE" | grep -q "added\|up to date"; then
+    success "Backend-Dependencies installiert"
+else
+    warning "npm install hatte Warnungen (nicht kritisch)"
+fi
+
 info "Initialisiere Datenbank-Schema..."
 if node scripts/initDatabase.js; then
     success "Datenbank-Schema initialisiert"
