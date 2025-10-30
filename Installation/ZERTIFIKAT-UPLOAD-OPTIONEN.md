@@ -223,6 +223,19 @@ Nur wenn alle anderen Methoden scheitern!
 
 ## 🔧 Troubleshooting
 
+### WinSCP: Ordner `.cloudflared` nicht sichtbar
+
+**Das ist normal!** Der Ordner existiert noch nicht.
+
+**📖 Komplette Lösung:** [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md)
+
+**Schnelle Lösung:**
+1. In WinSCP: Optionen → Einstellungen → "Versteckte Dateien anzeigen" ✅
+2. Rechtsklick rechts → "Neues Verzeichnis" → `.cloudflared`
+3. Ordner öffnen und `cert.pem` hochladen
+
+---
+
 ### WinSCP: "Verbindung fehlgeschlagen"
 
 **Prüfen:**

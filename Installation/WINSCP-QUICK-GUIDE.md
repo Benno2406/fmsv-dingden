@@ -79,8 +79,12 @@ hostname -I
 - Du siehst: `cert.pem`
 
 **Rechts (Server):**
-- Ordner `.cloudflared` suchen
-- Falls nicht da: Neu erstellen (Rechtsklick → "Neues Verzeichnis" → `.cloudflared`)
+- ⚠️ **Ordner `.cloudflared` existiert NOCH NICHT!**
+- **Neu erstellen:**
+  1. Rechtsklick ins Fenster
+  2. "Neues Verzeichnis" wählen
+  3. Name: `.cloudflared` (MIT Punkt!)
+  4. OK klicken
 - Ordner öffnen (Doppelklick)
 
 **Upload:**
@@ -108,9 +112,17 @@ hostname -I
 │  PC (Links)            │  Server (Rechts)       │
 ├────────────────────────┼────────────────────────┤
 │  C:\Users\Max\         │  /root/                │
-│  .cloudflared          │  .cloudflared          │
+│  .cloudflared          │  (leer - kein .cloud..)│
 │                        │                        │
-│  📄 cert.pem           │  (leer)                │
+│  📄 cert.pem           │  ⚠️  Ordner erst       │
+│                        │      erstellen!        │
+│                        │                        │
+│                        │  ↓ Rechtsklick →       │
+│                        │    "Neues Verzeichnis" │
+│                        │    → ".cloudflared"    │
+│                        │                        │
+│  .cloudflared          │  📁 .cloudflared       │
+│  📄 cert.pem           │      (leer)            │
 │       │                │                        │
 │       └────────────────┼─→ Drag & Drop          │
 │                        │                        │
@@ -134,15 +146,21 @@ hostname -I
 
 ### Problem: `.cloudflared` Ordner nicht sichtbar
 
-**Lösung:**
+**Das ist NORMAL!** Der Ordner existiert auf dem Server noch nicht.
+
+**📖 Ausführliche Lösung:** [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md)
+
+**Du MUSST ihn erstellen:**
+1. Rechtsklick rechts (Server-Fenster) → **"Neues Verzeichnis"**
+2. Name: `.cloudflared` (MIT Punkt am Anfang!)
+3. **OK** klicken
+4. **Doppelklick** auf `.cloudflared` um ihn zu öffnen
+5. Jetzt ist das Ziel bereit für den Upload!
+
+**Falls nach Erstellen unsichtbar:**
 1. WinSCP → **Optionen** → **Einstellungen**
 2. **Anzeige** → **"Versteckte Dateien anzeigen"** ✅
-3. **OK**
-
-**Oder manuell erstellen:**
-- Rechtsklick rechts → **"Neues Verzeichnis"**
-- Name: `.cloudflared` (mit Punkt!)
-- **OK**
+3. **OK** → **F5** drücken (aktualisieren)
 
 ---
 

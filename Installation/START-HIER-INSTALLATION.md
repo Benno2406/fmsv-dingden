@@ -243,6 +243,10 @@ Installation/
 ├── CLOUDFLARE-SSH-LOGIN.md           # Alle CF-Lösungen
 ├── CLOUDFLARE-QUICK-GUIDE.md         # CF Quick Guide
 ├── CLOUDFLARE-URL-MANUELL.md         # URL öffnen Detail
+├── CLOUDFLARED-ORDNER-PROBLEM.md     # .cloudflared Ordner fehlt
+├── CLOUDFLARED-INSTALLATION-FEHLER.md # cloudflared install error
+├── WINSCP-QUICK-GUIDE.md             # WinSCP Upload
+├── FAQ-WINSCP.md                     # WinSCP FAQ
 │
 ├── GIT-CLONE-FEHLER.md               # Git Probleme
 ├── ROOT-HINWEIS.md                   # sudo vs. root

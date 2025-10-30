@@ -224,6 +224,10 @@ URL aus Terminal kopieren und im Browser öffnen.
 | Dokument | Zweck | Empfehlung |
 |----------|-------|------------|
 | [`CLOUDFLARE-LOKALER-PC.md`](CLOUDFLARE-LOKALER-PC.md) | Lokaler PC Methode | ⭐ **EMPFOHLEN** |
+| [`WINSCP-QUICK-GUIDE.md`](WINSCP-QUICK-GUIDE.md) | WinSCP Upload (Windows) | ⭐ **Einfach!** |
+| [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md) | `.cloudflared` nicht sichtbar? | Problem-Lösung |
+| [`CLOUDFLARED-INSTALLATION-FEHLER.md`](CLOUDFLARED-INSTALLATION-FEHLER.md) | cloudflared Installation fehlgeschlagen | Problem-Lösung |
+| [`ZERTIFIKAT-UPLOAD-OPTIONEN.md`](ZERTIFIKAT-UPLOAD-OPTIONEN.md) | Alle Upload-Methoden | Vergleich |
 | [`CLOUDFLARE-METHODEN-VERGLEICH.md`](CLOUDFLARE-METHODEN-VERGLEICH.md) | Alle Methoden vergleichen | Übersicht |
 | [`INSTALL-SSH-QUICK.md`](INSTALL-SSH-QUICK.md) | Schnellanleitung SSH | Quick Start |
 | [`CLOUDFLARE-PUTTY-ANLEITUNG.md`](CLOUDFLARE-PUTTY-ANLEITUNG.md) | Bildliche Anleitung | Detailliert |

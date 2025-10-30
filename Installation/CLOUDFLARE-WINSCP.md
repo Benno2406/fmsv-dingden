@@ -238,17 +238,22 @@ hostname -I
 └──────────────────────────────────────┘
 ```
 
-#### Rechts: Zielordner öffnen
+#### Rechts: Zielordner erstellen
 
-1. Im **rechten** Fenster (Server):
-2. **Doppelklick** auf Ordner `.cloudflared`
+**WICHTIG:** Das `.cloudflared` Verzeichnis existiert auf dem Server noch NICHT!
 
-**Falls Ordner nicht existiert:**
-- **Rechtsklick** im rechten Fenster
-- **"Neues Verzeichnis"** wählen
-- Name: `.cloudflared`
-- **OK** klicken
-- **Doppelklick** auf den neuen Ordner
+Du musst es erst erstellen:
+
+1. Im **rechten** Fenster (Server - /root):
+2. **Rechtsklick** ins leere Fenster
+3. **"Neues Verzeichnis"** wählen
+4. Name eingeben: `.cloudflared` (mit Punkt am Anfang!)
+5. **OK** klicken
+6. **Doppelklick** auf den neuen Ordner `.cloudflared`
+
+**Tipp:** Falls du versteckte Ordner nicht siehst:
+- **Optionen** → **Einstellungen** → **Anzeige**
+- **"Versteckte Dateien anzeigen"** ✅ aktivieren
 
 **Du siehst jetzt:**
 ```
@@ -420,20 +425,25 @@ ufw allow 22/tcp
 
 ### Problem: Ordner `.cloudflared` nicht sichtbar
 
-**Lösung 1: Versteckte Dateien anzeigen**
+**Das ist normal!** Der Ordner existiert auf dem Server noch nicht.
+
+**📖 Detaillierte Hilfe:** [`CLOUDFLARED-ORDNER-PROBLEM.md`](CLOUDFLARED-ORDNER-PROBLEM.md)
+
+**Lösung: Manuell erstellen (MUSS GEMACHT WERDEN)**
+
+Im rechten Fenster (Server):
+1. **Rechtsklick** ins leere Fenster
+2. **"Neues Verzeichnis"** oder **"New" → "Directory"**
+3. Name: `.cloudflared` (MIT Punkt am Anfang!)
+4. **OK** klicken
+5. **Doppelklick** auf den Ordner um ihn zu öffnen
+
+**Versteckte Dateien anzeigen (falls Ordner nach Erstellen nicht sichtbar):**
 
 Im WinSCP:
 1. **Optionen** → **Einstellungen**
 2. **Anzeige** → **"Versteckte Dateien anzeigen"** ✅
 3. **OK**
-
-**Lösung 2: Manuell erstellen**
-
-Im rechten Fenster (Server):
-1. **Rechtsklick** ins leere Fenster
-2. **"Neues Verzeichnis"**
-3. Name: `.cloudflared` (mit Punkt!)
-4. **OK**
 
 ---
 

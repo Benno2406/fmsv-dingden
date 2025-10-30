@@ -175,11 +175,15 @@ cloudflare_login_with_help() {
             echo -e "     Benutzer: ${CYAN}root${NC}"
             echo -e "     Passwort: ${CYAN}[Dein Server-Passwort]${NC}"
             echo ""
-            echo -e "  ${GREEN}3.${NC} Im WinSCP-Fenster:"
-            echo -e "     ${BLUE}Links${NC}  (PC):    ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
-            echo -e "     ${BLUE}Rechts${NC} (Server): ${CYAN}/root/.cloudflared/${NC}"
+            echo -e "  ${GREEN}3.${NC} Im WinSCP-Fenster - Ordner erstellen:"
+            echo -e "     ${BLUE}Rechts${NC} (Server): ${YELLOW}Rechtsklick → \"Neues Verzeichnis\"${NC}"
+            echo -e "     ${BLUE}Name:${NC}         ${CYAN}.cloudflared${NC} ${YELLOW}(MIT Punkt!)${NC}"
+            echo -e "     ${BLUE}Dann:${NC}         ${CYAN}Doppelklick auf .cloudflared${NC}"
             echo ""
-            echo -e "  ${GREEN}4.${NC} Datei ${CYAN}cert.pem${NC} von links nach rechts ziehen"
+            echo -e "  ${GREEN}4.${NC} Zertifikat hochladen:"
+            echo -e "     ${BLUE}Links${NC}  (PC):    ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
+            echo -e "     ${BLUE}Rechts${NC} (Server): ${CYAN}/root/.cloudflared/${NC} ${GREEN}(geöffnet)${NC}"
+            echo -e "     ${BLUE}Upload:${NC}       ${CYAN}cert.pem${NC} von links nach rechts ziehen"
             echo ""
             echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
             echo ""
@@ -200,7 +204,12 @@ cloudflare_login_with_help() {
             mkdir -p ~/.cloudflared
             chmod 700 ~/.cloudflared
             
+            echo -e "  ${GREEN}✅ Server-Verzeichnis erstellt: /root/.cloudflared/${NC}"
             echo -e "  ${GREEN}✅ Server ist bereit - warte auf Zertifikat...${NC}"
+            echo ""
+            echo -e "  ${BLUE}Tipp:${NC} In WinSCP musst du den Ordner ${CYAN}.cloudflared${NC} trotzdem"
+            echo -e "        sehen können. Falls nicht: ${YELLOW}F5 drücken (aktualisieren)${NC}"
+            echo -e "        oder ${YELLOW}\"Versteckte Dateien anzeigen\"${NC} aktivieren."
             echo ""
             
             # Warte bis Zertifikat existiert
@@ -712,16 +721,65 @@ if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     
     info "Füge Cloudflare GPG Key hinzu..."
     mkdir -p --mode=0755 /usr/share/keyrings
-    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null
+    
+    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null; then
+        echo ""
+        error "Cloudflare GPG Key konnte nicht heruntergeladen werden!"
+        echo ""
+        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
+        echo -e "  ${RED}1.${NC} Keine Internetverbindung"
+        echo -e "  ${RED}2.${NC} Cloudflare Server nicht erreichbar"
+        echo -e "  ${RED}3.${NC} Firewall blockiert Zugriff"
+        echo ""
+        echo -e "${YELLOW}Lösung:${NC}"
+        echo -e "  ${GREEN}1.${NC} Internetverbindung prüfen: ${CYAN}ping cloudflare.com${NC}"
+        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo ""
+        exit 1
+    fi
     
     info "Füge Cloudflare Repository hinzu..."
     echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
     
     info "Aktualisiere Paket-Listen..."
-    apt-get update -qq > /dev/null 2>&1
+    if ! apt-get update -qq > /dev/null 2>&1; then
+        echo ""
+        warning "apt-get update hatte Probleme - versuche Installation trotzdem..."
+        echo ""
+    fi
     
     info "Installiere cloudflared..."
-    apt-get install -y -qq cloudflared > /dev/null 2>&1
+    if ! apt-get install -y -qq cloudflared > /dev/null 2>&1; then
+        echo ""
+        error "cloudflared Installation fehlgeschlagen!"
+        echo ""
+        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
+        echo -e "  ${RED}1.${NC} Repository konnte nicht hinzugefügt werden"
+        echo -e "  ${RED}2.${NC} Internetverbindung unterbrochen"
+        echo -e "  ${RED}3.${NC} Cloudflare Repository nicht erreichbar"
+        echo ""
+        echo -e "${YELLOW}Lösung:${NC}"
+        echo -e "  ${GREEN}1.${NC} Internetverbindung prüfen"
+        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo ""
+        echo -e "${YELLOW}Manuelle Installation:${NC}"
+        echo -e "  ${CYAN}apt-get update${NC}"
+        echo -e "  ${CYAN}apt-get install -y cloudflared${NC}"
+        echo ""
+        exit 1
+    fi
+    
+    # Prüfe ob cloudflared wirklich verfügbar ist
+    if ! command -v cloudflared &> /dev/null; then
+        echo ""
+        error "cloudflared wurde installiert, aber der Befehl ist nicht verfügbar!"
+        echo ""
+        echo -e "${YELLOW}Lösung:${NC}"
+        echo -e "  ${GREEN}1.${NC} Terminal schließen und neu öffnen"
+        echo -e "  ${GREEN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+        echo ""
+        exit 1
+    fi
     
     CF_VERSION=$(cloudflared --version | head -1)
     success "Cloudflared installiert: $CF_VERSION"

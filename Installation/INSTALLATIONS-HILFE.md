@@ -372,6 +372,41 @@ sudo nano /etc/resolv.conf
 # Hinzufügen: nameserver 8.8.8.8
 ```
 
+---
+
+### Fehler: \"cloudflared: Kommando nicht gefunden\"
+
+```bash
+./install.sh: Zeile 746: cloudflared: Kommando nicht gefunden.
+❌ Tunnel-Erstellung fehlgeschlagen!
+```
+
+**Ursache:** cloudflared konnte nicht installiert werden.
+
+**Häufigste Gründe:**
+1. Keine Internetverbindung zu Cloudflare Servern
+2. GPG Key kann nicht heruntergeladen werden
+3. Cloudflare Repository nicht erreichbar
+4. apt-get hat Lock-Probleme
+
+**Lösung:** Siehe ausführliche Anleitung → [`CLOUDFLARED-INSTALLATION-FEHLER.md`](CLOUDFLARED-INSTALLATION-FEHLER.md)
+
+**Quick-Fix:**
+```bash
+# 1. Internetverbindung prüfen
+ping cloudflare.com
+
+# 2. Manuelle Installation
+apt-get update
+apt-get install -y cloudflared
+
+# 3. Prüfen
+cloudflared --version
+
+# 4. Script neu starten
+./install.sh
+```
+
 ### Fehler: "PostgreSQL installation failed"
 ```
 E: Unable to locate package postgresql
