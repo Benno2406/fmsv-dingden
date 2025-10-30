@@ -6,9 +6,32 @@ FMSV Dingden Installation & Update-System.
 
 ## ⚠️ WICHTIG - ZUERST LESEN!
 
+### 🔑 Root-Zugriff erforderlich!
+
+**Alle Installations-Scripts müssen als root ausgeführt werden.**
+
+**Als root einloggen:**
+```bash
+su -
+```
+
+**ODER per SSH:**
+```bash
+ssh root@dein-server
+```
+
+**Dann Scripts OHNE `sudo` ausführen:**
+```bash
+./install.sh    # NICHT: sudo ./install.sh
+```
+
+**📚 Mehr Infos:** [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
+
+---
+
 ### 🆘 Probleme beim Start?
 
-### Script wartet auf Eingabe?
+#### Script wartet auf Eingabe?
 
 **Siehst du das?**
 ```
@@ -23,13 +46,13 @@ Installation mit diesen Einstellungen starten? (J/n) :
 
 ---
 
-### Script bricht ab nach "Aktualisiere Paket-Listen"?
+#### Script bricht ab nach "Aktualisiere Paket-Listen"?
 
 **Lösung 1: Debug-Script ausführen**
 ```bash
 cd /var/www/fmsv-dingden/Installation/scripts
 chmod +x debug-install.sh
-sudo ./debug-install.sh
+./debug-install.sh
 ```
 
 **Lösung 2: Logs ansehen**
@@ -39,9 +62,9 @@ cat /var/log/fmsv-install.log
 
 **Lösung 3: apt manuell testen**
 ```bash
-sudo apt-get update
+apt-get update
 # Fehler beheben, dann:
-sudo ./install.sh
+./install.sh
 ```
 
 **Mehr Hilfe:** [`INSTALLATIONS-HILFE.md`](INSTALLATIONS-HILFE.md)
@@ -126,13 +149,29 @@ Nach GitHub Setup:
 
 ```bash
 cd /var/www
-git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden/Installation/scripts
 chmod +x install.sh
-sudo ./install.sh
+./install.sh
 ```
 
 **Das wars!** Das Script führt dich durch die Installation.
+
+**Hinweis:** Als root ausführen (ohne `sudo`). Siehe [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
+
+---
+
+## 📍 GitHub Repository
+
+**Das Repository ist bereits eingerichtet und PUBLIC!**
+
+- **URL:** https://github.com/Benno2406/fmsv-dingden.git
+- **Status:** 🌍 Public (keine Authentifizierung nötig)
+- **Branches:** `main` (stable), optional `testing`
+
+**Mehr Infos:** [`REPOSITORY-INFO.md`](REPOSITORY-INFO.md)
+
+**Kein GitHub-Setup nötig!** Einfach klonen und installieren! ✅
 
 ---
 
@@ -190,13 +229,15 @@ Installation/
 
 **Installation:**
 ```bash
-sudo ./scripts/install.sh
+./scripts/install.sh
 ```
 
 **Update:**
 ```bash
-sudo ./scripts/update.sh
+./scripts/update.sh
 ```
+
+**Hinweis:** Als root ausführen. Siehe [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
 
 **Auto-Update Status:**
 ```bash

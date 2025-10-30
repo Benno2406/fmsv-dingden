@@ -101,7 +101,7 @@ Für Entwickler - Setup auf lokalem Rechner:
 
 ```bash
 # Repository klonen
-git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden
 
 # Automatisches Setup

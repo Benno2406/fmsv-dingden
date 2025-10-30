@@ -14,7 +14,7 @@ Komplette Installations-Anleitung für Production-Server (Debian 12/13).
 ```bash
 # 1. Repository klonen
 cd /var/www
-git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden
 
 # 2. Installations-Script ausführen
@@ -78,7 +78,7 @@ usermod -aG sudo fmsv
 
 ```bash
 cd /var/www
-git clone -b main https://github.com/dein-username/fmsv-dingden.git
+git clone -b main https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden
 ```
 

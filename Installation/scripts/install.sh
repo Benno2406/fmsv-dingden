@@ -180,9 +180,11 @@ sleep 1
 # Option 3: GitHub Repository
 echo -e "${YELLOW}3️⃣  GitHub Repository:${NC}"
 echo ""
-read -p "   ${BLUE}►${NC} GitHub Repository URL: " GITHUB_REPO
+echo "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
+echo ""
+read -p "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: " GITHUB_REPO
 if [ -z "$GITHUB_REPO" ]; then
-    GITHUB_REPO="https://github.com/dein-username/fmsv-dingden.git"
+    GITHUB_REPO="https://github.com/Benno2406/fmsv-dingden.git"
     info "Standard-URL verwendet: $GITHUB_REPO"
 fi
 echo ""
@@ -290,7 +292,7 @@ else
     warning "PostgreSQL konnte nicht automatisch aktiviert werden"
 fi
 
-PG_VERSION=$(sudo -u postgres psql --version | grep -oP '\d+' | head -1 2>/dev/null || echo "unbekannt")
+PG_VERSION=$(su - postgres -c "psql --version" | grep -oP '\d+' | head -1 2>/dev/null || echo "unbekannt")
 success "PostgreSQL $PG_VERSION läuft"
 sleep 1
 
@@ -332,25 +334,44 @@ if [ -d "$INSTALL_DIR" ]; then
     read -p "   Neu klonen? Bestehende Daten gehen verloren! (j/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Jj]$ ]]; then
-        info "Entferne altes Verzeichnis..."
-        rm -rf "$INSTALL_DIR"
+        info "Erstelle Backup des alten Verzeichnisses..."
+        mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%s)" 2>/dev/null || rm -rf "$INSTALL_DIR"
+        
         info "Klone Repository (Branch: $BRANCH)..."
-        git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" > /dev/null 2>&1
-        success "Repository neu geklont"
+        echo "   GitHub URL: $GITHUB_REPO"
+        echo "   Branch: $BRANCH"
+        echo ""
+        
+        if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a "$LOG_FILE"; then
+            success "Repository neu geklont"
+            # Backup löschen wenn erfolgreich
+            rm -rf "${INSTALL_DIR}.backup."* 2>/dev/null
+        else
+            echo ""
+            error "Repository konnte nicht geklont werden!\n\n   Mögliche Ursachen:\n   • Falsche GitHub URL\n   • Branch '$BRANCH' existiert nicht\n   • Keine Zugangsberechtigung\n   • Keine Internet-Verbindung\n\n   Prüfe die GitHub URL und versuche es erneut."
+        fi
     else
-        cd "$INSTALL_DIR"
-        info "Aktualisiere bestehendes Repository..."
-        git fetch origin > /dev/null 2>&1
-        git checkout "$BRANCH" > /dev/null 2>&1
-        git pull origin "$BRANCH" > /dev/null 2>&1
-        success "Repository aktualisiert"
+        if cd "$INSTALL_DIR" 2>/dev/null; then
+            info "Aktualisiere bestehendes Repository..."
+            git fetch origin 2>&1 | tee -a "$LOG_FILE" > /dev/null
+            git checkout "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
+            git pull origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
+            success "Repository aktualisiert"
+        else
+            error "Konnte nicht in Verzeichnis $INSTALL_DIR wechseln!"
+        fi
     fi
 else
     info "Klone Repository (Branch: $BRANCH)..."
-    if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null; then
+    echo "   GitHub URL: $GITHUB_REPO"
+    echo "   Branch: $BRANCH"
+    echo ""
+    
+    if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a "$LOG_FILE"; then
         success "Repository geklont"
     else
-        error "Repository konnte nicht geklont werden! Prüfe GitHub URL und Zugangsdaten."
+        echo ""
+        error "Repository konnte nicht geklont werden!\n\n   Mögliche Ursachen:\n   • Falsche GitHub URL\n   • Branch '$BRANCH' existiert nicht\n   • Keine Zugangsberechtigung\n   • Keine Internet-Verbindung\n\n   GitHub URL prüfen und erneut versuchen."
     fi
 fi
 
@@ -361,7 +382,7 @@ else
 fi
 
 info "Konfiguriere Git..."
-git config --local pull.rebase false 2>&1 | tee -a /var/log/fmsv-install.log > /dev/null
+git config --local pull.rebase false 2>&1 | tee -a "$LOG_FILE" > /dev/null
 git config --local --add safe.directory "$INSTALL_DIR"
 success "Git konfiguriert"
 sleep 1
@@ -394,7 +415,7 @@ done
 echo ""
 info "Erstelle Datenbank '$DB_NAME'..."
 
-sudo -u postgres psql <<EOF > /dev/null 2>&1
+su - postgres -c "psql" <<EOF > /dev/null 2>&1
 DROP DATABASE IF EXISTS $DB_NAME;
 DROP USER IF EXISTS $DB_USER;
 CREATE DATABASE $DB_NAME;

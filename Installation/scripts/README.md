@@ -116,7 +116,7 @@ tail -f /var/log/fmsv-auto-update.log
 ```bash
 # 1. Repository klonen
 cd /var/www
-git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 
 # 2. Installation starten
 cd fmsv-dingden/Installation/scripts

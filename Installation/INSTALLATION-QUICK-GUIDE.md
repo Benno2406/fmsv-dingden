@@ -4,26 +4,47 @@ Ein-Seiten-Anleitung für die schnelle Server-Installation.
 
 ---
 
+## ⚠️ Wichtig: Als root ausführen!
+
+**Alle Befehle als root ausführen:**
+```bash
+su -
+```
+
+Dann **OHNE `sudo`**!
+
+**Mehr Infos:** [`ROOT-HINWEIS.md`](ROOT-HINWEIS.md)
+
+---
+
+## 📍 Repository ist bereits fertig!
+
+- **URL:** https://github.com/Benno2406/fmsv-dingden.git
+- **Status:** 🌍 Public - Keine Authentifizierung nötig!
+- **Mehr Infos:** [`REPOSITORY-INFO.md`](REPOSITORY-INFO.md)
+
+---
+
 ## 🚀 Installation in 4 Schritten
 
 ### Schritt 1: Repository klonen
 ```bash
 cd /var/www
-sudo git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden
 ```
 
 ### Schritt 2: Dateien umbenennen
 ```bash
-sudo chmod +x rename-files.sh
-sudo ./rename-files.sh
+chmod +x rename-files.sh
+./rename-files.sh
 ```
 
 ### Schritt 3: Installation starten
 ```bash
 cd Installation/scripts
-sudo chmod +x install.sh
-sudo ./install.sh
+chmod +x install.sh
+./install.sh
 ```
 
 ### Schritt 4: Eingaben machen
@@ -40,14 +61,17 @@ Domain oder Subdomain: deine-domain.de
 
 #### 3. GitHub URL
 ```
-GitHub Repository URL: https://github.com/dein-username/fmsv-dingden.git
+GitHub Repository URL: [Enter drücken für Standard]
 ```
+**Standard:** https://github.com/Benno2406/fmsv-dingden.git
+
+**Einfach Enter drücken!** ✅
 
 #### 4. GitHub Token
 ```
-GitHub Personal Access Token: ghp_xxxxxxxxxxxxxxxxxxxx
+GitHub Personal Access Token: [Enter drücken - nicht nötig!]
 ```
-*Wird beim Tippen nicht angezeigt!*
+**Nicht nötig!** Repository ist public. Einfach Enter drücken.
 
 #### 5. Update-Branch
 ```

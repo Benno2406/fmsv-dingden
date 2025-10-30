@@ -297,6 +297,41 @@ sudo ./install.sh
 
 ## ❌ Häufige Fehler
 
+### Fehler: "Repository konnte nicht geklont werden"
+
+```
+✗ Verzeichnis /var/www/fmsv-dingden nicht gefunden!
+```
+
+**Ursache:** git clone ist fehlgeschlagen.
+
+**Häufigste Gründe:**
+1. Falsche GitHub URL
+2. Branch existiert nicht
+3. Repository ist private (Personal Access Token fehlt)
+4. Keine Internet-Verbindung
+
+**Lösung:** Siehe ausführliche Anleitung → [`GIT-CLONE-FEHLER.md`](GIT-CLONE-FEHLER.md)
+
+**Quick-Fix:**
+```bash
+# 1. URL prüfen
+# MUSS enden mit: .git
+
+# 2. Manuell testen
+cd /tmp
+git clone https://github.com/dein-username/fmsv-dingden.git
+
+# 3. Funktioniert? → Nach /var/www verschieben
+mv /tmp/fmsv-dingden /var/www/
+
+# 4. Installation erneut
+cd /var/www/fmsv-dingden/Installation/scripts
+./install.sh
+```
+
+---
+
 ### Fehler: "Permission denied"
 ```
 bash: ./install.sh: Permission denied

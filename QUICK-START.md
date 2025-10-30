@@ -32,7 +32,7 @@ chmod +x setup-dev.sh
 
 ```bash
 cd /var/www
-git clone https://github.com/dein-username/fmsv-dingden.git
+git clone https://github.com/Benno2406/fmsv-dingden.git
 cd fmsv-dingden/Installation/scripts
 chmod +x install.sh
 sudo ./install.sh
