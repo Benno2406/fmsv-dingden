@@ -18,7 +18,7 @@ LOG_FILE="/var/log/fmsv-install.log"
 INSTALL_MODE=""
 
 # Total steps
-TOTAL_STEPS=16
+TOTAL_STEPS=17
 
 # Installation State
 declare -A STEP_STATUS
@@ -742,83 +742,10 @@ step_install_base_tools() {
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 5: PostgreSQL installieren
-# -----------------------------------------------------------------------------
-step_install_postgresql() {
-    print_header 5 "PostgreSQL installieren"
-    
-    info "Füge PostgreSQL Repository hinzu..."
-    
-    # Import PostgreSQL GPG key
-    if ! curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg 2>> "$LOG_FILE"; then
-        error "PostgreSQL GPG-Key konnte nicht hinzugefügt werden"
-    fi
-    
-    # Add PostgreSQL repository
-    echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
-    
-    # Update package lists
-    if ! apt-get update >> "$LOG_FILE" 2>&1; then
-        warning "apt-get update nach PostgreSQL-Repo fehlgeschlagen (nicht kritisch)"
-    fi
-    
-    info "Installiere PostgreSQL 16..."
-    
-    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-contrib-16 >> "$LOG_FILE" 2>&1; then
-        error "PostgreSQL Installation fehlgeschlagen"
-    fi
-    
-    success "PostgreSQL 16 installiert"
-    
-    info "Starte PostgreSQL..."
-    
-    if ! systemctl start postgresql 2>> "$LOG_FILE"; then
-        error "PostgreSQL konnte nicht gestartet werden"
-    fi
-    
-    if ! systemctl enable postgresql 2>> "$LOG_FILE"; then
-        warning "PostgreSQL Autostart konnte nicht aktiviert werden"
-    fi
-    
-    success "PostgreSQL gestartet und aktiviert"
-    sleep 1
-}
-
-# -----------------------------------------------------------------------------
-# Schritt 6: Node.js installieren
-# -----------------------------------------------------------------------------
-step_install_nodejs() {
-    print_header 6 "Node.js installieren"
-    
-    info "Füge NodeSource Repository hinzu..."
-    
-    # Download and execute NodeSource setup script
-    if ! curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> "$LOG_FILE" 2>&1; then
-        error "NodeSource Repository konnte nicht hinzugefügt werden"
-    fi
-    
-    info "Installiere Node.js 20..."
-    
-    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs >> "$LOG_FILE" 2>&1; then
-        error "Node.js Installation fehlgeschlagen"
-    fi
-    
-    local NODE_VERSION
-    NODE_VERSION=$(node --version 2>/dev/null || echo "unbekannt")
-    
-    local NPM_VERSION
-    NPM_VERSION=$(npm --version 2>/dev/null || echo "unbekannt")
-    
-    success "Node.js $NODE_VERSION installiert"
-    success "npm $NPM_VERSION installiert"
-    sleep 1
-}
-
-# -----------------------------------------------------------------------------
-# Schritt 7: Repository klonen
+# Schritt 5: Repository klonen
 # -----------------------------------------------------------------------------
 step_clone_repository() {
-    print_header 7 "Repository klonen"
+    print_header 5 "Repository klonen"
     
     # Prüfe ob Verzeichnis bereits existiert
     if [ -d "$INSTALL_DIR" ]; then
@@ -861,6 +788,79 @@ step_clone_repository() {
         fi
     fi
     
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 6: PostgreSQL installieren
+# -----------------------------------------------------------------------------
+step_install_postgresql() {
+    print_header 6 "PostgreSQL installieren"
+    
+    info "Füge PostgreSQL Repository hinzu..."
+    
+    # Import PostgreSQL GPG key
+    if ! curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg 2>> "$LOG_FILE"; then
+        error "PostgreSQL GPG-Key konnte nicht hinzugefügt werden"
+    fi
+    
+    # Add PostgreSQL repository
+    echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    
+    # Update package lists
+    if ! apt-get update >> "$LOG_FILE" 2>&1; then
+        warning "apt-get update nach PostgreSQL-Repo fehlgeschlagen (nicht kritisch)"
+    fi
+    
+    info "Installiere PostgreSQL 16..."
+    
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-contrib-16 >> "$LOG_FILE" 2>&1; then
+        error "PostgreSQL Installation fehlgeschlagen"
+    fi
+    
+    success "PostgreSQL 16 installiert"
+    
+    info "Starte PostgreSQL..."
+    
+    if ! systemctl start postgresql 2>> "$LOG_FILE"; then
+        error "PostgreSQL konnte nicht gestartet werden"
+    fi
+    
+    if ! systemctl enable postgresql 2>> "$LOG_FILE"; then
+        warning "PostgreSQL Autostart konnte nicht aktiviert werden"
+    fi
+    
+    success "PostgreSQL gestartet und aktiviert"
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 7: Node.js installieren
+# -----------------------------------------------------------------------------
+step_install_nodejs() {
+    print_header 7 "Node.js installieren"
+    
+    info "Füge NodeSource Repository hinzu..."
+    
+    # Download and execute NodeSource setup script
+    if ! curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> "$LOG_FILE" 2>&1; then
+        error "NodeSource Repository konnte nicht hinzugefügt werden"
+    fi
+    
+    info "Installiere Node.js 20..."
+    
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs >> "$LOG_FILE" 2>&1; then
+        error "Node.js Installation fehlgeschlagen"
+    fi
+    
+    local NODE_VERSION
+    NODE_VERSION=$(node --version 2>/dev/null || echo "unbekannt")
+    
+    local NPM_VERSION
+    NPM_VERSION=$(npm --version 2>/dev/null || echo "unbekannt")
+    
+    success "Node.js $NODE_VERSION installiert"
+    success "npm $NPM_VERSION installiert"
     sleep 1
 }
 
@@ -1063,10 +1063,10 @@ step_setup_frontend() {
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 11: Nginx installieren & konfigurieren
+# Schritt 11: Nginx installieren
 # -----------------------------------------------------------------------------
 step_install_nginx() {
-    print_header 11 "Nginx installieren & konfigurieren"
+    print_header 11 "Nginx installieren"
     
     info "Installiere Nginx..."
     
@@ -1078,6 +1078,16 @@ step_install_nginx() {
     
     # Entferne Default-Konfiguration
     rm -f /etc/nginx/sites-enabled/default
+    
+    success "Nginx-Basiskonfiguration bereit"
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 12: Nginx konfigurieren
+# -----------------------------------------------------------------------------
+step_configure_nginx() {
+    print_header 12 "Nginx konfigurieren"
     
     # Erstelle Nginx-Konfiguration
     info "Erstelle Nginx-Konfiguration..."
@@ -1174,10 +1184,10 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 12: Services starten
+# Schritt 13: Services starten
 # -----------------------------------------------------------------------------
 step_start_services() {
-    print_header 12 "Services starten"
+    print_header 13 "Services starten"
     
     # Reload systemd
     info "Lade systemd neu..."
@@ -1230,10 +1240,10 @@ step_start_services() {
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 13: Firewall konfigurieren
+# Schritt 14: Firewall konfigurieren
 # -----------------------------------------------------------------------------
 step_configure_firewall() {
-    print_header 13 "Firewall konfigurieren"
+    print_header 14 "Firewall konfigurieren"
     
     info "Installiere ufw (Firewall)..."
     
@@ -1273,16 +1283,16 @@ step_configure_firewall() {
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 14: Auto-Update System
+# Schritt 15: Auto-Update System
 # -----------------------------------------------------------------------------
 step_setup_auto_update() {
     if [ "$AUTO_UPDATE_SCHEDULE" = "manual" ]; then
-        print_header 14 "Auto-Update (Übersprungen)"
+        print_header 15 "Auto-Update (Übersprungen)"
         info "Manuelle Updates gewählt - überspringe Auto-Update Setup"
         return 0
     fi
     
-    print_header 14 "Auto-Update System"
+    print_header 15 "Auto-Update System"
     
     info "Erstelle Auto-Update Script..."
     
@@ -1391,16 +1401,16 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 15: Cloudflare Tunnel
+# Schritt 16: Cloudflare Tunnel
 # -----------------------------------------------------------------------------
 step_setup_cloudflare() {
     if [ "$USE_CLOUDFLARE" != "j" ]; then
-        print_header 15 "Cloudflare Tunnel (Übersprungen)"
+        print_header 16 "Cloudflare Tunnel (Übersprungen)"
         info "Cloudflare Tunnel nicht gewählt - überspringe"
         return 0
     fi
     
-    print_header 15 "Cloudflare Tunnel einrichten"
+    print_header 16 "Cloudflare Tunnel einrichten"
     
     # Installiere cloudflared
     info "Installiere cloudflared..."
@@ -1495,10 +1505,10 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
-# Schritt 16: Abschluss & Zusammenfassung
+# Schritt 17: Abschluss & Zusammenfassung
 # -----------------------------------------------------------------------------
 step_final_steps() {
-    print_header 16 "Abschluss & Zusammenfassung"
+    print_header 17 "Abschluss & Zusammenfassung"
     
     info "Erstelle Standard-Admin-Benutzer..."
     
@@ -1625,21 +1635,22 @@ main() {
     # =========================================================================
     
     step_system_check              # 1. System-Prüfung
-    step_installation_options      # 2. Installations-Optionen
+    step_installation_options      # 2. Installations-Optionen (ALLE Fragen)
     step_system_update            # 3. System-Updates
-    step_install_base_tools       # 4. Basis-Tools
-    step_install_postgresql       # 5. PostgreSQL
-    step_install_nodejs           # 6. Node.js
-    step_clone_repository         # 7. Repository klonen
-    step_setup_database           # 8. Datenbank einrichten
-    step_setup_backend            # 9. Backend einrichten
-    step_setup_frontend           # 10. Frontend einrichten
-    step_install_nginx            # 11. Nginx
-    step_start_services           # 12. Services starten
-    step_configure_firewall       # 13. Firewall
-    step_setup_auto_update        # 14. Auto-Update
-    step_setup_cloudflare         # 15. Cloudflare Tunnel
-    step_final_steps              # 16. Abschluss
+    step_install_base_tools       # 4. Basis-Tools (Git, Curl)
+    step_clone_repository         # 5. Repository klonen (FRÜH! Brauchen wir für alles)
+    step_install_postgresql       # 6. PostgreSQL installieren
+    step_install_nodejs           # 7. Node.js installieren
+    step_setup_database           # 8. Datenbank einrichten (mit schema.sql aus Repo)
+    step_setup_backend            # 9. Backend einrichten (npm install aus Repo)
+    step_setup_frontend           # 10. Frontend einrichten (npm install & build)
+    step_install_nginx            # 11. Nginx installieren
+    step_configure_nginx          # 12. Nginx konfigurieren (Reverse Proxy)
+    step_start_services           # 13. Services starten
+    step_configure_firewall       # 14. Firewall
+    step_setup_auto_update        # 15. Auto-Update
+    step_setup_cloudflare         # 16. Cloudflare Tunnel
+    step_final_steps              # 17. Abschluss
     
     # =========================================================================
     # ERFOLG!
