@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { usePermissions } from "../contexts/PermissionsContext";
 import {
   Home,
   Users,
@@ -16,9 +15,7 @@ import {
   LayoutDashboard,
   Shield,
   Tablet,
-  Bell,
-  Database,
-  UserCog
+  Bell
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
@@ -56,7 +53,6 @@ export function MemberLayout({ children }: MemberLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
-  const { hasPermission } = usePermissions();
   const isAdminArea = location.pathname === "/verwaltung";
 
   // Navigation items für Mitgliederbereich
@@ -156,27 +152,6 @@ export function MemberLayout({ children }: MemberLayoutProps) {
       description: "Konfiguration"
     },
   ];
-
-  // Rollen & Berechtigungen - nur für Benutzer mit system.roles.manage Berechtigung
-  // oder für Legacy-Admins (is_admin = true)
-  if (isAdminArea && (hasPermission('system.roles.manage') || user?.is_admin)) {
-    adminNavItems.push({
-      label: "Rollen & Berechtigungen",
-      icon: UserCog,
-      path: "/verwaltung#rollen",
-      description: "RBAC System"
-    });
-  }
-
-  // Spezielle Navigation für Webmaster
-  if (user?.rang === 'webmaster' && isAdminArea) {
-    adminNavItems.push({
-      label: "Datenbank",
-      icon: Database,
-      path: "/verwaltung#database",
-      description: "PostgreSQL Admin"
-    });
-  }
 
   const navItems = isAdminArea ? adminNavItems : memberNavItems;
 

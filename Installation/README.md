@@ -46,22 +46,6 @@ Das wars! Das Script führt dich durch:
 
 ---
 
-## 🆕 NEU: Database Admin in Node.js!
-
-**Integriertes Datenbank-Management** direkt in der App:
-
-✅ **Node.js/React** basiert  
-✅ **Vollständig integriert** in die Haupt-App  
-✅ **Sicher & performant**  
-✅ **SQL-Konsole** mit Syntax-Highlighting  
-
-→ **[Database-Admin-NodeJS.md](Anleitung/Database-Admin-NodeJS.md)** - Vollständige Dokumentation  
-→ **[QUICK-START-Database-Admin.md](QUICK-START-Database-Admin.md)** - Schnellstart  
-
-**Zugriff:** Login als Webmaster → Verwaltung → "Datenbank" in Sidebar 🚀
-
----
-
 ## 🆘 Probleme?
 
 ### 🔧 Debug Tool - Deine erste Anlaufstelle!
@@ -141,27 +125,6 @@ cd /var/www/fmsv-dingden/Installation/scripts && sudo ./debug.sh
 ✓ Backend läuft
 ✓ HTTP /api/health antwortet (200 OK)
 ```
-
----
-
-## 🔐 RBAC Berechtigungssystem
-
-**NEU:** Vollständiges Role-Based Access Control System!
-
-✅ **140+ Berechtigungen** in 14 Kategorien  
-✅ **6 Standard-Rollen** (Mitglied, Vorstand, Webmaster, ...)  
-✅ **Vollständig administrierbar** über `/verwaltung#rollen`  
-✅ **TypeScript-Integration** für Type-Safety  
-✅ **Audit-Logging** aller Zugriffe  
-
-**Schnellstart:**
-- **[PERMISSIONS-INDEX.md](PERMISSIONS-INDEX.md)** - Dokumentations-Übersicht
-- **[PERMISSIONS-QUICK-REFERENCE.md](PERMISSIONS-QUICK-REFERENCE.md)** - Schnellreferenz für Entwickler
-- **[PERMISSIONS-REFERENCE.md](PERMISSIONS-REFERENCE.md)** - Vollständige Berechtigungsliste
-- **[PERMISSIONS-DIAGRAM.md](PERMISSIONS-DIAGRAM.md)** - Visuelle Darstellung
-
-**Administration:**
-→ Login als Webmaster → Verwaltung → "Rollen & Berechtigungen" 🔐
 
 ---
 

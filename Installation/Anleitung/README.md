@@ -66,47 +66,6 @@ Dokumentation für Installation und Konfiguration.
 
 ---
 
-### Database-Admin-NodeJS.md
-**Integrierte Datenbank-Verwaltung**
-
-- ✅ Node.js + React basiert
-- ✅ Vollständig integriert
-- ✅ Sicher & performant
-- ✅ Webmaster-only Zugriff
-- ✅ SQL-Konsole mit Syntax-Highlighting
-- Backend-Routes & Frontend-Interface
-- Backup & Restore Funktionen
-
-→ [`Database-Admin-NodeJS.md`](Database-Admin-NodeJS.md)
-
----
-
-### Frontend-Backend-Verbindung.md
-**API-Verbindung & Troubleshooting**
-
-- Wie funktioniert die Verbindung?
-- "Backend nicht erreichbar" beheben
-- Frontend neu builden
-- API-Tests durchführen
-- Debugging-Tipps
-
-→ [`Frontend-Backend-Verbindung.md`](Frontend-Backend-Verbindung.md)
-
----
-
-### ENV-Dateien.md
-**Environment-Variablen erklärt**
-
-- Frontend vs Backend `.env`
-- Warum nicht im Git?
-- Automatische Erstellung
-- Manuelle Erstellung
-- Troubleshooting
-
-→ [`ENV-Dateien.md`](ENV-Dateien.md)
-
----
-
 ## 🚀 Wo anfangen?
 
 **Neu hier?**
@@ -117,9 +76,6 @@ Dokumentation für Installation und Konfiguration.
 
 **Probleme mit Cloudflare Tunnel?**
 → Siehe [`Cloudflare-Tunnel-Setup.md`](Cloudflare-Tunnel-Setup.md)
-
-**Datenbank-Verwaltung?**
-→ Siehe [`Database-Admin-NodeJS.md`](Database-Admin-NodeJS.md)
 
 ---
 

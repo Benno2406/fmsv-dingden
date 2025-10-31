@@ -248,12 +248,6 @@ tunnel: TUNNEL_ID
 credentials-file: /root/.cloudflared/TUNNEL_ID.json
 
 ingress:
-  # pgAdmin (PostgreSQL Web Interface) - WICHTIG: VOR der Hauptdomain!
-  - hostname: pgadmin.fmsv.bartholmes.eu
-    service: http://localhost:5050
-    originRequest:
-      noTLSVerify: true
-  
   # Frontend (statische Dateien)
   - hostname: fmsv.bartholmes.eu
     service: http://localhost:80
@@ -272,19 +266,13 @@ ingress:
   - service: http_status:404
 ```
 
-**Wichtig:** Die Reihenfolge ist entscheidend! Spezifischere Routen (wie Subdomains) müssen VOR allgemeineren Routen stehen.
-
 ### Schritt 5: DNS-Routing konfigurieren
 
 ```bash
-# Hauptdomain
 cloudflared tunnel route dns fmsv-dingden fmsv.bartholmes.eu
-
-# pgAdmin Subdomain
-cloudflared tunnel route dns fmsv-dingden pgadmin.fmsv.bartholmes.eu
 ```
 
-Dies erstellt automatisch CNAME-Einträge bei Cloudflare für beide Domains.
+Dies erstellt automatisch einen CNAME-Eintrag bei Cloudflare.
 
 ### Schritt 6: Tunnel als Service installieren
 
@@ -321,27 +309,20 @@ systemctl status cloudflared
 │   (Daemon)      │
 └──────┬──────────┘
        │
-       ├─────────────────────┬──────────────────┐
-       │                     │                  │
-       ▼                     ▼                  ▼
-┌─────────────┐      ┌─────────────┐    ┌─────────────┐
-│   Nginx     │      │   Backend   │    │  pgAdmin 4  │
-│  (Port 80)  │      │  (Port 3000)│    │  (Port 5050)│
-│             │      │             │    │             │
-│  Frontend   │      │  API        │    │  DB-Admin   │
-│  Uploads    │      │             │    │  (nginx→py) │
-└─────────────┘      └─────────────┘    └──────┬──────┘
-                                                │
-                                                ▼
-                                         ┌─────────────┐
-                                         │ PostgreSQL  │
-                                         │ (Port 5432) │
-                                         └─────────────┘
+       ├─────────────────────┐
+       │                     │
+       ▼                     ▼
+┌─────────────┐      ┌─────────────┐
+│   Nginx     │      │   Backend   │
+│  (Port 80)  │      │  (Port 3000)│
+│             │      │             │
+│  Frontend   │      │  API        │
+│  Uploads    │      │             │
+└─────────────┘      └─────────────┘
 ```
 
 ### Traffic-Flow:
 
-#### Hauptdomain (`fmsv.bartholmes.eu`):
 1. **User** → `https://fmsv.bartholmes.eu`
 2. **Cloudflare Edge** empfängt Request
 3. **Cloudflare Tunnel** leitet zu deinem Server
@@ -350,29 +331,15 @@ systemctl status cloudflared
    - `/uploads/*` → Nginx (Port 80)
    - Alles andere → Nginx (Port 80, Frontend)
 
-#### pgAdmin Subdomain (`pgadmin.fmsv.bartholmes.eu`):
-1. **User** → `https://pgadmin.fmsv.bartholmes.eu`
-2. **Cloudflare Edge** empfängt Request
-3. **Cloudflare Tunnel** leitet zu deinem Server
-4. **cloudflared** → Port 5050 (pgAdmin Python-Server)
-5. **nginx** (lokal) → Reverse Proxy für pgAdmin (mit IP-Whitelist)
-6. **pgAdmin** → PostgreSQL (Port 5432)
-
 ---
 
 ## ⚙️ Konfiguration anpassen
 
-### Vollständige Beispiel-Konfiguration mit allen Diensten
+### Frontend & API auf verschiedenen Domains
 
 ```yaml
 ingress:
-  # pgAdmin (Datenbank-Verwaltung) - Muss VOR der Hauptdomain stehen!
-  - hostname: pgadmin.fmsv.bartholmes.eu
-    service: http://localhost:5050
-    originRequest:
-      noTLSVerify: true
-  
-  # API auf Subdomain (optional - für zukünftige API-Versionierung)
+  # API auf Subdomain
   - hostname: api.fmsv.bartholmes.eu
     service: http://localhost:3000
   
@@ -383,14 +350,10 @@ ingress:
   - service: http_status:404
 ```
 
-Dann DNS-Routen hinzufügen:
+Dann DNS-Route hinzufügen:
 ```bash
-cloudflared tunnel route dns fmsv-dingden fmsv.bartholmes.eu
-cloudflared tunnel route dns fmsv-dingden pgadmin.fmsv.bartholmes.eu
 cloudflared tunnel route dns fmsv-dingden api.fmsv.bartholmes.eu
 ```
-
-**Wichtig:** Subdomains müssen in der `config.yml` **VOR** der Hauptdomain stehen!
 
 ### WebSocket Support
 
@@ -857,51 +820,9 @@ Cloudflare informiert über Breaking Changes:
 
 ---
 
-## 🔐 pgAdmin via Cloudflare Access absichern
-
-**Wichtig:** pgAdmin ist via Cloudflare Tunnel erreichbar, sollte aber abgesichert werden!
-
-### Option 1: Cloudflare Access (empfohlen)
-
-Zero Trust Authentifizierung **kostenlos** für bis zu 50 Benutzer:
-
-```
-https://pgadmin.fmsv.bartholmes.eu
-  ↓
-Cloudflare Access Login
-  ↓
-pgAdmin
-```
-
-**Setup (5 Minuten):**
-1. Cloudflare Dashboard → **Zero Trust** → **Access** → **Applications**
-2. **Add application** → Self-hosted
-3. Subdomain: `pgadmin`, Domain: `fmsv.bartholmes.eu`
-4. Policy: Allow → Emails → Deine E-Mail
-5. Save
-
-**Fertig!** pgAdmin ist jetzt nur nach E-Mail-Login erreichbar.
-
-**Detaillierte Anleitung:** [`Cloudflare-Access-pgAdmin.md`](Cloudflare-Access-pgAdmin.md)
-
-### Option 2: nginx IP-Whitelist
-
-Alternative ohne Cloudflare Access:
-
-```bash
-sudo nano /etc/nginx/sites-available/pgadmin
-```
-
-IP-Whitelist aktivieren und `deny all;` einkommentieren.
-
-**Mehr Info:** [`pgAdmin-Setup.md`](pgAdmin-Setup.md)
-
----
-
 ## 📚 Weitere Ressourcen
 
 - **Offizielle Dokumentation**: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/
-- **Cloudflare Access**: https://developers.cloudflare.com/cloudflare-one/applications/
 - **GitHub**: https://github.com/cloudflare/cloudflared
 - **Community Forum**: https://community.cloudflare.com/
 

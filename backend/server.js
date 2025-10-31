@@ -21,8 +21,6 @@ import imageRoutes from './routes/images.js';
 import flugbuchRoutes from './routes/flugbuch.js';
 import protocolRoutes from './routes/protocols.js';
 import notificationRoutes from './routes/notifications.js';
-import rolesRoutes from './routes/roles.js';
-import databaseRoutes from './routes/database.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -97,8 +95,6 @@ app.use('/api/images', imageRoutes);
 app.use('/api/flugbuch', flugbuchRoutes);
 app.use('/api/protocols', protocolRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/roles', rolesRoutes); // Roles & Permissions Management
-app.use('/api/database', databaseRoutes); // Database Admin (Webmaster only)
 
 // 404 Handler
 app.use((req, res) => {

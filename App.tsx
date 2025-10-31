@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { PermissionsProvider } from "./contexts/PermissionsContext";
 import { PublicLayout } from "./components/PublicLayout";
 import { MemberLayout } from "./components/MemberLayout";
 import { KioskLayout } from "./components/KioskLayout";
@@ -17,7 +16,6 @@ import { AdminPage } from "./pages/AdminPage";
 import { MitgliedschaftPage } from "./pages/MitgliedschaftPage";
 import { LoginPage } from "./pages/LoginPage";
 import { FlugplatzKioskPage } from "./pages/FlugplatzKioskPage";
-import RBACDemoPage from "./pages/RBACDemoPage";
 import { Toaster } from "./components/ui/sonner";
 import { CookieConsent } from "./components/CookieConsent";
 
@@ -30,8 +28,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <PermissionsProvider>
-          <BrowserRouter basename={basename}>
+        <BrowserRouter basename={basename}>
           <Routes>
             {/* Public Routes with PublicLayout */}
             <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
@@ -50,14 +47,10 @@ export default function App() {
             
             {/* Kiosk Mode - Always in Dark Mode, fullscreen without navigation */}
             <Route path="/flugplatz-kiosk" element={<KioskLayout><FlugplatzKioskPage /></KioskLayout>} />
-            
-            {/* RBAC Demo - Standalone demo page without layout */}
-            <Route path="/rbac-demo" element={<RBACDemoPage />} />
           </Routes>
           <Toaster />
           <CookieConsent />
-          </BrowserRouter>
-        </PermissionsProvider>
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );

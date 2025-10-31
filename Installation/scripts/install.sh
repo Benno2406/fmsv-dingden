@@ -764,11 +764,11 @@ success "Benutzer '$DB_USER' angelegt"
 sleep 1
 
 ################################################################################
-# Schritt 10: Cloudflare Tunnel (Optional)
+# Schritt 9: Cloudflare Tunnel (Optional)
 ################################################################################
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    print_header 10 "Cloudflare Tunnel Installation"
+    print_header 9 "Cloudflare Tunnel Installation"
     
     info "Füge Cloudflare GPG Key hinzu..."
     mkdir -p --mode=0755 /usr/share/keyrings
@@ -932,44 +932,23 @@ tunnel: $TUNNEL_ID
 credentials-file: /root/.cloudflared/$TUNNEL_ID.json
 
 ingress:
-  # pgAdmin (PostgreSQL Web Interface) - WICHTIG: VOR der Hauptdomain!
-  - hostname: pgadmin.$DOMAIN
-    service: http://localhost:5050
-    originRequest:
-      noTLSVerify: true
-  
-  # Hauptdomain - Frontend
   - hostname: $DOMAIN
     service: http://localhost:80
-  
-  # API Requests
   - hostname: $DOMAIN
     path: /api/*
     service: http://localhost:3000
-  
-  # Uploads
   - hostname: $DOMAIN
     path: /uploads/*
     service: http://localhost:80
-  
-  # Catch-all (404)
   - service: http_status:404
 EOF
     
-    success "Tunnel-Konfiguration erstellt (inkl. pgAdmin)"
+    success "Tunnel-Konfiguration erstellt"
     
     info "Konfiguriere DNS-Routing..."
-    
-    # Hauptdomain
     cloudflared tunnel route dns -f $TUNNEL_NAME $DOMAIN 2>/dev/null || true
     cloudflared tunnel route dns $TUNNEL_NAME $DOMAIN > /dev/null 2>&1
     success "DNS konfiguriert: $DOMAIN → Tunnel"
-    
-    # pgAdmin Subdomain
-    info "Konfiguriere pgAdmin-Subdomain..."
-    cloudflared tunnel route dns -f $TUNNEL_NAME pgadmin.$DOMAIN 2>/dev/null || true
-    cloudflared tunnel route dns $TUNNEL_NAME pgadmin.$DOMAIN > /dev/null 2>&1
-    success "DNS konfiguriert: pgadmin.$DOMAIN → Tunnel"
     
     info "Installiere Tunnel als Service..."
     cloudflared service install > /dev/null 2>&1
@@ -1007,19 +986,6 @@ server {
     
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-    
-    # API Proxy zum Backend
-    location /api/ {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-    }
     
     location /uploads/ {
         alias $INSTALL_DIR/Saves/;
@@ -1330,30 +1296,12 @@ print_header 12 "Frontend-Build"
 
 cd "$INSTALL_DIR"
 
-info "Erstelle Frontend-Umgebungsvariablen..."
-
-# .env.production für Production-Build
-cat > .env.production <<EOF
-# Production Environment Variables
-# API URL - wird relativ gesetzt, damit es über Nginx Proxy funktioniert
-VITE_API_URL=/api
-EOF
-
-# .env.development für lokale Entwicklung
-cat > .env.development <<EOF
-# Development Environment Variables
-# API URL - localhost für lokale Entwicklung
-VITE_API_URL=http://localhost:3000/api
-EOF
-
-success "Umgebungsvariablen erstellt"
-
 info "Installiere Frontend-Dependencies..."
 npm install --silent > /dev/null 2>&1
 success "Frontend-Dependencies installiert"
 
-info "Baue Frontend für Production (dies kann einige Minuten dauern)..."
-NODE_ENV=production npm run build > /dev/null 2>&1
+info "Baue Frontend (dies kann einige Minuten dauern)..."
+npm run build > /dev/null 2>&1
 success "Frontend gebaut"
 
 info "Setze Berechtigungen..."
@@ -1493,16 +1441,16 @@ EOF
     success "Zeitplan: $TIMER_DESC"
     sleep 1
 else
-    print_header 14 "Auto-Update System (Übersprungen)"
+    print_header 13 "Auto-Update System (Übersprungen)"
     info "Manuelle Updates werden verwendet"
     sleep 1
 fi
 
 ################################################################################
-# Schritt 15: Services starten & Finalisierung
+# Schritt 14: Services starten & Finalisierung
 ################################################################################
 
-print_header 15 "Services starten & Finalisierung"
+print_header 14 "Services starten & Finalisierung"
 
 info "Starte Backend..."
 systemctl start fmsv-backend
@@ -1656,14 +1604,18 @@ sleep 1
 
 # Kopiere Debug und Update Scripts für späteren Gebrauch
 info "Kopiere Wartungs-Scripts..."
-cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug 2>/dev/null || true
-cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update 2>/dev/null || true
-cp -f /var/www/fmsv-dingden/Installation/scripts/restart.sh /usr/local/bin/fmsv-restart 2>/dev/null || true
-cp -f /var/www/fmsv-dingden/Installation/scripts/rebuild-frontend.sh /usr/local/bin/fmsv-rebuild 2>/dev/null || true
-chmod +x /usr/local/bin/fmsv-debug 2>/dev/null || true
-chmod +x /usr/local/bin/fmsv-update 2>/dev/null || true
-chmod +x /usr/local/bin/fmsv-restart 2>/dev/null || true
-chmod +x /usr/local/bin/fmsv-rebuild 2>/dev/null || true
+cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug
+cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
+cp -f /var/www/fmsv-dingden/Installation/scripts/test-backend.sh /usr/local/bin/fmsv-test
+cp -f /var/www/fmsv-dingden/Installation/scripts/show-backend-errors.sh /usr/local/bin/fmsv-errors
+cp -f /var/www/fmsv-dingden/Installation/scripts/manual-start.sh /usr/local/bin/fmsv-manual
+cp -f /var/www/fmsv-dingden/Installation/scripts/quick-fix.sh /usr/local/bin/fmsv-fix
+chmod +x /usr/local/bin/fmsv-debug
+chmod +x /usr/local/bin/fmsv-update
+chmod +x /usr/local/bin/fmsv-test
+chmod +x /usr/local/bin/fmsv-errors
+chmod +x /usr/local/bin/fmsv-manual
+chmod +x /usr/local/bin/fmsv-fix
 success "Wartungs-Scripts installiert"
 sleep 1
 
@@ -1702,14 +1654,6 @@ echo ""
 echo -e "  ${GREEN}Website:${NC}       https://$DOMAIN"
 echo -e "  ${GREEN}Lokal:${NC}         http://localhost"
 echo ""
-echo -e "  ${GREEN}pgAdmin 4:${NC}"
-if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-echo -e "    ${GREEN}Via Tunnel:  https://pgadmin.$DOMAIN${NC}"
-fi
-echo -e "    ${GREEN}Lokal:       http://$(hostname -I | awk '{print $1}'):5050${NC}"
-echo -e "  ${CYAN}             → Datenbank-Verwaltung (nginx + Python, kein Apache2)${NC}"
-echo -e "  ${YELLOW}             ⚠️  IP-Whitelist konfigurieren! Siehe pgAdmin-Setup.md${NC}"
-echo ""
 echo -e "  ${YELLOW}Test-Accounts (falls aktiviert):${NC}"
 echo -e "  ${BLUE}•${NC} Admin:  ${GREEN}admin@fmsv-dingden.de${NC} / ${GREEN}admin123${NC}"
 echo -e "  ${BLUE}•${NC} Member: ${GREEN}member@fmsv-dingden.de${NC} / ${GREEN}member123${NC}"
@@ -1736,10 +1680,12 @@ echo -e "  ${BLUE}Config bearbeiten:${NC}"
 echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
 echo ""
 echo -e "  ${BLUE}Updates & Wartung:${NC}"
-echo -e "    ${GREEN}fmsv-update${NC}   ${CYAN}# System aktualisieren${NC}"
-echo -e "    ${GREEN}fmsv-restart${NC}  ${CYAN}# Alle Services neu starten${NC}"
-echo -e "    ${GREEN}fmsv-rebuild${NC}  ${CYAN}# Frontend neu builden${NC}"
-echo -e "    ${GREEN}fmsv-debug${NC}    ${CYAN}# Vollständige Diagnose${NC}"
+echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
+echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose${NC}"
+echo -e "    ${GREEN}fmsv-fix${NC}     ${CYAN}# Probleme automatisch beheben${NC}"
+echo -e "    ${GREEN}fmsv-manual${NC}  ${CYAN}# Backend manuell starten${NC}"
+echo -e "    ${GREEN}fmsv-test${NC}    ${CYAN}# Backend-Tests ausführen${NC}"
+echo -e "    ${GREEN}fmsv-errors${NC}  ${CYAN}# Backend-Fehler anzeigen${NC}"
 echo ""
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
