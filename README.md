@@ -4,9 +4,22 @@ Moderne Vereinshomepage für den Flugmodellsportverein Dingden mit integrierter 
 
 ---
 
-## ⚡ NEU HIER? → [`START-HIER.md`](START-HIER.md)
+## ⚡ SCHNELLSTART
 
-**Quick Start in 3 Schritten:**
+### Development lokal starten:
+```bash
+cd /var/www/fmsv-dingden
+chmod +x start-dev.sh
+./start-dev.sh
+```
+→ Frontend: `http://localhost:5173`  
+→ Backend: `http://localhost:3000`
+
+**Ausführliche Anleitung:** [SCHNELLSTART.md](SCHNELLSTART.md)
+
+### Neu hier? → [`START-HIER.md`](START-HIER.md)
+
+**Setup in 3 Schritten:**
 1. `rename-files.bat` / `rename-files.sh` ausführen
 2. Code zu GitHub pushen
 3. Auf Server installieren
