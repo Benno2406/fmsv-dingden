@@ -32,6 +32,7 @@ SKIP_CLOUDFLARE=0
 BRANCH="stable"
 CHANNEL_NAME="Stable"
 USE_CLOUDFLARE="n"
+USE_PGADMIN="n"
 GITHUB_REPO="https://github.com/Benno2406/fmsv-dingden.git"
 AUTO_UPDATE_SCHEDULE="weekly"
 
@@ -648,12 +649,36 @@ step_installation_options() {
     echo ""
     sleep 1
     
+    # Option 5: pgAdmin4 installieren
+    echo -e "${YELLOW}5️⃣  pgAdmin4 installieren:${NC}"
+    echo ""
+    echo -e "   ${BLUE}ℹ${NC}  pgAdmin4 ist ein Web-Interface für PostgreSQL"
+    echo -e "   ${BLUE}ℹ${NC}  Läuft auf Apache2 (Ports 1880/18443)"
+    echo -e "   ${BLUE}ℹ${NC}  Erfordert Nginx Reverse Proxy und Cloudflare"
+    echo ""
+    
+    if [ "$USE_CLOUDFLARE" = "n" ]; then
+        warning "pgAdmin4 wird übersprungen (Cloudflare nicht aktiv)"
+        USE_PGADMIN="n"
+    else
+        USE_PGADMIN=$(ask_yes_no "pgAdmin4 installieren?" "n")
+    fi
+    
+    if [ "$USE_PGADMIN" = "j" ]; then
+        success "pgAdmin4 wird installiert"
+    else
+        info "pgAdmin4 wird nicht installiert"
+    fi
+    echo ""
+    sleep 1
+    
     # Summary
     echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
     echo -e "${YELLOW}📋 Zusammenfassung:${NC}"
     echo ""
     echo -e "  ${BLUE}•${NC} Update-Kanal:        ${GREEN}$CHANNEL_NAME${NC}"
     echo -e "  ${BLUE}•${NC} Cloudflare Tunnel:   $( [ "$USE_CLOUDFLARE" = "j" ] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
+    echo -e "  ${BLUE}•${NC} pgAdmin4:            $( [ "$USE_PGADMIN" = "j" ] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
     echo -e "  ${BLUE}•${NC} GitHub Repo:         $GITHUB_REPO"
     echo -e "  ${BLUE}•${NC} Auto-Update:         ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
     echo ""
@@ -832,6 +857,114 @@ step_install_postgresql() {
     
     success "PostgreSQL gestartet und aktiviert"
     sleep 1
+    
+    # Optional: pgAdmin4 installieren
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo ""
+        echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${CYAN}║  pgAdmin4 installieren (Apache2 auf Ports 1880/18443)  ║${NC}"
+        echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        
+        info "Installiere Apache2..."
+        
+        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y apache2 libapache2-mod-wsgi-py3 >> "$LOG_FILE" 2>&1; then
+            error "Apache2 Installation fehlgeschlagen"
+        fi
+        
+        success "Apache2 installiert"
+        
+        # Apache2 Ports ändern (1880/18443 statt 80/443)
+        info "Konfiguriere Apache2 Ports (1880/18443)..."
+        
+        if ! sed -i 's/^Listen 80$/Listen 1880/' /etc/apache2/ports.conf 2>> "$LOG_FILE"; then
+            warning "Port 80 → 1880 konnte nicht geändert werden"
+        fi
+        
+        if ! sed -i 's/^Listen 443$/Listen 18443/' /etc/apache2/ports.conf 2>> "$LOG_FILE"; then
+            info "Port 443 war nicht konfiguriert (OK)"
+        fi
+        
+        # VirtualHost Ports ändern
+        if ! sed -i 's/<VirtualHost \*:80>/<VirtualHost *:1880>/' /etc/apache2/sites-available/000-default.conf 2>> "$LOG_FILE"; then
+            warning "VirtualHost Port konnte nicht geändert werden"
+        fi
+        
+        success "Apache2 Ports konfiguriert (1880/18443)"
+        
+        # pgAdmin4 Repository hinzufügen
+        info "Füge pgAdmin4 Repository hinzu..."
+        
+        if ! curl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg 2>> "$LOG_FILE"; then
+            error "pgAdmin4 GPG-Key konnte nicht hinzugefügt werden"
+        fi
+        
+        echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list
+        
+        if ! apt-get update >> "$LOG_FILE" 2>&1; then
+            warning "apt-get update nach pgAdmin4-Repo fehlgeschlagen (nicht kritisch)"
+        fi
+        
+        info "Installiere pgAdmin4..."
+        
+        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y pgadmin4-web >> "$LOG_FILE" 2>&1; then
+            error "pgAdmin4 Installation fehlgeschlagen"
+        fi
+        
+        success "pgAdmin4 installiert"
+        
+        # pgAdmin4 Setup (Automatisch mit Default-Werten)
+        info "Konfiguriere pgAdmin4..."
+        
+        echo ""
+        echo -e "${YELLOW}╭─────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${YELLOW}│  pgAdmin4 Zugangsdaten eingeben                        │${NC}"
+        echo -e "${YELLOW}╰─────────────────────────────────────────────────────────╯${NC}"
+        echo ""
+        
+        # E-Mail für pgAdmin4
+        local PGADMIN_EMAIL
+        echo -ne "   ${BLUE}►${NC} E-Mail für pgAdmin4 [admin@localhost]: "
+        read -r PGADMIN_EMAIL
+        PGADMIN_EMAIL=${PGADMIN_EMAIL:-admin@localhost}
+        
+        # Passwort für pgAdmin4
+        local PGADMIN_PASSWORD
+        echo -ne "   ${BLUE}►${NC} Passwort für pgAdmin4: "
+        read -rs PGADMIN_PASSWORD
+        echo ""
+        
+        if [ -z "$PGADMIN_PASSWORD" ]; then
+            error "pgAdmin4 Passwort darf nicht leer sein"
+        fi
+        
+        echo ""
+        info "Richte pgAdmin4 ein..."
+        
+        # Setup pgAdmin4 (Non-interactive)
+        if ! /usr/pgadmin4/bin/setup-web.sh --yes --email "$PGADMIN_EMAIL" --password "$PGADMIN_PASSWORD" >> "$LOG_FILE" 2>&1; then
+            error "pgAdmin4 Setup fehlgeschlagen"
+        fi
+        
+        success "pgAdmin4 eingerichtet (E-Mail: $PGADMIN_EMAIL)"
+        
+        # Apache2 neustarten
+        info "Starte Apache2..."
+        
+        if ! systemctl restart apache2 2>> "$LOG_FILE"; then
+            error "Apache2 konnte nicht gestartet werden"
+        fi
+        
+        if ! systemctl enable apache2 2>> "$LOG_FILE"; then
+            warning "Apache2 Autostart konnte nicht aktiviert werden"
+        fi
+        
+        success "Apache2 gestartet auf Ports 1880/18443"
+        echo ""
+        info "pgAdmin4 ist lokal erreichbar unter: http://localhost:1880/pgadmin4"
+        warning "WICHTIG: pgAdmin4 wird in Schritt 12 (Nginx) und 16 (Cloudflare) weiter konfiguriert!"
+        echo ""
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -1150,7 +1283,54 @@ server {
 }
 EOF
     
-    # Aktiviere Site
+    # pgAdmin4 Reverse Proxy hinzufügen (wenn installiert)
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo ""
+        info "Erstelle Nginx Reverse Proxy für pgAdmin4..."
+        
+        cat > /etc/nginx/sites-available/pgadmin4 <<'EOF'
+server {
+    listen 80;
+    server_name pgadmin._;
+    
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Proxy zu Apache2 auf Port 1880
+    location / {
+        proxy_pass http://localhost:1880;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Script-Name /pgadmin4;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffer-Einstellungen für große Anfragen
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+}
+EOF
+        
+        # Aktiviere pgAdmin4 Site
+        ln -sf /etc/nginx/sites-available/pgadmin4 /etc/nginx/sites-enabled/
+        
+        success "Nginx Reverse Proxy für pgAdmin4 erstellt"
+        info "pgAdmin4 wird über Cloudflare Tunnel erreichbar sein"
+    fi
+    
+    # Aktiviere Main Site
     ln -sf /etc/nginx/sites-available/fmsv-dingden /etc/nginx/sites-enabled/
     
     success "Nginx-Konfiguration erstellt"
@@ -1268,6 +1448,22 @@ step_configure_firewall() {
     
     if ! ufw allow 443/tcp >> "$LOG_FILE" 2>&1; then
         warning "HTTPS-Regel konnte nicht hinzugefügt werden"
+    fi
+    
+    # pgAdmin4 Ports (nur von localhost)
+    if [ "$USE_PGADMIN" = "j" ]; then
+        info "Blockiere externe pgAdmin4 Ports (nur intern via Nginx)..."
+        
+        # Blockiere direkte externe Zugriffe auf Apache2 Ports
+        if ! ufw deny 1880/tcp >> "$LOG_FILE" 2>&1; then
+            warning "Port 1880 konnte nicht blockiert werden"
+        fi
+        
+        if ! ufw deny 18443/tcp >> "$LOG_FILE" 2>&1; then
+            warning "Port 18443 konnte nicht blockiert werden"
+        fi
+        
+        success "pgAdmin4 nur intern über Nginx erreichbar"
     fi
     
     # Aktiviere Firewall
@@ -1450,7 +1646,26 @@ step_setup_cloudflare() {
     
     mkdir -p ~/.cloudflared
     
-    cat > ~/.cloudflared/config.yml <<EOF
+    # Basis-Konfiguration mit optionalem pgAdmin4
+    if [ "$USE_PGADMIN" = "j" ]; then
+        cat > ~/.cloudflared/config.yml <<EOF
+tunnel: $TUNNEL_ID
+credentials-file: /root/.cloudflared/$TUNNEL_ID.json
+
+ingress:
+  # Haupt-Domain
+  - hostname: "*.bartholmes.eu"
+    service: http://localhost:80
+  # pgAdmin4 Subdomain
+  - hostname: "pgadmin.bartholmes.eu"
+    service: http://localhost:80
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404
+EOF
+        success "Tunnel-Konfiguration erstellt (mit pgAdmin4)"
+    else
+        cat > ~/.cloudflared/config.yml <<EOF
 tunnel: $TUNNEL_ID
 credentials-file: /root/.cloudflared/$TUNNEL_ID.json
 
@@ -1459,14 +1674,19 @@ ingress:
     service: http://localhost:80
   - service: http_status:404
 EOF
-    
-    success "Tunnel-Konfiguration erstellt"
+        success "Tunnel-Konfiguration erstellt"
+    fi
     
     # DNS konfigurieren
     info "Bitte konfiguriere DNS in Cloudflare Dashboard:"
     echo ""
     echo -e "  ${CYAN}Tunnel ID:${NC} $TUNNEL_ID"
     echo -e "  ${CYAN}Domain:${NC} Deine Domain (z.B. fmsv.bartholmes.eu)"
+    
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo -e "  ${CYAN}pgAdmin4:${NC} pgadmin.bartholmes.eu (CNAME zu $TUNNEL_ID.cfargotunnel.com)"
+    fi
+    
     echo ""
     
     local response
@@ -1547,10 +1767,27 @@ step_final_steps() {
     if [ "$USE_CLOUDFLARE" = "j" ]; then
         echo -e "     ${CYAN}systemctl status cloudflared${NC}"
     fi
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo -e "     ${CYAN}systemctl status apache2${NC} ${YELLOW}(pgAdmin4)${NC}"
+    fi
     echo ""
+    
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo -e "  ${BLUE}🔧${NC} pgAdmin4 Zugriff:"
+        echo -e "     ${CYAN}Lokal:${NC} http://localhost:1880/pgadmin4"
+        if [ "$USE_CLOUDFLARE" = "j" ]; then
+            echo -e "     ${CYAN}Extern:${NC} https://pgadmin.deine-domain.de"
+        fi
+        echo -e "     ${YELLOW}(Zugangsdaten wurden beim Setup festgelegt)${NC}"
+        echo ""
+    fi
+    
     echo -e "  ${BLUE}4.${NC} Logs ansehen:"
     echo -e "     ${CYAN}cat $LOG_FILE${NC}"
     echo -e "     ${CYAN}journalctl -u fmsv-backend -f${NC}"
+    if [ "$USE_PGADMIN" = "j" ]; then
+        echo -e "     ${CYAN}cat /var/log/apache2/error.log${NC} ${YELLOW}(pgAdmin4)${NC}"
+    fi
     echo ""
     
     echo -e "${CYAN}Dokumentation:${NC}"
