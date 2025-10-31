@@ -3,7 +3,7 @@
 ################################################################################
 # FMSV Dingden - All-in-One Installation Script
 # Mit integrierten Hilfen und SSH/PuTTY-Support
-# Version: 2.0
+# Version: 3.0 - Mit Development/Production Auswahl
 ################################################################################
 
 # Exit on error disabled - we handle errors manually
@@ -24,6 +24,9 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Installation Mode (wird später gesetzt)
+INSTALL_MODE=""
 
 # Total steps
 TOTAL_STEPS=16
@@ -375,7 +378,79 @@ echo -e "${NC}"
 echo ""
 info "Willkommen zur automatischen Installation!"
 echo ""
-sleep 2
+
+################################################################################
+# INSTALLATIONS-MODUS AUSWAHL
+################################################################################
+
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}         Welchen Installations-Modus möchtest du?          ${NC}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${GREEN}[1]${NC} ${CYAN}Production${NC} - Server-Installation (Live-Website)"
+echo -e "    ${BLUE}►${NC} Nginx, PostgreSQL, Systemd Services"
+echo -e "    ${BLUE}►${NC} SSL-Zertifikate, Cloudflare Tunnel"
+echo -e "    ${BLUE}►${NC} Für: ${YELLOW}Linux-Server im Internet${NC}"
+echo ""
+echo -e "${GREEN}[2]${NC} ${CYAN}Development${NC} - Lokale Entwicklungsumgebung"
+echo -e "    ${BLUE}►${NC} Docker, lokale Datenbank"
+echo -e "    ${BLUE}►${NC} Hot-Reload, Debug-Tools"
+echo -e "    ${BLUE}►${NC} Für: ${YELLOW}Lokaler PC/Laptop (Windows/Mac/Linux)${NC}"
+echo ""
+echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -ne "${GREEN}Deine Wahl (1-2):${NC} "
+read -n 1 -r INSTALL_MODE_CHOICE
+echo
+echo ""
+
+case $INSTALL_MODE_CHOICE in
+    1)
+        INSTALL_MODE="production"
+        echo -e "${GREEN}✓${NC} Production-Installation gewählt"
+        echo ""
+        info "Starte Server-Installation..."
+        echo ""
+        sleep 2
+        ;;
+    2)
+        INSTALL_MODE="development"
+        echo -e "${GREEN}✓${NC} Development-Installation gewählt"
+        echo ""
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${YELLOW}HINWEIS: Development-Setup${NC}"
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${BLUE}Für die Development-Umgebung nutze bitte:${NC}"
+        echo ""
+        echo -e "  ${GREEN}cd dev${NC}"
+        echo -e "  ${GREEN}./setup.sh${NC}    ${YELLOW}# Einmalige Einrichtung${NC}"
+        echo -e "  ${GREEN}./start.sh${NC}    ${YELLOW}# Server starten${NC}"
+        echo ""
+        echo -e "${CYAN}Dokumentation:${NC} ${BLUE}dev/README.md${NC}"
+        echo ""
+        echo -e "${YELLOW}Dieses Script ist für Production-Server!${NC}"
+        echo ""
+        read -p "Trotzdem fortfahren? (j/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Jj]$ ]]; then
+            echo ""
+            echo -e "${CYAN}Installation abgebrochen.${NC}"
+            echo -e "Nutze: ${GREEN}cd dev && ./setup.sh${NC}"
+            echo ""
+            exit 0
+        fi
+        echo ""
+        warning "Installation wird im Production-Modus fortgesetzt"
+        INSTALL_MODE="production"  # Fallback zu Production
+        ;;
+    *)
+        echo ""
+        error "Ungültige Auswahl! Bitte 1 oder 2 wählen."
+        ;;
+esac
+
+sleep 1
 
 ################################################################################
 # Schritt 1: System-Prüfung
@@ -844,12 +919,12 @@ EOF
                 warning "Keine Domain eingegeben, überspringe Nginx-Setup"
             else
                 # Erstelle Nginx Config
-                cat > "/etc/nginx/sites-available/$PGADMIN_DOMAIN" << EOF
+                cat > "/etc/nginx/sites-available/$PGADMIN_DOMAIN" << 'NGINX_EOF'
 # pgAdmin 4 Reverse Proxy
 server {
     listen 80;
     listen [::]:80;
-    server_name $PGADMIN_DOMAIN;
+    server_name PGADMIN_DOMAIN_PLACEHOLDER;
     
     # Security Headers
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -857,30 +932,43 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/${PGADMIN_DOMAIN}_access.log;
-    error_log /var/log/nginx/${PGADMIN_DOMAIN}_error.log;
+    access_log /var/log/nginx/PGADMIN_DOMAIN_PLACEHOLDER_access.log;
+    error_log /var/log/nginx/PGADMIN_DOMAIN_PLACEHOLDER_error.log;
     
     # Reverse Proxy zu Apache auf Port 1880
     location / {
-        proxy_pass http://localhost:1880;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        # WICHTIG: Trailing Slash bei proxy_pass!
+        proxy_pass http://localhost:1880/;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Script-Name /pgadmin4;
         
         # WebSocket Support (für pgAdmin Features)
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        
+        # Buffering
+        proxy_buffering off;
+        proxy_request_buffering off;
         
         # Timeouts für lange Queries
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
         proxy_read_timeout 300;
         send_timeout 300;
+        
+        # Client Settings
+        client_max_body_size 100M;
     }
 }
-EOF
+NGINX_EOF
+                
+                # Ersetze Platzhalter
+                sed -i "s/PGADMIN_DOMAIN_PLACEHOLDER/$PGADMIN_DOMAIN/g" "/etc/nginx/sites-available/$PGADMIN_DOMAIN"
                 
                 # Aktiviere Site
                 ln -sf "/etc/nginx/sites-available/$PGADMIN_DOMAIN" "/etc/nginx/sites-enabled/"
@@ -895,19 +983,83 @@ EOF
                     echo -e "${GREEN}║         Nginx Reverse Proxy eingerichtet! ✓           ║${NC}"
                     echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
                     echo ""
-                    echo -e "${CYAN}Zugriff (nach DNS-Setup):${NC}"
-                    echo -e "  ${GREEN}►${NC} http://$PGADMIN_DOMAIN"
+                    
+                    # Cloudflare DNS Integration (falls vorhanden)
+                    if [ -f ~/.cloudflared/cert.pem ] && command -v cloudflared &> /dev/null; then
+                        echo -e "${YELLOW}Cloudflare DNS-Eintrag erstellen?${NC}"
+                        echo -e "  Fügt ${CYAN}$PGADMIN_DOMAIN${NC} zu deinem Cloudflare Tunnel hinzu"
+                        echo ""
+                        read -p "Cloudflare DNS jetzt einrichten? (j/n) " -n 1 -r
+                        echo
+                        
+                        if [[ $REPLY =~ ^[Jj]$ ]]; then
+                            echo ""
+                            info "Füge $PGADMIN_DOMAIN zu Cloudflare hinzu..."
+                            
+                            # Prüfe ob Tunnel bereits existiert
+                            if [ -f ~/.cloudflared/config.yml ]; then
+                                TUNNEL_ID=$(grep "tunnel:" ~/.cloudflared/config.yml | awk '{print $2}')
+                                
+                                if [ -n "$TUNNEL_ID" ]; then
+                                    # Füge DNS-Eintrag hinzu
+                                    if cloudflared tunnel route dns "$TUNNEL_ID" "$PGADMIN_DOMAIN" 2>&1 | tee -a "$LOG_FILE"; then
+                                        success "DNS-Eintrag erstellt: $PGADMIN_DOMAIN"
+                                        
+                                        # Aktualisiere Tunnel-Config
+                                        echo ""
+                                        info "Aktualisiere Tunnel-Konfiguration..."
+                                        
+                                        # Backup der Config
+                                        cp ~/.cloudflared/config.yml ~/.cloudflared/config.yml.backup
+                                        
+                                        # Füge neue Ingress-Rule hinzu (vor catch-all)
+                                        cat > /tmp/cloudflared-pgadmin.yml << CLOUDFLARE_CONFIG
+  - hostname: $PGADMIN_DOMAIN
+    service: http://localhost:80
+CLOUDFLARE_CONFIG
+                                        
+                                        # Füge vor dem catch-all ein
+                                        sed -i "/  - service: http_status:404/i\\$(cat /tmp/cloudflared-pgadmin.yml)" ~/.cloudflared/config.yml
+                                        
+                                        # Cloudflared neu starten
+                                        systemctl restart cloudflared
+                                        
+                                        success "Cloudflare Tunnel aktualisiert"
+                                        echo ""
+                                        echo -e "${GREEN}✓${NC} ${CYAN}$PGADMIN_DOMAIN${NC} ist jetzt über Cloudflare erreichbar!"
+                                        echo -e "  ${BLUE}https://$PGADMIN_DOMAIN${NC}"
+                                        echo ""
+                                    else
+                                        warning "Cloudflare DNS-Eintrag konnte nicht erstellt werden"
+                                        echo -e "  ${YELLOW}Du kannst dies manuell in Cloudflare Dashboard machen${NC}"
+                                    fi
+                                else
+                                    warning "Tunnel-ID nicht gefunden in config.yml"
+                                fi
+                            else
+                                warning "Cloudflare Tunnel noch nicht konfiguriert"
+                            fi
+                        fi
+                    fi
+                    
                     echo ""
-                    echo -e "${YELLOW}Nächste Schritte:${NC}"
-                    echo -e "  ${GREEN}1.${NC} DNS A-Record erstellen:"
-                    echo -e "     ${CYAN}$PGADMIN_DOMAIN${NC} → $(hostname -I | awk '{print $1}')"
+                    echo -e "${CYAN}Zugriff:${NC}"
+                    if [ -f ~/.cloudflared/cert.pem ]; then
+                        echo -e "  ${GREEN}►${NC} Via Cloudflare: ${BLUE}https://$PGADMIN_DOMAIN${NC}"
+                    else
+                        echo -e "  ${GREEN}►${NC} Direkt (nach DNS): ${BLUE}http://$PGADMIN_DOMAIN${NC}"
+                    fi
                     echo ""
-                    echo -e "  ${GREEN}2.${NC} SSL-Zertifikat installieren (optional):"
-                    echo -e "     ${CYAN}sudo certbot --nginx -d $PGADMIN_DOMAIN${NC}"
-                    echo ""
-                    echo -e "  ${GREEN}3.${NC} Firewall öffnen (falls aktiv):"
-                    echo -e "     ${CYAN}sudo ufw allow 'Nginx Full'${NC}"
-                    echo ""
+                    
+                    if [ ! -f ~/.cloudflared/cert.pem ]; then
+                        echo -e "${YELLOW}Manuelle Schritte (ohne Cloudflare):${NC}"
+                        echo -e "  ${GREEN}1.${NC} DNS A-Record erstellen:"
+                        echo -e "     ${CYAN}$PGADMIN_DOMAIN${NC} → $(hostname -I | awk '{print $1}')"
+                        echo ""
+                        echo -e "  ${GREEN}2.${NC} SSL-Zertifikat installieren:"
+                        echo -e "     ${CYAN}sudo certbot --nginx -d $PGADMIN_DOMAIN${NC}"
+                        echo ""
+                    fi
                 else
                     error "Nginx Konfiguration fehlerhaft"
                     nginx -t
