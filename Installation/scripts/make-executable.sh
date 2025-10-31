@@ -27,6 +27,12 @@ if [ -d "modules" ]; then
     find modules -name "*.sh" -exec chmod +x {} \;
     MODULE_COUNT=$(find modules -name "*.sh" | wc -l)
     echo "✓ modules/**/*.sh ($MODULE_COUNT Dateien)"
+    
+    # Explizit 00-cleanup.sh
+    if [ -f "modules/00-cleanup.sh" ]; then
+        chmod +x modules/00-cleanup.sh
+        echo "✓ modules/00-cleanup.sh (Cleanup-Modul)"
+    fi
 fi
 
 echo ""

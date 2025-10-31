@@ -17,9 +17,20 @@ echo ""
 echo -e "${YELLOW}1. Installations-Modus${NC}"
 echo ""
 
-MODE_CHOICE=$(ask_choice "Welchen Modus möchtest du installieren?" \
-    "Production (empfohlen für Server)" \
-    "Development (für lokale Entwicklung)")
+# Frage nach Modus mit Error-Handling
+while true; do
+    MODE_CHOICE=$(ask_choice "Welchen Modus möchtest du installieren?" \
+        "Production (empfohlen für Server)" \
+        "Development (für lokale Entwicklung)")
+    
+    # Prüfe ob Wahl erfolgreich
+    if [ $? -eq 0 ]; then
+        break
+    else
+        warning "Bitte wähle eine gültige Option!"
+        echo ""
+    fi
+done
 
 case $MODE_CHOICE in
     0)
@@ -42,6 +53,11 @@ case $MODE_CHOICE in
             exit 0
         fi
         ;;
+    *)
+        # Fallback falls irgendetwas schiefgeht
+        export INSTALL_MODE="production"
+        warning "Unbekannte Auswahl - verwende Production-Modus"
+        ;;
 esac
 
 ################################################################################
@@ -55,9 +71,19 @@ echo -e "${DIM}Stable: Stabile Releases (empfohlen)${NC}"
 echo -e "${DIM}Testing: Neueste Features (kann instabil sein)${NC}"
 echo ""
 
-CHANNEL_CHOICE=$(ask_choice "Welchen Update-Kanal möchtest du verwenden?" \
-    "Stable (empfohlen)" \
-    "Testing (experimentell)")
+# Frage nach Kanal mit Error-Handling
+while true; do
+    CHANNEL_CHOICE=$(ask_choice "Welchen Update-Kanal möchtest du verwenden?" \
+        "Stable (empfohlen)" \
+        "Testing (experimentell)")
+    
+    if [ $? -eq 0 ]; then
+        break
+    else
+        warning "Bitte wähle eine gültige Option!"
+        echo ""
+    fi
+done
 
 case $CHANNEL_CHOICE in
     0)
@@ -69,6 +95,12 @@ case $CHANNEL_CHOICE in
         export BRANCH="testing"
         export CHANNEL_NAME="Testing"
         warning "Testing-Kanal ausgewählt (Branch: testing)"
+        ;;
+    *)
+        # Fallback
+        export BRANCH="main"
+        export CHANNEL_NAME="Stable"
+        warning "Unbekannte Auswahl - verwende Stable-Kanal"
         ;;
 esac
 

@@ -89,16 +89,22 @@ if ! ask_yes_no "Installation starten?" "y"; then
 fi
 
 ################################################################################
+# SCHRITT 0: Cleanup vorheriger Installation (falls vorhanden)
+################################################################################
+
+run_module "00-cleanup" "Cleanup vorheriger Installation" "no" "0" "19"
+
+################################################################################
 # SCHRITT 1: System-Prüfung
 ################################################################################
 
-run_module "01-system-check" "System-Prüfung" "no" "1" "18"
+run_module "01-system-check" "System-Prüfung" "no" "1" "19"
 
 ################################################################################
 # SCHRITT 2: Installations-Optionen
 ################################################################################
 
-run_module "02-options" "Installations-Optionen" "no" "2" "18"
+run_module "02-options" "Installations-Optionen" "no" "2" "19"
 
 # Exportierte Variablen aus Modul 02:
 # - INSTALL_MODE
@@ -115,67 +121,67 @@ run_module "02-options" "Installations-Optionen" "no" "2" "18"
 # SCHRITT 3: System-Updates
 ################################################################################
 
-run_module "03-system-update" "System-Updates" "no" "3" "18"
+run_module "03-system-update" "System-Updates" "no" "3" "19"
 
 ################################################################################
 # SCHRITT 4: Basis-Tools
 ################################################################################
 
-run_module "04-base-tools" "Basis-Tools" "no" "4" "18"
+run_module "04-base-tools" "Basis-Tools" "no" "4" "19"
 
 ################################################################################
 # SCHRITT 5: PostgreSQL
 ################################################################################
 
-run_module "05-postgres" "PostgreSQL Installation" "no" "5" "18"
+run_module "05-postgres" "PostgreSQL Installation" "no" "5" "19"
 
 ################################################################################
 # SCHRITT 6: Node.js
 ################################################################################
 
-run_module "06-nodejs" "Node.js Installation" "no" "6" "18"
+run_module "06-nodejs" "Node.js Installation" "no" "6" "19"
 
 ################################################################################
 # SCHRITT 7: Repository klonen
 ################################################################################
 
-run_module "07-repository" "Repository klonen" "no" "7" "18"
+run_module "07-repository" "Repository klonen" "no" "7" "19"
 
 ################################################################################
 # SCHRITT 8: Datenbank-Setup
 ################################################################################
 
-run_module "08-database" "Datenbank-Setup" "no" "8" "18"
+run_module "08-database" "Datenbank-Setup" "no" "8" "19"
 
 ################################################################################
 # SCHRITT 9: Backend-Setup
 ################################################################################
 
-run_module "09-backend" "Backend-Setup" "no" "9" "18"
+run_module "09-backend" "Backend-Setup" "no" "9" "19"
 
 ################################################################################
 # SCHRITT 10: Frontend-Build (KRITISCH!)
 ################################################################################
 
-run_module "10-frontend" "Frontend-Build" "no" "10" "18"
+run_module "10-frontend" "Frontend-Build" "no" "10" "19"
 
 ################################################################################
 # SCHRITT 11: Nginx Installation & Konfiguration
 ################################################################################
 
-run_module "11-nginx" "Nginx-Konfiguration" "no" "11" "18"
+run_module "11-nginx" "Nginx-Konfiguration" "no" "11" "19"
 
 ################################################################################
 # SCHRITT 12: Services starten
 ################################################################################
 
-run_module "12-services" "Services starten" "no" "12" "18"
+run_module "12-services" "Services starten" "no" "12" "19"
 
 ################################################################################
 # SCHRITT 13: Firewall
 ################################################################################
 
-run_module "13-firewall" "Firewall-Konfiguration" "no" "13" "18"
+run_module "13-firewall" "Firewall-Konfiguration" "no" "13" "19"
 
 ################################################################################
 # SCHRITT 14-16: Optional - pgAdmin, Cloudflare, Auto-Update
@@ -184,17 +190,17 @@ run_module "13-firewall" "Firewall-Konfiguration" "no" "13" "18"
 CURRENT_STEP=14
 
 if [[ $INSTALL_PGADMIN =~ ^[Jj]$ ]]; then
-    run_module "optional/pgadmin" "pgAdmin 4 (Optional)" "yes" "$CURRENT_STEP" "18"
+    run_module "optional/pgadmin" "pgAdmin 4 (Optional)" "yes" "$CURRENT_STEP" "19"
     ((CURRENT_STEP++))
 fi
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    run_module "optional/cloudflare" "Cloudflare Tunnel (Optional)" "yes" "$CURRENT_STEP" "18"
+    run_module "optional/cloudflare" "Cloudflare Tunnel (Optional)" "yes" "$CURRENT_STEP" "19"
     ((CURRENT_STEP++))
 fi
 
 if [ "$AUTO_UPDATE_SCHEDULE" != "manual" ]; then
-    run_module "optional/auto-update" "Auto-Update System (Optional)" "yes" "$CURRENT_STEP" "18"
+    run_module "optional/auto-update" "Auto-Update System (Optional)" "yes" "$CURRENT_STEP" "19"
     ((CURRENT_STEP++))
 fi
 
@@ -202,7 +208,7 @@ fi
 # SCHRITT 17: Finale Validierung
 ################################################################################
 
-print_header "$CURRENT_STEP" "Finale Validierung" 18
+print_header "$CURRENT_STEP" "Finale Validierung" 19
 ((CURRENT_STEP++))
 
 info "Validiere Installation..."

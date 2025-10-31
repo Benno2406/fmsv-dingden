@@ -145,17 +145,18 @@ ask_input() {
     local default="$2"
     local secret="${3:-no}"
     
+    # Flush stdout vor Prompt
     if [ -n "$default" ]; then
-        echo -ne "   ${BLUE}►${NC} $question ${DIM}[$default]${NC}: "
+        printf "   ${BLUE}►${NC} %s ${DIM}[%s]${NC}: " "$question" "$default"
     else
-        echo -ne "   ${BLUE}►${NC} $question: "
+        printf "   ${BLUE}►${NC} %s: " "$question"
     fi
     
     if [ "$secret" = "yes" ]; then
         read -s REPLY
         echo
     else
-        read REPLY
+        read -r REPLY
     fi
     
     echo "${REPLY:-$default}"
@@ -167,7 +168,8 @@ ask_password() {
     local min_length="${2:-8}"
     
     while true; do
-        echo -ne "   ${BLUE}►${NC} $question ${DIM}(min. $min_length Zeichen)${NC}: "
+        # Flush stdout vor Prompt
+        printf "   ${BLUE}►${NC} %s ${DIM}(min. %d Zeichen)${NC}: " "$question" "$min_length"
         read -s PASSWORD1
         echo
         
@@ -193,7 +195,7 @@ ask_password() {
         fi
         
         # Bestätigung
-        echo -ne "   ${BLUE}►${NC} Passwort wiederholen: "
+        printf "   ${BLUE}►${NC} Passwort wiederholen: "
         read -s PASSWORD2
         echo
         
@@ -222,7 +224,8 @@ ask_yes_no() {
         default="n"
     fi
     
-    echo -ne "   ${BLUE}►${NC} $question $prompt: "
+    # Flush stdout vor Prompt
+    printf "   ${BLUE}►${NC} %s %s: " "$question" "$prompt"
     read -n 1 -r REPLY
     echo
     
@@ -254,8 +257,9 @@ ask_choice() {
     done
     
     echo ""
-    echo -ne "   ${BLUE}►${NC} Auswahl (1-${#options[@]}): "
-    read choice
+    # Flush stdout vor Prompt
+    printf "   ${BLUE}►${NC} Auswahl (1-%d): " "${#options[@]}"
+    read -r choice
     
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
         echo $((choice-1))
