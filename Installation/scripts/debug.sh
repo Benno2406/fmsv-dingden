@@ -68,9 +68,11 @@ show_menu() {
     echo -e "  ${GREEN}8${NC}) .env Konfiguration prüfen"
     echo -e "  ${GREEN}9${NC}) HTTP-Endpoint testen"
     echo -e "  ${CYAN}10${NC}) Backend-HTTP-Problem beheben ${YELLOW}⭐${NC}"
+    echo -e "  ${RED}11${NC}) Kompletter Cache-Reset ${YELLOW}💣${NC}"
+    echo -e "  ${YELLOW}12${NC}) Port-Diagnose (Auf welchem Port läuft Backend?) ${YELLOW}🔍${NC}"
     echo -e "  ${GREEN}0${NC}) Beenden"
     echo ""
-    read -p "Auswahl [0-10]: " choice
+    read -p "Auswahl [0-12]: " choice
     echo ""
     
     case $choice in
@@ -78,6 +80,8 @@ show_menu() {
         2) quick_fix ;;
         3) show_logs ;;
         4) manual_start ;;
+        11) complete_cache_reset ;;
+        12) port_diagnosis ;;
         5) check_services ;;
         6) install_modules ;;
         7) test_database ;;
@@ -243,11 +247,11 @@ full_diagnosis() {
     
     # Check 7: Ports
     echo -e "${CYAN}[7/10] Ports...${NC}"
-    if netstat -tlnp 2>/dev/null | grep -q :5000; then
-        PORT_PROCESS=$(netstat -tlnp 2>/dev/null | grep :5000 | awk '{print $7}')
-        success "Port 5000 in Verwendung von: $PORT_PROCESS"
+    if netstat -tlnp 2>/dev/null | grep -q :3000; then
+        PORT_PROCESS=$(netstat -tlnp 2>/dev/null | grep :3000 | awk '{print $7}')
+        success "Port 3000 in Verwendung von: $PORT_PROCESS"
     else
-        warning "Port 5000 ist frei (Backend läuft nicht)"
+        warning "Port 3000 ist frei (Backend läuft nicht)"
     fi
     echo ""
     
@@ -263,10 +267,10 @@ full_diagnosis() {
     
     # Check 9: HTTP Test
     echo -e "${CYAN}[9/10] HTTP Endpoint...${NC}"
-    HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+    HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
     if [ "$HTTP_RESPONSE" = "200" ]; then
         success "HTTP /api/health antwortet (200 OK)"
-        HEALTH_DATA=$(curl -s http://localhost:5000/api/health 2>/dev/null)
+        HEALTH_DATA=$(curl -s http://localhost:3000/api/health 2>/dev/null)
         echo -e "${YELLOW}Health Response:${NC}"
         echo "$HEALTH_DATA" | jq . 2>/dev/null || echo "$HEALTH_DATA"
     else
@@ -353,7 +357,7 @@ quick_fix() {
         # Warte bis Backend bereit ist
         info "Warte auf Backend-Start..."
         for i in {1..10}; do
-            HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+            HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
             if [ "$HTTP_RESPONSE" = "200" ]; then
                 success "HTTP-Endpoint antwortet!"
                 break
@@ -364,7 +368,7 @@ quick_fix() {
         echo ""
         
         # Finaler Check
-        HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+        HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
         if [ "$HTTP_RESPONSE" != "200" ]; then
             warning "HTTP-Endpoint antwortet NICHT (Code: $HTTP_RESPONSE)"
             echo ""
@@ -376,7 +380,7 @@ quick_fix() {
             echo -e "${CYAN}Empfohlene Schritte:${NC}"
             echo -e "  ${GREEN}1.${NC} Logs ansehen: Menü Option 3"
             echo -e "  ${GREEN}2.${NC} Backend manuell starten: Menü Option 4"
-            echo -e "  ${GREEN}3.${NC} Port prüfen: ${CYAN}netstat -tlnp | grep 5000${NC}"
+            echo -e "  ${GREEN}3.${NC} Port prüfen: ${CYAN}netstat -tlnp | grep 3000${NC}"
         fi
     else
         error "Backend läuft NICHT"
@@ -640,13 +644,13 @@ test_http() {
     print_section "HTTP-ENDPOINT TEST"
     
     echo -e "${CYAN}Teste /api/health...${NC}"
-    HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+    HTTP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
     
     if [ "$HTTP_RESPONSE" = "200" ]; then
         success "Endpoint antwortet (200 OK)"
         echo ""
         echo -e "${CYAN}Response:${NC}"
-        curl -s http://localhost:5000/api/health 2>/dev/null | jq . 2>/dev/null || curl -s http://localhost:5000/api/health 2>/dev/null
+        curl -s http://localhost:3000/api/health 2>/dev/null | jq . 2>/dev/null || curl -s http://localhost:3000/api/health 2>/dev/null
     else
         error "Endpoint antwortet nicht (Code: $HTTP_RESPONSE)"
         echo ""
@@ -662,13 +666,13 @@ test_http() {
     
     # Test CORS
     echo -e "${YELLOW}CORS Test...${NC}"
-    CORS_RESPONSE=$(curl -s -H "Origin: http://localhost:5173" -H "Access-Control-Request-Method: GET" -I http://localhost:5000/api/health 2>/dev/null | grep -i "access-control" || echo "Keine CORS Header")
+    CORS_RESPONSE=$(curl -s -H "Origin: http://localhost:5173" -H "Access-Control-Request-Method: GET" -I http://localhost:3000/api/health 2>/dev/null | grep -i "access-control" || echo "Keine CORS Header")
     echo "$CORS_RESPONSE"
     echo ""
     
     # Test mit curl verbose
     echo -e "${YELLOW}Detaillierter Request:${NC}"
-    curl -v http://localhost:5000/api/health 2>&1 | head -n 20
+    curl -v http://localhost:3000/api/health 2>&1 | head -n 20
     
     echo ""
     read -p "Zurück zum Menü (Enter)" -r
@@ -723,61 +727,50 @@ fix_backend_http() {
     fi
     echo ""
     
-    # Check 3: Port 5000 belegt?
-    echo -e "${CYAN}[3/7] Port 5000...${NC}"
-    if netstat -tlnp 2>/dev/null | grep -q :5000; then
-        PORT_INFO=$(netstat -tlnp 2>/dev/null | grep :5000)
-        success "Port 5000 ist belegt"
+    # Check 3: Port 3000 belegt?
+    echo -e "${CYAN}[3/7] Port 3000...${NC}"
+    if netstat -tlnp 2>/dev/null | grep -q :3000; then
+        PORT_INFO=$(netstat -tlnp 2>/dev/null | grep :3000)
+        success "Port 3000 ist belegt"
         echo -e "${YELLOW}Details:${NC}"
         echo "$PORT_INFO"
     else
-        error "Port 5000 ist FREI!"
+        error "Port 3000 ist FREI!"
         echo ""
-        warning "Backend hört nicht auf Port 5000!"
+        warning "Backend hört nicht auf Port 3000!"
         
         # Wenn Node läuft aber Port frei ist, ist der Prozess in einem fehlerhaften Zustand
         if pgrep -f "node.*server.js" > /dev/null; then
             echo ""
-            warning "Node.js Prozess läuft, aber bindet nicht an Port 5000!"
+            warning "Node.js Prozess läuft, aber bindet nicht an Port 3000!"
             warning "Der Prozess ist vermutlich in einem fehlerhaften Zustand."
-            echo ""
-            info "Beende fehlerhaften Node.js Prozess..."
-            pkill -9 -f "node.*server.js"
-            sleep 2
-            success "Prozess beendet"
         fi
         
         echo ""
         echo -e "${YELLOW}Prüfe .env Konfiguration...${NC}"
         if grep -q "^PORT=" .env 2>/dev/null; then
             CONFIGURED_PORT=$(grep "^PORT=" .env | cut -d= -f2)
-            if [ "$CONFIGURED_PORT" != "5000" ]; then
-                error "PORT in .env ist $CONFIGURED_PORT (sollte 5000 sein)"
+            if [ "$CONFIGURED_PORT" != "3000" ]; then
+                error "PORT in .env ist $CONFIGURED_PORT (sollte 3000 sein)"
                 echo ""
-                info "Setze PORT auf 5000..."
-                sed -i 's/^PORT=.*/PORT=5000/' .env
-                success "PORT auf 5000 gesetzt"
+                info "Setze PORT auf 3000..."
+                sed -i 's/^PORT=.*/PORT=3000/' .env
+                success "PORT auf 3000 gesetzt"
             else
-                success "PORT ist korrekt auf 5000 gesetzt"
+                success "PORT ist korrekt auf 3000 gesetzt"
             fi
         else
             warning "PORT nicht in .env gesetzt"
-            info "Füge PORT=5000 zur .env hinzu..."
-            echo "PORT=5000" >> .env
+            info "Füge PORT=3000 zur .env hinzu..."
+            echo "PORT=3000" >> .env
             success "PORT hinzugefügt"
         fi
-        
-        echo ""
-        info "Starte Backend neu..."
-        systemctl restart fmsv-backend
-        sleep 3
-        success "Backend neu gestartet"
     fi
     echo ""
     
     # Check 4: HTTP Test
     echo -e "${CYAN}[4/7] HTTP Verbindung...${NC}"
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
         success "HTTP antwortet (200 OK)"
         echo ""
@@ -855,16 +848,16 @@ fix_backend_http() {
             echo ""
             
             # Prüfe ob Port nun belegt ist
-            if netstat -tlnp 2>/dev/null | grep -q :5000; then
-                success "Port 5000 ist jetzt belegt!"
+            if netstat -tlnp 2>/dev/null | grep -q :3000; then
+                success "Port 3000 ist jetzt belegt!"
                 echo ""
             else
-                warning "Port 5000 ist immer noch frei..."
+                warning "Port 3000 ist immer noch frei..."
                 echo ""
             fi
             
             # Teste erneut
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health 2>/dev/null || echo "000")
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
             if [ "$HTTP_CODE" = "200" ]; then
                 echo ""
                 success "✅ PROBLEM GELÖST!"
@@ -881,6 +874,316 @@ fix_backend_http() {
         fi
     else
         success "✅ Alles funktioniert!"
+    fi
+    
+    echo ""
+    read -p "Zurück zum Menü (Enter)" -r
+    show_menu
+}
+
+################################################################################
+# 11. Kompletter Cache-Reset
+################################################################################
+complete_cache_reset() {
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║           KOMPLETTER CACHE-RESET (Nuclear Option)            ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    echo -e "${RED}⚠️  WARNUNG: Dies löscht ALLE Caches und installiert alles neu!${NC}"
+    echo ""
+    echo -e "${YELLOW}Was wird gemacht:${NC}"
+    echo -e "  ${RED}•${NC} Stoppt Backend-Service"
+    echo -e "  ${RED}•${NC} Beendet alle Node.js Prozesse"
+    echo -e "  ${RED}•${NC} Löscht node_modules komplett"
+    echo -e "  ${RED}•${NC} Löscht npm Cache"
+    echo -e "  ${RED}•${NC} Installiert Dependencies neu"
+    echo -e "  ${RED}•${NC} Startet Backend neu"
+    echo ""
+    
+    read -p "Wirklich fortfahren? (j/N): " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Jj]$ ]]; then
+        info "Abgebrochen"
+        echo ""
+        read -p "Zurück zum Menü (Enter)" -r
+        show_menu
+        return
+    fi
+    
+    echo ""
+    echo -e "${CYAN}[1/8] Stoppe Backend-Service...${NC}"
+    systemctl stop fmsv-backend
+    success "Service gestoppt"
+    echo ""
+    
+    echo -e "${CYAN}[2/8] Beende alle Node.js Prozesse...${NC}"
+    if pgrep -f "node" > /dev/null; then
+        pkill -9 -f "node"
+        sleep 2
+        success "Alle Node.js Prozesse beendet"
+    else
+        info "Keine Node.js Prozesse gefunden"
+    fi
+    echo ""
+    
+    echo -e "${CYAN}[3/8] Lösche node_modules...${NC}"
+    if [ -d "$BACKEND_DIR/node_modules" ]; then
+        rm -rf "$BACKEND_DIR/node_modules"
+        success "node_modules gelöscht"
+    else
+        info "node_modules nicht vorhanden"
+    fi
+    echo ""
+    
+    echo -e "${CYAN}[4/8] Lösche package-lock.json...${NC}"
+    if [ -f "$BACKEND_DIR/package-lock.json" ]; then
+        rm -f "$BACKEND_DIR/package-lock.json"
+        success "package-lock.json gelöscht"
+    else
+        info "package-lock.json nicht vorhanden"
+    fi
+    echo ""
+    
+    echo -e "${CYAN}[5/8] Leere npm Cache...${NC}"
+    npm cache clean --force
+    success "npm Cache geleert"
+    echo ""
+    
+    echo -e "${CYAN}[6/8] Installiere Dependencies neu...${NC}"
+    cd "$BACKEND_DIR"
+    npm install
+    if [ $? -eq 0 ]; then
+        success "Dependencies installiert"
+    else
+        error "Installation fehlgeschlagen!"
+        echo ""
+        read -p "Zurück zum Menü (Enter)" -r
+        show_menu
+        return
+    fi
+    echo ""
+    
+    echo -e "${CYAN}[7/8] Starte Backend-Service...${NC}"
+    systemctl start fmsv-backend
+    sleep 5
+    if systemctl is-active --quiet fmsv-backend; then
+        success "Backend-Service gestartet"
+    else
+        error "Backend-Service Start fehlgeschlagen!"
+        echo ""
+        echo -e "${YELLOW}Logs:${NC}"
+        journalctl -u fmsv-backend -n 20 --no-pager
+    fi
+    echo ""
+    
+    echo -e "${CYAN}[8/8] Teste Backend...${NC}"
+    sleep 3
+    
+    # Port Check
+    if netstat -tlnp 2>/dev/null | grep -q :3000; then
+        success "Port 3000 ist belegt"
+    else
+        error "Port 3000 ist FREI!"
+    fi
+    
+    # HTTP Check
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
+        success "HTTP antwortet (200 OK)"
+        echo ""
+        echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║              ✅ CACHE-RESET ERFOLGREICH! ✅                   ║${NC}"
+        echo -e "${GREEN}║         Backend läuft jetzt sauber und antwortet!             ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    else
+        error "HTTP antwortet nicht (Code: $HTTP_CODE)"
+        echo ""
+        warning "Cache wurde geleert, aber Backend antwortet noch nicht."
+        echo ""
+        echo -e "${YELLOW}Empfehlung:${NC}"
+        echo -e "  ${CYAN}1.${NC} Logs prüfen (Option 3)"
+        echo -e "  ${CYAN}2.${NC} Backend manuell starten (Option 4)"
+    fi
+    
+    echo ""
+    read -p "Zurück zum Menü (Enter)" -r
+    show_menu
+}
+
+################################################################################
+# 12. Port-Diagnose
+################################################################################
+port_diagnosis() {
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                      PORT-DIAGNOSE                             ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    cd "$BACKEND_DIR"
+    
+    echo -e "${YELLOW}═══ 1. .env Datei Prüfung ═══${NC}"
+    echo ""
+    
+    # Prüfe .env Datei
+    if [ -f ".env" ]; then
+        success ".env Datei existiert in $BACKEND_DIR"
+        echo ""
+        
+        if grep -q "^PORT=" .env; then
+            CONFIGURED_PORT=$(grep "^PORT=" .env | cut -d= -f2 | tr -d ' \r\n')
+            info "Konfigurierter PORT in .env: ${YELLOW}$CONFIGURED_PORT${NC}"
+        else
+            warning "PORT nicht in .env gesetzt!"
+            info "Default Port laut server.js: ${YELLOW}3000${NC}"
+            CONFIGURED_PORT=3000
+        fi
+    else
+        error ".env Datei FEHLT in $BACKEND_DIR!"
+        warning "Backend nutzt Default Port: ${YELLOW}3000${NC}"
+        CONFIGURED_PORT=3000
+        echo ""
+        info "Kopiere env.example.txt zu .env..."
+        if [ -f "env.example.txt" ]; then
+            cp env.example.txt .env
+            success ".env Datei erstellt"
+            echo ""
+            warning "WICHTIG: Du musst die .env Datei noch konfigurieren!"
+            echo -e "  ${CYAN}→${NC} DB Credentials eintragen"
+            echo -e "  ${CYAN}→${NC} PORT auf 3000 setzen"
+            echo -e "  ${CYAN}→${NC} JWT_SECRET generieren"
+        fi
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}═══ 2. Node.js Prozess Prüfung ═══${NC}"
+    echo ""
+    
+    if pgrep -f "node.*server.js" > /dev/null; then
+        NODE_PID=$(pgrep -f "node.*server.js")
+        success "Node.js Prozess läuft (PID: ${YELLOW}$NODE_PID${NC})"
+        echo ""
+        
+        # Finde auf welchem Port Node läuft
+        echo -e "${CYAN}Suche aktive Ports...${NC}"
+        echo ""
+        
+        FOUND_PORTS=$(netstat -tlnp 2>/dev/null | grep "$NODE_PID/node" | awk '{print $4}' | awk -F: '{print $NF}' | sort -u)
+        
+        if [ -n "$FOUND_PORTS" ]; then
+            success "Backend hört auf folgende(n) Port(s):"
+            echo ""
+            for PORT_NUM in $FOUND_PORTS; do
+                echo -e "  ${GREEN}✓${NC} Port: ${YELLOW}$PORT_NUM${NC}"
+                
+                # Teste HTTP auf diesem Port
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT_NUM/api/health 2>/dev/null || echo "000")
+                if [ "$HTTP_CODE" = "200" ]; then
+                    echo -e "    ${GREEN}→ HTTP funktioniert! (200 OK)${NC}"
+                elif [ "$HTTP_CODE" != "000" ]; then
+                    echo -e "    ${YELLOW}→ HTTP Code: $HTTP_CODE${NC}"
+                else
+                    echo -e "    ${RED}→ Keine HTTP-Antwort${NC}"
+                fi
+                echo ""
+            done
+            
+            # Vergleiche mit konfiguriertem Port
+            if echo "$FOUND_PORTS" | grep -q "^${CONFIGURED_PORT}$"; then
+                success "✅ Backend läuft auf dem RICHTIGEN Port ($CONFIGURED_PORT)"
+            else
+                echo ""
+                error "❌ PORT-KONFLIKT!"
+                echo -e "${RED}Backend läuft auf Port(s): $FOUND_PORTS${NC}"
+                echo -e "${RED}Erwartet wurde Port: $CONFIGURED_PORT${NC}"
+                echo ""
+                
+                # Biete Fix an
+                echo -e "${YELLOW}Möchtest du den PORT in .env korrigieren?${NC}"
+                echo ""
+                echo "Optionen:"
+                for PORT_NUM in $FOUND_PORTS; do
+                    echo -e "  ${CYAN}1${NC}) PORT auf $PORT_NUM setzen (Backend läuft bereits darauf)"
+                done
+                echo -e "  ${CYAN}2${NC}) PORT auf 3000 setzen und Backend neu starten"
+                echo -e "  ${CYAN}3${NC}) Nichts ändern"
+                echo ""
+                
+                read -p "Auswahl [1-3]: " PORT_FIX_CHOICE
+                echo ""
+                
+                case $PORT_FIX_CHOICE in
+                    1)
+                        FIRST_PORT=$(echo "$FOUND_PORTS" | head -n1)
+                        if grep -q "^PORT=" .env; then
+                            sed -i "s/^PORT=.*/PORT=$FIRST_PORT/" .env
+                        else
+                            echo "PORT=$FIRST_PORT" >> .env
+                        fi
+                        success "PORT in .env auf $FIRST_PORT gesetzt"
+                        info "Backend läuft bereits auf diesem Port - kein Neustart nötig"
+                        ;;
+                    2)
+                        if grep -q "^PORT=" .env; then
+                            sed -i 's/^PORT=.*/PORT=3000/' .env
+                        else
+                            echo "PORT=3000" >> .env
+                        fi
+                        success "PORT in .env auf 3000 gesetzt"
+                        echo ""
+                        info "Starte Backend neu..."
+                        systemctl restart fmsv-backend
+                        sleep 5
+                        success "Backend neu gestartet"
+                        echo ""
+                        
+                        # Teste Port 3000
+                        if netstat -tlnp 2>/dev/null | grep -q :3000; then
+                            success "✅ Backend läuft jetzt auf Port 3000!"
+                        else
+                            error "Backend läuft NICHT auf Port 3000"
+                            warning "Prüfe die Logs (Option 3)"
+                        fi
+                        ;;
+                    *)
+                        info "Keine Änderungen vorgenommen"
+                        ;;
+                esac
+            fi
+        else
+            error "Backend-Prozess läuft, aber bindet an KEINEN Port!"
+            warning "Der Prozess ist wahrscheinlich gecrasht oder in einem fehlerhaften Zustand"
+            echo ""
+            info "Empfehlung:"
+            echo -e "  ${CYAN}1.${NC} Logs prüfen (Option 3)"
+            echo -e "  ${CYAN}2.${NC} Backend manuell starten (Option 4) um Fehler zu sehen"
+            echo -e "  ${CYAN}3.${NC} Cache-Reset (Option 11)"
+        fi
+    else
+        error "Kein Node.js Prozess gefunden!"
+        echo ""
+        info "Backend läuft nicht. Starte es mit Option 4 (Backend manuell starten)"
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}═══ 3. Port-Übersicht ═══${NC}"
+    echo ""
+    
+    # Zeige alle Ports die in Verwendung sind
+    echo -e "${CYAN}Alle aktiven Node.js Ports:${NC}"
+    if netstat -tlnp 2>/dev/null | grep -q "node"; then
+        netstat -tlnp 2>/dev/null | grep "node" | awk '{print $4 " → " $7}' | sed 's/\(.*\):\([0-9]*\)/Port \2/'
+    else
+        info "Keine Node.js Prozesse hören auf Ports"
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Zusammenfassung:${NC}"
+    echo -e "  ${YELLOW}Konfigurierter Port (.env):${NC} $CONFIGURED_PORT"
+    if [ -n "$FOUND_PORTS" ]; then
+        echo -e "  ${YELLOW}Tatsächlicher Port:${NC} $FOUND_PORTS"
+    else
+        echo -e "  ${YELLOW}Tatsächlicher Port:${NC} ${RED}Keiner (Backend läuft nicht richtig)${NC}"
     fi
     
     echo ""
