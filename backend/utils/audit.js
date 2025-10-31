@@ -1,14 +1,10 @@
-import { query } from '../config/database.js';
-import { logger } from './logger.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const pool = require('../config/database');
+const { logger } = require('./logger');
+const fs = require('fs');
+const path = require('path');
 
 // Audit log in database AND file
-export const logAudit = async ({
+const logAudit = async ({
   userId,
   userEmail,
   action,
@@ -23,7 +19,7 @@ export const logAudit = async ({
     const userAgent = req ? req.get('user-agent') : null;
 
     // Store in database
-    await query(
+    await pool.query(
       `INSERT INTO audit_log 
        (user_id, user_email, action, entity_type, entity_id, details, ip_address, user_agent)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -55,7 +51,7 @@ export const logAudit = async ({
 };
 
 // Predefined audit actions
-export const AUDIT_ACTIONS = {
+const AUDIT_ACTIONS = {
   // Authentication
   LOGIN: 'LOGIN',
   LOGOUT: 'LOGOUT',
@@ -105,7 +101,17 @@ export const AUDIT_ACTIONS = {
   
   // Security
   UNAUTHORIZED_ACCESS: 'UNAUTHORIZED_ACCESS',
-  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED'
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+  
+  // RBAC
+  ROLE_ASSIGNED: 'ROLE_ASSIGNED',
+  ROLE_REMOVED: 'ROLE_REMOVED',
+  PERMISSION_GRANTED: 'PERMISSION_GRANTED',
+  PERMISSION_REVOKED: 'PERMISSION_REVOKED'
 };
 
-export default logAudit;
+module.exports = {
+  logAudit,
+  AUDIT_ACTIONS
+};
+module.exports.default = logAudit;

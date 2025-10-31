@@ -1,14 +1,21 @@
-import jwt from 'jsonwebtoken';
-import { query } from '../config/database.js';
-import { logger } from './logger.js';
+const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
+
+const logger = {
+  info: console.log,
+  error: console.error,
+  warn: console.warn,
+  debug: () => {}
+};
 
 // Generate Access Token (short-lived)
-export const generateAccessToken = (user) => {
+const generateAccessToken = (user, twoFAVerified = false) => {
   const payload = {
     id: user.id,
     email: user.email,
     isAdmin: user.is_admin,
-    isMember: user.is_member
+    isMember: user.is_member,
+    two_fa_verified: twoFAVerified // Für 2FA-Status
   };
 
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -17,7 +24,7 @@ export const generateAccessToken = (user) => {
 };
 
 // Generate Refresh Token (long-lived)
-export const generateRefreshToken = async (userId) => {
+const generateRefreshToken = async (userId, deviceInfo = null, ipAddress = null) => {
   const payload = { id: userId };
   
   const refreshToken = jwt.sign(
@@ -30,9 +37,9 @@ export const generateRefreshToken = async (userId) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   
   try {
-    await query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [userId, refreshToken, expiresAt]
+    await pool.query(
+      'INSERT INTO refresh_tokens (user_id, token, expires_at, device_info, ip_address, last_used_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+      [userId, refreshToken, expiresAt, deviceInfo, ipAddress]
     );
   } catch (error) {
     logger.error('Error storing refresh token:', error);
@@ -43,7 +50,7 @@ export const generateRefreshToken = async (userId) => {
 };
 
 // Verify Access Token
-export const verifyAccessToken = (token) => {
+const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
@@ -53,12 +60,12 @@ export const verifyAccessToken = (token) => {
 };
 
 // Verify Refresh Token
-export const verifyRefreshToken = async (token) => {
+const verifyRefreshToken = async (token) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     
     // Check if token exists in database
-    const result = await query(
+    const result = await pool.query(
       'SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()',
       [token]
     );
@@ -66,6 +73,12 @@ export const verifyRefreshToken = async (token) => {
     if (result.rows.length === 0) {
       return null;
     }
+
+    // Update last_used_at
+    await pool.query(
+      'UPDATE refresh_tokens SET last_used_at = NOW() WHERE token = $1',
+      [token]
+    );
 
     return decoded;
   } catch (error) {
@@ -75,9 +88,9 @@ export const verifyRefreshToken = async (token) => {
 };
 
 // Revoke Refresh Token
-export const revokeRefreshToken = async (token) => {
+const revokeRefreshToken = async (token) => {
   try {
-    await query('DELETE FROM refresh_tokens WHERE token = $1', [token]);
+    await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [token]);
     return true;
   } catch (error) {
     logger.error('Error revoking refresh token:', error);
@@ -86,9 +99,9 @@ export const revokeRefreshToken = async (token) => {
 };
 
 // Revoke all user tokens (logout from all devices)
-export const revokeAllUserTokens = async (userId) => {
+const revokeAllUserTokens = async (userId) => {
   try {
-    await query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
     return true;
   } catch (error) {
     logger.error('Error revoking all user tokens:', error);
@@ -97,13 +110,23 @@ export const revokeAllUserTokens = async (userId) => {
 };
 
 // Clean expired tokens (run periodically)
-export const cleanExpiredTokens = async () => {
+const cleanExpiredTokens = async () => {
   try {
-    const result = await query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
+    const result = await pool.query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
     logger.info(`Cleaned ${result.rowCount} expired refresh tokens`);
     return result.rowCount;
   } catch (error) {
     logger.error('Error cleaning expired tokens:', error);
     return 0;
   }
+};
+
+module.exports = {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserTokens,
+  cleanExpiredTokens
 };

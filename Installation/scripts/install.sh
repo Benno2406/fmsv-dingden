@@ -26,7 +26,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Total steps
-TOTAL_STEPS=14
+TOTAL_STEPS=15
 
 ################################################################################
 # HILFE-FUNKTIONEN
@@ -642,10 +642,131 @@ success "PostgreSQL $PG_VERSION läuft"
 sleep 1
 
 ################################################################################
-# Schritt 6: Node.js Installation
+# Schritt 6: pgAdmin 4 Installation (mit Apache2 auf Port 1880/18443)
 ################################################################################
 
-print_header 6 "Node.js Installation"
+print_header 6 "pgAdmin 4 Installation"
+
+info "pgAdmin 4 ermöglicht grafische Datenbank-Verwaltung über Webbrowser"
+echo ""
+echo -ne "   ${BLUE}►${NC} pgAdmin 4 installieren? (j/n): "
+read -n 1 -r
+echo
+INSTALL_PGADMIN=$REPLY
+
+if [[ $REPLY =~ ^[Jj]$ ]]; then
+    info "Installiere Apache2 mit angepassten Ports (1880/18443)..."
+    
+    # Apache2 installieren
+    if apt-get install -y -qq apache2 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+        success "Apache2 installiert"
+    else
+        error "Apache2 Installation fehlgeschlagen"
+    fi
+    
+    # Apache2 Ports ändern zu 1880 und 18443
+    info "Konfiguriere Apache2 Ports..."
+    
+    # ports.conf anpassen
+    cat > /etc/apache2/ports.conf << 'EOF'
+# Apache2 läuft auf alternativen Ports (nginx läuft auf 80/443)
+Listen 1880
+Listen 18443
+
+<IfModule ssl_module>
+    Listen 18443
+</IfModule>
+
+<IfModule mod_gnutls.c>
+    Listen 18443
+</IfModule>
+EOF
+    
+    success "Apache2 Ports konfiguriert (1880/18443)"
+    
+    # pgAdmin 4 Repository hinzufügen
+    info "Füge pgAdmin 4 Repository hinzu..."
+    curl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
+    
+    echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list
+    
+    # Apt update
+    apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    
+    # pgAdmin 4 Web installieren
+    info "Installiere pgAdmin 4 Web..."
+    if apt-get install -y -qq pgadmin4-web 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+        success "pgAdmin 4 installiert"
+    else
+        error "pgAdmin 4 Installation fehlgeschlagen"
+    fi
+    
+    # pgAdmin 4 Setup
+    info "Konfiguriere pgAdmin 4..."
+    echo ""
+    echo -e "${YELLOW}┌────────────────────────────────────────────┐${NC}"
+    echo -e "${YELLOW}│  pgAdmin 4 E-Mail und Passwort eingeben   │${NC}"
+    echo -e "${YELLOW}└────────────────────────────────────────────┘${NC}"
+    echo ""
+    
+    # Run pgAdmin setup
+    /usr/pgadmin4/bin/setup-web.sh --yes 2>&1 | tee -a "$LOG_FILE"
+    
+    # Apache2 VirtualHost für pgAdmin anpassen (Port 1880)
+    info "Passe pgAdmin VirtualHost an..."
+    
+    # Finde pgAdmin Apache Config
+    PGADMIN_CONF=$(find /etc/apache2/sites-enabled -name "*pgadmin*" 2>/dev/null | head -1)
+    
+    if [ -n "$PGADMIN_CONF" ]; then
+        # Ersetze Port 80 mit 1880
+        sed -i 's/<VirtualHost \*:80>/<VirtualHost *:1880>/' "$PGADMIN_CONF"
+        success "pgAdmin VirtualHost auf Port 1880 angepasst"
+    fi
+    
+    # Apache2 neu starten
+    info "Starte Apache2..."
+    systemctl restart apache2
+    systemctl enable apache2 > /dev/null 2>&1
+    
+    if systemctl is-active --quiet apache2; then
+        success "Apache2 läuft auf Port 1880/18443"
+        
+        # Firewall Rules
+        if command -v ufw &> /dev/null; then
+            info "Konfiguriere Firewall..."
+            ufw allow 1880/tcp comment "Apache2 HTTP für pgAdmin" > /dev/null 2>&1
+            ufw allow 18443/tcp comment "Apache2 HTTPS für pgAdmin" > /dev/null 2>&1
+            success "Firewall-Regeln hinzugefügt"
+        fi
+        
+        echo ""
+        echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║            pgAdmin 4 erfolgreich installiert!          ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${YELLOW}Zugriff:${NC}"
+        echo -e "  ${CYAN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
+        echo -e "  ${CYAN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
+        echo ""
+        echo -e "${YELLOW}Optional - Nginx Reverse Proxy:${NC}"
+        echo -e "  Du kannst später eine Nginx-Konfiguration erstellen für:"
+        echo -e "  ${CYAN}pgadmin.deineadomain.de${NC} → http://localhost:1880"
+        echo ""
+    else
+        error "Apache2 konnte nicht gestartet werden"
+    fi
+else
+    warning "pgAdmin 4 Installation übersprungen"
+fi
+
+sleep 1
+
+################################################################################
+# Schritt 7: Node.js Installation
+################################################################################
+
+print_header 7 "Node.js Installation"
 
 info "Füge NodeSource Repository hinzu..."
 if curl -fsSL https://deb.nodesource.com/setup_lts.x 2>&1 | bash - 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
@@ -667,10 +788,10 @@ fi
 sleep 1
 
 ################################################################################
-# Schritt 7: Repository klonen
+# Schritt 8: Repository klonen
 ################################################################################
 
-print_header 7 "Repository klonen"
+print_header 8 "Repository klonen"
 
 INSTALL_DIR="/var/www/fmsv-dingden"
 

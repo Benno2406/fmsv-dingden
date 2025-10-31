@@ -1,10 +1,11 @@
-import { verifyAccessToken } from '../utils/jwt.js';
-import { query } from '../config/database.js';
-import { logAudit, AUDIT_ACTIONS } from '../utils/audit.js';
-import { logger } from '../utils/logger.js';
+const { verifyAccessToken } = require('../utils/jwt');
+const pool = require('../config/database');
+const { logAudit, AUDIT_ACTIONS } = require('../utils/audit');
+const { logger } = require('../utils/logger');
+const { getUserPermissions, getUserRoles } = require('./rbac');
 
 // Verify JWT Token
-export const authenticate = async (req, res, next) => {
+const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -25,9 +26,11 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // Get full user data
-    const result = await query(
-      'SELECT id, email, first_name, last_name, is_admin, is_member, is_active FROM users WHERE id = $1',
+    // Get full user data including 2FA status
+    const result = await pool.query(
+      `SELECT id, email, first_name, last_name, is_admin, is_member, is_active, 
+              two_fa_enabled, account_locked 
+       FROM users WHERE id = $1`,
       [decoded.id]
     );
 
@@ -55,6 +58,39 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    // Check if account is locked
+    if (user.account_locked) {
+      await logAudit({
+        userId: user.id,
+        userEmail: user.email,
+        action: AUDIT_ACTIONS.UNAUTHORIZED_ACCESS,
+        details: { reason: 'Account locked' },
+        req
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'Dein Konto wurde gesperrt',
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
+    // Load user permissions and roles (for RBAC)
+    user.permissions = await getUserPermissions(user.id);
+    user.roles = await getUserRoles(user.id);
+    
+    // Check if 2FA is required and verified
+    if (user.two_fa_enabled && !decoded.two_fa_verified) {
+      return res.status(403).json({
+        success: false,
+        message: '2FA-Verifizierung erforderlich',
+        code: '2FA_REQUIRED',
+        two_fa_required: true
+      });
+    }
+    
+    user.two_fa_verified = decoded.two_fa_verified || false;
+
     // Attach user to request
     req.user = user;
     next();
@@ -68,7 +104,7 @@ export const authenticate = async (req, res, next) => {
 };
 
 // Check if user is a member
-export const requireMember = (req, res, next) => {
+const requireMember = (req, res, next) => {
   if (!req.user || !req.user.is_member) {
     logAudit({
       userId: req.user?.id,
@@ -87,7 +123,7 @@ export const requireMember = (req, res, next) => {
 };
 
 // Check if user is admin
-export const requireAdmin = (req, res, next) => {
+const requireAdmin = (req, res, next) => {
   if (!req.user || !req.user.is_admin) {
     logAudit({
       userId: req.user?.id,
@@ -106,7 +142,7 @@ export const requireAdmin = (req, res, next) => {
 };
 
 // Optional authentication (user might be logged in or not)
-export const optionalAuth = async (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -119,7 +155,7 @@ export const optionalAuth = async (req, res, next) => {
     const decoded = verifyAccessToken(token);
 
     if (decoded) {
-      const result = await query(
+      const result = await pool.query(
         'SELECT id, email, first_name, last_name, is_admin, is_member, is_active FROM users WHERE id = $1',
         [decoded.id]
       );
@@ -135,4 +171,11 @@ export const optionalAuth = async (req, res, next) => {
     req.user = null;
     next();
   }
+};
+
+module.exports = {
+  authenticate,
+  requireMember,
+  requireAdmin,
+  optionalAuth
 };

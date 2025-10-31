@@ -1,10 +1,13 @@
-import pg from 'pg';
-import dotenv from 'dotenv';
-import { logger } from '../utils/logger.js';
+const { Pool } = require('pg');
+require('dotenv').config();
 
-dotenv.config();
-
-const { Pool } = pg;
+// Logger kommt später - erstmal minimales Logging
+const logger = {
+  info: console.log,
+  error: console.error,
+  debug: () => {}, // Debug deaktiviert für jetzt
+  warn: console.warn
+};
 
 // PostgreSQL Connection Pool
 const pool = new Pool({
@@ -30,7 +33,7 @@ pool.on('error', (err) => {
 });
 
 // Query helper with error handling and logging
-export const query = async (text, params) => {
+const query = async (text, params) => {
   const start = Date.now();
   try {
     const result = await pool.query(text, params);
@@ -44,7 +47,7 @@ export const query = async (text, params) => {
 };
 
 // Transaction helper
-export const transaction = async (callback) => {
+const transaction = async (callback) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -60,6 +63,9 @@ export const transaction = async (callback) => {
 };
 
 // Get client for complex transactions
-export const getClient = () => pool.connect();
+const getClient = () => pool.connect();
 
-export default pool;
+module.exports = pool;
+module.exports.query = query;
+module.exports.transaction = transaction;
+module.exports.getClient = getClient;

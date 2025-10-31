@@ -1,10 +1,6 @@
-import winston from 'winston';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const winston = require('winston');
+const path = require('path');
+const fs = require('fs');
 
 // Ensure logs directory exists
 const logsDir = path.join(__dirname, '..', '..', 'Logs');
@@ -27,7 +23,7 @@ const customFormat = winston.format.combine(
 );
 
 // Logger instance
-export const logger = winston.createLogger({
+const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: customFormat,
   defaultMeta: { service: 'fmsv-backend' },
@@ -58,4 +54,5 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-export default logger;
+module.exports = { logger };
+module.exports.default = logger;

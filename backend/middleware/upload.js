@@ -1,11 +1,8 @@
-import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import crypto from 'crypto';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+const { getUserUploadLimits } = require('./rbac');
 
 // Ensure upload directories exist
 const savesDir = path.join(__dirname, '..', '..', 'Saves');
@@ -58,23 +55,26 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Get max file size based on user role
-const getMaxFileSize = (req) => {
-  const isAdmin = req.user?.is_admin;
-  const maxSizeMember = parseInt(process.env.MAX_FILE_SIZE_MEMBER) || 5242880; // 5MB
-  const maxSizeAdmin = parseInt(process.env.MAX_FILE_SIZE_ADMIN) || 52428800; // 50MB
-  
-  return isAdmin ? maxSizeAdmin : maxSizeMember;
+// Get max file size based on user role (RBAC)
+const getMaxFileSize = async (req) => {
+  if (!req.user || !req.user.id) {
+    return 5 * 1024 * 1024; // 5MB default
+  }
+
+  const limits = await getUserUploadLimits(req.user.id);
+  return limits.maxUploadSizeMB * 1024 * 1024; // Convert MB to bytes
 };
 
 // Create upload middleware with dynamic file size
-export const createUpload = (fieldName = 'file', maxCount = 1) => {
-  return (req, res, next) => {
+const createUpload = (fieldName = 'file', maxCount = 1) => {
+  return async (req, res, next) => {
+    const maxSize = await getMaxFileSize(req);
+    
     const upload = multer({
       storage,
       fileFilter,
       limits: {
-        fileSize: getMaxFileSize(req)
+        fileSize: maxSize
       }
     });
 
@@ -82,10 +82,10 @@ export const createUpload = (fieldName = 'file', maxCount = 1) => {
       ? upload.single(fieldName)
       : upload.array(fieldName, maxCount);
 
-    uploadHandler(req, res, (err) => {
+    uploadHandler(req, res, async (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          const maxSize = getMaxFileSize(req);
+          const maxSize = await getMaxFileSize(req);
           const maxSizeMB = (maxSize / 1048576).toFixed(0);
           return res.status(413).json({
             success: false,
@@ -108,13 +108,13 @@ export const createUpload = (fieldName = 'file', maxCount = 1) => {
 };
 
 // Upload configurations
-export const uploadSingleImage = createUpload('image', 1);
-export const uploadMultipleImages = createUpload('images', 10);
-export const uploadDocument = createUpload('document', 1);
-export const uploadAvatar = createUpload('avatar', 1);
+const uploadSingleImage = createUpload('image', 1);
+const uploadMultipleImages = createUpload('images', 10);
+const uploadDocument = createUpload('document', 1);
+const uploadAvatar = createUpload('avatar', 1);
 
 // Delete file helper
-export const deleteFile = (filePath) => {
+const deleteFile = (filePath) => {
   try {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
@@ -125,4 +125,13 @@ export const deleteFile = (filePath) => {
     console.error('Error deleting file:', error);
     return false;
   }
+};
+
+module.exports = {
+  createUpload,
+  uploadSingleImage,
+  uploadMultipleImages,
+  uploadDocument,
+  uploadAvatar,
+  deleteFile
 };
