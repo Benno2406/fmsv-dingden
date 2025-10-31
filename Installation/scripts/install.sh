@@ -26,7 +26,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Total steps
-TOTAL_STEPS=14
+TOTAL_STEPS=15
 
 ################################################################################
 # HILFE-FUNKTIONEN
@@ -642,10 +642,162 @@ success "PostgreSQL $PG_VERSION läuft"
 sleep 1
 
 ################################################################################
-# Schritt 6: Node.js Installation
+# Schritt 6: pgAdmin 4 Installation (Web Interface)
 ################################################################################
 
-print_header 6 "Node.js Installation"
+print_header 6 "pgAdmin 4 Installation"
+
+info "Installiere pgAdmin 4 Web Interface..."
+
+# pgAdmin Repository hinzufügen
+info "Füge pgAdmin Repository hinzu..."
+curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub 2>&1 | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg 2>&1 | tee -a "$LOG_FILE" > /dev/null
+
+# Repository zur sources.list hinzufügen
+sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list'
+
+# Paketliste aktualisieren
+info "Aktualisiere Paketliste..."
+apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null
+
+# pgAdmin installieren
+info "Installiere pgAdmin 4 Web-Version..."
+if apt-get install -y -qq pgadmin4-web 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+    success "pgAdmin 4 installiert"
+else
+    warning "pgAdmin 4 konnte nicht installiert werden (nicht kritisch)"
+    echo ""
+    echo -e "${YELLOW}Du kannst pgAdmin 4 später manuell installieren mit:${NC}"
+    echo -e "  ${CYAN}sudo /usr/pgadmin4/bin/setup-web.sh${NC}"
+    echo ""
+    sleep 3
+fi
+
+# Prüfe ob Installation erfolgreich war
+if command -v /usr/pgadmin4/bin/setup-web.sh &> /dev/null; then
+    echo ""
+    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║         pgAdmin 4 Konfiguration                           ║${NC}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}pgAdmin 4 Web Interface Setup${NC}"
+    echo ""
+    echo -e "  ${GREEN}•${NC} Erreichbar später unter: ${CYAN}http://deine-ip:5050${NC}"
+    echo -e "  ${GREEN}•${NC} Oder via Nginx: ${CYAN}http://pgadmin.fmsv.bartholmes.eu${NC}"
+    echo ""
+    echo -e "${YELLOW}Jetzt Admin-Benutzer erstellen:${NC}"
+    echo ""
+    
+    # pgAdmin Setup durchführen
+    /usr/pgadmin4/bin/setup-web.sh 2>&1 | tee -a "$LOG_FILE"
+    
+    if [ $? -eq 0 ]; then
+        success "pgAdmin 4 erfolgreich konfiguriert"
+        
+        # Nginx-Config für pgAdmin erstellen
+        info "Erstelle Nginx-Konfiguration für pgAdmin..."
+        cat > /etc/nginx/sites-available/pgadmin << 'NGINX_PGADMIN'
+# pgAdmin 4 - PostgreSQL Web Interface
+server {
+    listen 80;
+    server_name pgadmin.fmsv.bartholmes.eu;
+    
+    # IP-Whitelist - WICHTIG: Passe deine IPs an!
+    # IPv4 Beispiele:
+    # allow 88.123.45.67;        # Einzelne IPv4
+    # allow 88.123.45.0/24;      # IPv4 Range
+    
+    # IPv6 Beispiele:
+    # allow 2a01:1234:5678:9abc::1;      # Einzelne IPv6
+    # allow 2a01:1234:5678:9abc::/64;    # IPv6 Subnet
+    
+    # Localhost erlauben
+    allow 127.0.0.1;
+    allow ::1;
+    
+    # ALLE ANDEREN BLOCKIEREN
+    # deny all;  # Aktiviere nach IP-Whitelist-Konfiguration!
+    
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    location / {
+        proxy_pass http://127.0.0.1:5050;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        
+        # Timeout Settings
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
+        proxy_read_timeout 300;
+        send_timeout 300;
+    }
+}
+NGINX_PGADMIN
+
+        # Nginx Config aktivieren
+        ln -sf /etc/nginx/sites-available/pgadmin /etc/nginx/sites-enabled/
+        
+        success "Nginx-Konfiguration erstellt"
+        echo ""
+        echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║         ✅ pgAdmin 4 erfolgreich installiert! ✅          ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${YELLOW}📝 Wichtige Schritte nach der Installation:${NC}"
+        echo ""
+        echo -e "${CYAN}1️⃣  IP-Whitelist konfigurieren:${NC}"
+        echo -e "    ${GREEN}nano /etc/nginx/sites-available/pgadmin${NC}"
+        echo -e "    Füge deine IPs hinzu und aktiviere 'deny all'"
+        echo ""
+        echo -e "${CYAN}2️⃣  Nginx neu laden:${NC}"
+        echo -e "    ${GREEN}sudo systemctl reload nginx${NC}"
+        echo ""
+        echo -e "${CYAN}3️⃣  pgAdmin öffnen:${NC}"
+        echo -e "    ${GREEN}http://pgadmin.fmsv.bartholmes.eu${NC}"
+        echo -e "    Oder: ${GREEN}http://$(hostname -I | awk '{print $1}'):5050${NC}"
+        echo ""
+        echo -e "${CYAN}4️⃣  Bei pgAdmin einloggen:${NC}"
+        echo -e "    E-Mail:   ${GREEN}[Die gerade eingegebene E-Mail]${NC}"
+        echo -e "    Passwort: ${GREEN}[Das gerade eingegebene Passwort]${NC}"
+        echo ""
+        echo -e "${CYAN}5️⃣  PostgreSQL-Server in pgAdmin hinzufügen:${NC}"
+        echo -e "    • Rechtsklick auf 'Servers' → 'Register' → 'Server'"
+        echo -e "    • Name:     ${GREEN}FMSV Dingden${NC}"
+        echo -e "    • Host:     ${GREEN}localhost${NC}"
+        echo -e "    • Port:     ${GREEN}5432${NC}"
+        echo -e "    • Database: ${GREEN}[Wird später erstellt]${NC}"
+        echo -e "    • Username: ${GREEN}postgres${NC}"
+        echo -e "    • Password: ${GREEN}[PostgreSQL Passwort]${NC}"
+        echo ""
+        echo -e "${YELLOW}⚠️  SICHERHEITSHINWEIS:${NC}"
+        echo -e "    Konfiguriere UNBEDINGT die IP-Whitelist!"
+        echo -e "    Sonst ist pgAdmin für JEDEN erreichbar!"
+        echo ""
+        echo -ne "${GREEN}Drücke Enter um fortzufahren...${NC}"
+        read
+    else
+        warning "pgAdmin Setup wurde übersprungen"
+        echo ""
+        echo -e "${YELLOW}Du kannst pgAdmin später einrichten mit:${NC}"
+        echo -e "  ${CYAN}sudo /usr/pgadmin4/bin/setup-web.sh${NC}"
+    fi
+else
+    info "pgAdmin 4 wurde nicht installiert"
+fi
+
+sleep 1
+
+################################################################################
+# Schritt 7: Node.js Installation
+################################################################################
+
+print_header 7 "Node.js Installation"
 
 info "Füge NodeSource Repository hinzu..."
 if curl -fsSL https://deb.nodesource.com/setup_lts.x 2>&1 | bash - 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
@@ -667,10 +819,10 @@ fi
 sleep 1
 
 ################################################################################
-# Schritt 7: Repository klonen
+# Schritt 8: Repository klonen
 ################################################################################
 
-print_header 7 "Repository klonen"
+print_header 8 "Repository klonen"
 
 INSTALL_DIR="/var/www/fmsv-dingden"
 
@@ -709,10 +861,10 @@ success "Git konfiguriert"
 sleep 1
 
 ################################################################################
-# Schritt 8: Datenbank-Setup
+# Schritt 9: Datenbank-Setup
 ################################################################################
 
-print_header 8 "Datenbank-Setup"
+print_header 9 "Datenbank-Setup"
 
 echo -e "${YELLOW}Datenbank-Konfiguration:${NC}"
 echo ""
@@ -764,11 +916,11 @@ success "Benutzer '$DB_USER' angelegt"
 sleep 1
 
 ################################################################################
-# Schritt 9: Cloudflare Tunnel (Optional)
+# Schritt 10: Cloudflare Tunnel (Optional)
 ################################################################################
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    print_header 9 "Cloudflare Tunnel Installation"
+    print_header 10 "Cloudflare Tunnel Installation"
     
     info "Füge Cloudflare GPG Key hinzu..."
     mkdir -p --mode=0755 /usr/share/keyrings
@@ -957,17 +1109,17 @@ EOF
     success "Cloudflare Tunnel konfiguriert"
     sleep 1
 else
-    print_header 9 "Cloudflare Tunnel (Übersprungen)"
+    print_header 10 "Cloudflare Tunnel (Übersprungen)"
     info "Cloudflare Tunnel wird nicht verwendet"
     DOMAIN="fmsv.bartholmes.eu"
     sleep 1
 fi
 
 ################################################################################
-# Schritt 10: Nginx Installation
+# Schritt 11: Nginx Installation
 ################################################################################
 
-print_header 10 "Nginx Installation & Konfiguration"
+print_header 11 "Nginx Installation & Konfiguration"
 
 info "Installiere Nginx..."
 apt-get install -y -qq nginx > /dev/null 2>&1
@@ -986,6 +1138,19 @@ server {
     
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    
+    # API Proxy zum Backend
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
     
     location /uploads/ {
         alias $INSTALL_DIR/Saves/;
@@ -1055,10 +1220,10 @@ info "Nginx-Test erfolgt nach Frontend-Build"
 sleep 1
 
 ################################################################################
-# Schritt 11: Backend-Setup
+# Schritt 12: Backend-Setup
 ################################################################################
 
-print_header 11 "Backend-Setup"
+print_header 12 "Backend-Setup"
 
 cd "$INSTALL_DIR/backend"
 
@@ -1289,19 +1454,37 @@ success "Backend-Service erstellt"
 sleep 1
 
 ################################################################################
-# Schritt 12: Frontend-Build
+# Schritt 13: Frontend-Build
 ################################################################################
 
-print_header 12 "Frontend-Build"
+print_header 13 "Frontend-Build"
 
 cd "$INSTALL_DIR"
+
+info "Erstelle Frontend-Umgebungsvariablen..."
+
+# .env.production für Production-Build
+cat > .env.production <<EOF
+# Production Environment Variables
+# API URL - wird relativ gesetzt, damit es über Nginx Proxy funktioniert
+VITE_API_URL=/api
+EOF
+
+# .env.development für lokale Entwicklung
+cat > .env.development <<EOF
+# Development Environment Variables
+# API URL - localhost für lokale Entwicklung
+VITE_API_URL=http://localhost:3000/api
+EOF
+
+success "Umgebungsvariablen erstellt"
 
 info "Installiere Frontend-Dependencies..."
 npm install --silent > /dev/null 2>&1
 success "Frontend-Dependencies installiert"
 
-info "Baue Frontend (dies kann einige Minuten dauern)..."
-npm run build > /dev/null 2>&1
+info "Baue Frontend für Production (dies kann einige Minuten dauern)..."
+NODE_ENV=production npm run build > /dev/null 2>&1
 success "Frontend gebaut"
 
 info "Setze Berechtigungen..."
@@ -1330,11 +1513,11 @@ fi
 sleep 1
 
 ################################################################################
-# Schritt 13: Auto-Update System (Optional)
+# Schritt 14: Auto-Update System (Optional)
 ################################################################################
 
 if [ "$AUTO_UPDATE_SCHEDULE" != "manual" ]; then
-    print_header 13 "Auto-Update System"
+    print_header 14 "Auto-Update System"
     
     info "Erstelle Auto-Update Script..."
     
@@ -1441,16 +1624,16 @@ EOF
     success "Zeitplan: $TIMER_DESC"
     sleep 1
 else
-    print_header 13 "Auto-Update System (Übersprungen)"
+    print_header 14 "Auto-Update System (Übersprungen)"
     info "Manuelle Updates werden verwendet"
     sleep 1
 fi
 
 ################################################################################
-# Schritt 14: Services starten & Finalisierung
+# Schritt 15: Services starten & Finalisierung
 ################################################################################
 
-print_header 14 "Services starten & Finalisierung"
+print_header 15 "Services starten & Finalisierung"
 
 info "Starte Backend..."
 systemctl start fmsv-backend
@@ -1604,18 +1787,14 @@ sleep 1
 
 # Kopiere Debug und Update Scripts für späteren Gebrauch
 info "Kopiere Wartungs-Scripts..."
-cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug
-cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
-cp -f /var/www/fmsv-dingden/Installation/scripts/test-backend.sh /usr/local/bin/fmsv-test
-cp -f /var/www/fmsv-dingden/Installation/scripts/show-backend-errors.sh /usr/local/bin/fmsv-errors
-cp -f /var/www/fmsv-dingden/Installation/scripts/manual-start.sh /usr/local/bin/fmsv-manual
-cp -f /var/www/fmsv-dingden/Installation/scripts/quick-fix.sh /usr/local/bin/fmsv-fix
-chmod +x /usr/local/bin/fmsv-debug
-chmod +x /usr/local/bin/fmsv-update
-chmod +x /usr/local/bin/fmsv-test
-chmod +x /usr/local/bin/fmsv-errors
-chmod +x /usr/local/bin/fmsv-manual
-chmod +x /usr/local/bin/fmsv-fix
+cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug 2>/dev/null || true
+cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update 2>/dev/null || true
+cp -f /var/www/fmsv-dingden/Installation/scripts/restart.sh /usr/local/bin/fmsv-restart 2>/dev/null || true
+cp -f /var/www/fmsv-dingden/Installation/scripts/rebuild-frontend.sh /usr/local/bin/fmsv-rebuild 2>/dev/null || true
+chmod +x /usr/local/bin/fmsv-debug 2>/dev/null || true
+chmod +x /usr/local/bin/fmsv-update 2>/dev/null || true
+chmod +x /usr/local/bin/fmsv-restart 2>/dev/null || true
+chmod +x /usr/local/bin/fmsv-rebuild 2>/dev/null || true
 success "Wartungs-Scripts installiert"
 sleep 1
 
@@ -1654,6 +1833,10 @@ echo ""
 echo -e "  ${GREEN}Website:${NC}       https://$DOMAIN"
 echo -e "  ${GREEN}Lokal:${NC}         http://localhost"
 echo ""
+echo -e "  ${GREEN}pgAdmin 4:${NC}     http://pgadmin.$DOMAIN"
+echo -e "  ${GREEN}Lokal:${NC}         http://$(hostname -I | awk '{print $1}'):5050"
+echo -e "  ${CYAN}             → Datenbank-Verwaltung (PostgreSQL)${NC}"
+echo ""
 echo -e "  ${YELLOW}Test-Accounts (falls aktiviert):${NC}"
 echo -e "  ${BLUE}•${NC} Admin:  ${GREEN}admin@fmsv-dingden.de${NC} / ${GREEN}admin123${NC}"
 echo -e "  ${BLUE}•${NC} Member: ${GREEN}member@fmsv-dingden.de${NC} / ${GREEN}member123${NC}"
@@ -1680,12 +1863,10 @@ echo -e "  ${BLUE}Config bearbeiten:${NC}"
 echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
 echo ""
 echo -e "  ${BLUE}Updates & Wartung:${NC}"
-echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
-echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose${NC}"
-echo -e "    ${GREEN}fmsv-fix${NC}     ${CYAN}# Probleme automatisch beheben${NC}"
-echo -e "    ${GREEN}fmsv-manual${NC}  ${CYAN}# Backend manuell starten${NC}"
-echo -e "    ${GREEN}fmsv-test${NC}    ${CYAN}# Backend-Tests ausführen${NC}"
-echo -e "    ${GREEN}fmsv-errors${NC}  ${CYAN}# Backend-Fehler anzeigen${NC}"
+echo -e "    ${GREEN}fmsv-update${NC}   ${CYAN}# System aktualisieren${NC}"
+echo -e "    ${GREEN}fmsv-restart${NC}  ${CYAN}# Alle Services neu starten${NC}"
+echo -e "    ${GREEN}fmsv-rebuild${NC}  ${CYAN}# Frontend neu builden${NC}"
+echo -e "    ${GREEN}fmsv-debug${NC}    ${CYAN}# Vollständige Diagnose${NC}"
 echo ""
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
