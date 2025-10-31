@@ -109,6 +109,44 @@ Dokumentation für Installation und Konfiguration.
 
 ---
 
+### pgAdmin-Troubleshooting.md
+**pgAdmin Reparatur & Fehlerbehebung**
+
+- Flask/Python Module fehlen
+- Service startet nicht
+- Login funktioniert nicht
+- Cloudflare Tunnel Probleme
+- Komplette Neuinstallation
+- Health Check Monitoring
+
+→ [`pgAdmin-Troubleshooting.md`](pgAdmin-Troubleshooting.md)
+
+---
+
+### ~~pgAdmin-ohne-Apache2.md~~ ❌ OBSOLET
+**Alte Anleitung - Nicht mehr benötigt!**
+
+pgAdmin wird **NICHT MEHR verwendet**! Stattdessen: Node.js Database Admin (siehe unten)
+
+→ ~~[`pgAdmin-ohne-Apache2.md`](pgAdmin-ohne-Apache2.md)~~ (veraltet)
+
+---
+
+### Database-Admin-NodeJS.md 🆕 **NEUE LÖSUNG!**
+**Datenbank-Verwaltung direkt in Node.js/React**
+
+- ❌ Kein pgAdmin mehr!
+- ✅ Node.js + React Lösung
+- ✅ Keine zusätzliche Software
+- ✅ Perfekte Integration
+- ✅ Webmaster-only Zugriff
+- Backend-Routes & Frontend-Page
+- Features, Sicherheit, Vergleich
+
+→ [`Database-Admin-NodeJS.md`](Database-Admin-NodeJS.md)
+
+---
+
 ### Frontend-Backend-Verbindung.md
 **API-Verbindung & Troubleshooting**
 

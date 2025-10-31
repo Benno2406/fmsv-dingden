@@ -300,4 +300,33 @@ Entfernt Apache2 falls es installiert wurde:
 
 ---
 
+### `fix-pgadmin.sh` - pgAdmin Reparatur ⚡
+```bash
+sudo /var/www/fmsv-dingden/Installation/scripts/fix-pgadmin.sh
+```
+
+Interaktives Menü zur Behebung von pgAdmin-Problemen:
+1. **Service-Probleme** - Service startet nicht
+2. **Python-Dependencies** - Flask/Module fehlen
+3. **Admin-User** - User zurücksetzen/erstellen
+4. **Neuinstallation** - Komplett neu installieren
+5. **Health Check** - Status & Diagnose
+6. **Beenden**
+
+**Wann verwenden?**
+- pgAdmin Service startet nicht
+- "ModuleNotFoundError: No module named 'flask'"
+- Login funktioniert nicht
+- Port-Probleme (5050 belegt)
+- Nach Updates wenn pgAdmin nicht mehr läuft
+
+**Beispiel:**
+```bash
+sudo ./fix-pgadmin.sh
+# Option 2 wählen bei Flask-Fehler
+# Option 1 wählen bei Service-Problemen
+```
+
+---
+
 **Viel Erfolg! 🚀**

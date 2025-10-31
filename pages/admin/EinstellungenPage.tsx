@@ -8,6 +8,9 @@ import { Textarea } from "../../components/ui/textarea";
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Slider } from "../../components/ui/slider";
+import { RolesTab } from "../../components/admin/RolesTab";
+import { useAuth } from "../../contexts/AuthContext";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import { 
   Settings, 
   Mail, 
@@ -20,7 +23,8 @@ import {
   Palette,
   RotateCcw,
   Sun,
-  Moon
+  Moon,
+  UserCog
 } from "lucide-react";
 
 interface ColorConfig {
@@ -44,6 +48,8 @@ interface ThemeColors {
 }
 
 export function EinstellungenPage() {
+  const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
   
   // Default Light Mode Colors
@@ -587,6 +593,24 @@ export function EinstellungenPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Roles & Permissions - nur für Benutzer mit system.roles.manage oder is_admin */}
+      {(hasPermission('system.roles.manage') || user?.is_admin) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5" />
+              Rollen & Berechtigungen
+            </CardTitle>
+            <CardDescription>
+              Role-Based Access Control (RBAC) System - Verwalte Rollen und deren Berechtigungen
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RolesTab />
+          </CardContent>
+        </Card>
+      )}
 
       {/* System Settings */}
       <Card>

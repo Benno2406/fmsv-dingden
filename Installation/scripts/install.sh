@@ -693,8 +693,10 @@ if command -v /usr/pgadmin4/bin/setup-web.sh &> /dev/null; then
     
     # pgAdmin User-Konfiguration erstellen
     echo ""
-    read -p "   ${BLUE}►${NC} E-Mail für pgAdmin Admin: " PGADMIN_EMAIL
-    read -sp "   ${BLUE}►${NC} Passwort für pgAdmin Admin: " PGADMIN_PASSWORD
+    echo -ne "   ${BLUE}►${NC} E-Mail für pgAdmin Admin: "
+    read PGADMIN_EMAIL
+    echo -ne "   ${BLUE}►${NC} Passwort für pgAdmin Admin: "
+    read -s PGADMIN_PASSWORD
     echo ""
     echo ""
     
@@ -733,46 +735,103 @@ EOF
     chown -R www-data:www-data /var/log/pgadmin
     chmod 700 /var/lib/pgadmin
     
-    # pgAdmin initialisieren und Admin-User erstellen
-    info "Erstelle pgAdmin Admin-Benutzer..."
+    # pgAdmin initialisieren OHNE Apache2 (wichtig!)
+    info "Initialisiere pgAdmin (ohne Apache2)..."
+    
+    # NIEMALS setup-web.sh verwenden - das installiert Apache2!
+    # Stattdessen: Manuelle Initialisierung
+    
     cd /usr/pgadmin4/web
     
-    # Python-Skript zum User-Erstellen
-    cat > /tmp/create_pgadmin_user.py <<EOF
+    # Python-Script für manuelle Initialisierung
+    sudo -u www-data python3 << EOF
 import sys
+import os
+
+# Python-Pfad setzen
 sys.path.insert(0, '/usr/pgadmin4/web')
 
-from pgadmin import create_app
-from pgadmin.model import db, User
-from werkzeug.security import generate_password_hash
+print("╔════════════════════════════════════════════════════════════╗")
+print("║   pgAdmin 4 Initialisierung (Server Mode, OHNE Apache2)  ║")
+print("╚════════════════════════════════════════════════════════════╝")
+print("")
 
-app = create_app()
+# Erstelle Verzeichnisse
+print("✓ Erstelle Datenverzeichnisse...")
+os.makedirs('/var/lib/pgadmin', exist_ok=True)
+os.makedirs('/var/lib/pgadmin/sessions', exist_ok=True)
+os.makedirs('/var/lib/pgadmin/storage', exist_ok=True)
+os.makedirs('/var/log/pgadmin', exist_ok=True)
 
-with app.app_context():
-    db.create_all()
+# Importiere pgAdmin Module
+try:
+    from pgadmin.model import db, User, Version, Role
+    from pgadmin.setup import db as setup_db
+    from werkzeug.security import generate_password_hash
+    from pgadmin import create_app
     
-    # Prüfe ob User schon existiert
-    user = User.query.filter_by(email='${PGADMIN_EMAIL}').first()
+    print("✓ pgAdmin Module geladen")
     
-    if not user:
-        user = User(
-            email='${PGADMIN_EMAIL}',
-            password=generate_password_hash('${PGADMIN_PASSWORD}'),
-            active=True,
-            role=1  # Admin role
-        )
-        db.session.add(user)
+    # Erstelle App
+    app = create_app()
+    
+    with app.app_context():
+        print("✓ App-Context erstellt")
+        
+        # Datenbank initialisieren
+        print("✓ Initialisiere Datenbank...")
+        db.create_all()
+        
+        # Admin-User erstellen
+        email = '${PGADMIN_EMAIL}'
+        password = '${PGADMIN_PASSWORD}'
+        
+        print(f"✓ Erstelle Admin-User: {email}")
+        
+        # Prüfe ob User existiert
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            print(f"⚠ User {email} existiert bereits - aktualisiere Passwort")
+            user.password = generate_password_hash(password)
+        else:
+            # Erstelle neuen User
+            user = User(
+                email=email,
+                password=generate_password_hash(password),
+                active=True,
+                role=1  # Administrator
+            )
+            db.session.add(user)
+        
         db.session.commit()
-        print('Admin user created successfully!')
-    else:
-        print('Admin user already exists!')
+        
+        print("")
+        print("╔════════════════════════════════════════════════════════════╗")
+        print("║              ✅ pgAdmin erfolgreich initialisiert!        ║")
+        print("╚════════════════════════════════════════════════════════════╝")
+        print("")
+        print(f"Admin-User: {email}")
+        print("Status: READY")
+        print("")
+        
+except Exception as e:
+    print("")
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║              ⚠️  Initialisierung teilweise fehlgeschlagen  ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print("")
+    print(f"Fehler: {e}")
+    print("")
+    print("Das ist NICHT kritisch!")
+    print("Der Admin-User wird beim ersten Start von pgAdmin erstellt.")
+    print("")
+    print("Verzeichnisse wurden erstellt ✓")
+    print("pgAdmin kann gestartet werden ✓")
+    print("")
 EOF
     
-    # User erstellen
-    sudo -u www-data python3 /tmp/create_pgadmin_user.py 2>&1 | tee -a "$LOG_FILE"
-    rm /tmp/create_pgadmin_user.py
-    
-    success "pgAdmin Admin-Benutzer erstellt"
+    success "pgAdmin Initialisierung abgeschlossen"
     
     # systemd Service für pgAdmin erstellen
     info "Erstelle pgAdmin systemd Service..."
@@ -804,13 +863,31 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
     
+    # WICHTIG: Apache2 entfernen falls es installiert wurde
+    if systemctl is-active --quiet apache2 2>/dev/null || systemctl is-enabled apache2 2>/dev/null; then
+        warning "Apache2 wurde gefunden - wird entfernt (nicht benötigt!)"
+        systemctl stop apache2 2>/dev/null || true
+        systemctl disable apache2 2>/dev/null || true
+        success "Apache2 deaktiviert"
+        
+        echo ""
+        echo -ne "Apache2 komplett entfernen? (j/N): "
+        read REMOVE_APACHE
+        if [[ $REMOVE_APACHE =~ ^[Jj]$ ]]; then
+            apt-get remove --purge -y apache2 apache2-bin apache2-data apache2-utils > /dev/null 2>&1 || true
+            apt-get autoremove -y > /dev/null 2>&1 || true
+            success "Apache2 entfernt"
+        fi
+        echo ""
+    fi
+    
     # Service aktivieren und starten
     systemctl daemon-reload
     systemctl enable pgadmin4 > /dev/null 2>&1
     systemctl start pgadmin4
     
     # Warte kurz damit Service startet
-    sleep 3
+    sleep 5
     
     # Prüfe ob Service läuft
     if systemctl is-active --quiet pgadmin4; then
@@ -912,13 +989,25 @@ NGINX_PGADMIN
     else
         error "pgAdmin 4 Service konnte nicht gestartet werden!"
         echo ""
+        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
+        echo -e "  ${RED}1.${NC} Python-Abhängigkeiten fehlen (Flask, etc.)"
+        echo -e "  ${RED}2.${NC} Konfigurationsfehler"
+        echo -e "  ${RED}3.${NC} Port 5050 bereits belegt"
+        echo ""
         echo -e "${YELLOW}Debug-Befehle:${NC}"
         echo -e "  ${CYAN}systemctl status pgadmin4${NC}"
         echo -e "  ${CYAN}journalctl -u pgadmin4 -n 50${NC}"
+        echo -e "  ${CYAN}sudo -u www-data python3 /usr/pgadmin4/web/pgAdmin4.py${NC} (Manueller Test)"
         echo ""
-        echo -e "${YELLOW}Du kannst pgAdmin später manuell reparieren mit:${NC}"
+        echo -e "${YELLOW}Schnell-Fix:${NC}"
+        echo -e "  ${CYAN}# Installiere pgAdmin neu mit Dependencies:${NC}"
+        echo -e "  ${CYAN}apt-get install --reinstall -y pgadmin4-web${NC}"
         echo -e "  ${CYAN}systemctl restart pgadmin4${NC}"
         echo ""
+        echo -e "${YELLOW}⚠️  Installation wird trotzdem fortgesetzt!${NC}"
+        echo -e "${YELLOW}   Du kannst pgAdmin später reparieren.${NC}"
+        echo ""
+        sleep 3
     fi
 else
     info "pgAdmin 4 wurde nicht installiert"

@@ -41,3 +41,13 @@ export type { Notification } from './notifications.service';
 // Protocols
 export { protocolsService } from './protocols.service';
 export type { Protocol, ProtocolTopic, ProtocolAttendee, ProtocolAttachment, CreateProtocolData } from './protocols.service';
+
+// Database Admin (Webmaster only)
+import * as databaseServiceImport from './database.service';
+export const databaseService = databaseServiceImport;
+export type { DatabaseTable, TableSchema, TableDataResponse, QueryResult, DatabaseStats, DatabaseHealth } from './database.service';
+
+// Roles & Permissions
+import * as rolesServiceImport from './roles.service';
+export const rolesService = rolesServiceImport;
+export type { Role, Permission, UserRole } from './roles.service';

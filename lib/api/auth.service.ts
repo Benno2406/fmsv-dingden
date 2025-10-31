@@ -31,9 +31,16 @@ export interface User {
   last_name: string;
   member_number?: string;
   profile_image?: string;
-  roles: string[];
-  roleDetails?: Array<{ name: string; display_name: string }>;
-  permissions: string[];
+  is_admin: boolean;
+  is_member: boolean;
+  roles?: Array<{
+    id: string;
+    name: string;
+    upload_limit_mb: number;
+    priority: number;
+  }>;
+  permissions?: string[];
+  maxUploadMb?: number;
   is_active: boolean;
   last_login?: string;
   created_at: string;

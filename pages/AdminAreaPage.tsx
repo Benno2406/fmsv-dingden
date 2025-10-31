@@ -9,6 +9,8 @@ import { FlugbuchPage } from "./admin/FlugbuchPage";
 import { DokumentePage } from "./admin/DokumentePage";
 import { BenachrichtigungenPage } from "./admin/BenachrichtigungenPage";
 import { EinstellungenPage } from "./admin/EinstellungenPage";
+import { DatabasePage } from "./admin/DatabasePage";
+import { RollenPage } from "./admin/RollenPage";
 import { ProfilPage } from "./member/ProfilPage";
 
 export function AdminAreaPage() {
@@ -60,6 +62,14 @@ export function AdminAreaPage() {
     case 'profil':
     case 'profile': // Alternative route
       return <ProfilPage />;
+    
+    case 'database':
+    case 'datenbank': // Alternative route
+      return <DatabasePage />;
+    
+    case 'rollen':
+    case 'roles': // Alternative route
+      return <RollenPage />;
     
     // Fallback to dashboard if unknown section
     default:

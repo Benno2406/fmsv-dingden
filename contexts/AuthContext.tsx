@@ -58,18 +58,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     // Development Mode: Mock Login wenn "dev@" Email verwendet wird
     if (email.startsWith('dev@')) {
-      const mockRole = email.includes('admin') ? 'admin' : email.includes('vorstand') ? 'board' : 'member';
+      const mockRole = email.includes('admin') ? 'webmaster' : email.includes('vorstand') ? 'vorstand' : 'mitglied';
       const mockUser: User = {
         id: 1,
         email: email,
-        firstName: 'Dev',
-        lastName: mockRole === 'admin' ? 'Admin' : mockRole === 'board' ? 'Vorstand' : 'Mitglied',
-        roles: [mockRole],
-        permissions: mockRole === 'admin' 
-          ? ['manage_users', 'manage_articles', 'manage_events', 'manage_images', 'view_member_area']
-          : mockRole === 'board'
-          ? ['manage_articles', 'manage_events', 'manage_images', 'view_member_area']
-          : ['view_member_area']
+        first_name: 'Dev',
+        last_name: mockRole === 'webmaster' ? 'Webmaster' : mockRole === 'vorstand' ? 'Vorstand' : 'Mitglied',
+        is_admin: mockRole === 'webmaster',
+        is_member: true,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        roles: mockRole === 'webmaster' 
+          ? [{ id: '1', name: 'webmaster', upload_limit_mb: 100, priority: 100 }]
+          : mockRole === 'vorstand'
+          ? [{ id: '2', name: 'vorstand', upload_limit_mb: 50, priority: 50 }]
+          : [{ id: '3', name: 'mitglied', upload_limit_mb: 5, priority: 10 }],
+        permissions: mockRole === 'webmaster' 
+          ? ['articles.create', 'articles.edit.all', 'members.edit', 'system.database', 'system.roles.manage']
+          : mockRole === 'vorstand'
+          ? ['articles.create', 'articles.edit.own', 'members.view.details', 'events.create']
+          : ['articles.view', 'members.view', 'flugbuch.create'],
+        maxUploadMb: mockRole === 'webmaster' ? 100 : mockRole === 'vorstand' ? 50 : 5
       };
       setUser(mockUser);
       // User in localStorage speichern für Persistenz
@@ -122,15 +131,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasRole = (role: string): boolean => {
-    return user?.roles?.includes(role) || false;
+    if (!user) return false;
+    // Check RBAC roles
+    if (user.roles && user.roles.some(r => r.name === role)) return true;
+    // Legacy check for old system
+    return false;
   };
 
   const hasPermission = (permission: string): boolean => {
-    return user?.permissions?.includes(permission) || false;
+    if (!user) return false;
+    // Old admin system compatibility
+    if (user.is_admin) return true;
+    // Check RBAC permissions
+    return user.permissions?.includes(permission) || false;
   };
 
-  const isAdmin = hasRole('admin');
-  const isBoard = hasRole('board') || isAdmin;
+  // isAdmin: Legacy is_admin field OR webmaster role
+  const isAdmin = user?.is_admin || hasRole('webmaster') || false;
+  
+  // isBoard: vorstand role OR admin
+  const isBoard = hasRole('vorstand') || isAdmin || false;
+  
   const isLoggedIn = !!user;
 
   return (
