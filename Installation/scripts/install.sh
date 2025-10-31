@@ -688,11 +688,133 @@ if command -v /usr/pgadmin4/bin/setup-web.sh &> /dev/null; then
     echo -e "${YELLOW}Jetzt Admin-Benutzer erstellen:${NC}"
     echo ""
     
-    # pgAdmin Setup durchführen
-    /usr/pgadmin4/bin/setup-web.sh 2>&1 | tee -a "$LOG_FILE"
+    # Manuelle pgAdmin Konfiguration (OHNE Apache2!)
+    info "Konfiguriere pgAdmin 4 (nur mit nginx, ohne Apache2)..."
     
-    if [ $? -eq 0 ]; then
-        success "pgAdmin 4 erfolgreich konfiguriert"
+    # pgAdmin User-Konfiguration erstellen
+    echo ""
+    read -p "   ${BLUE}►${NC} E-Mail für pgAdmin Admin: " PGADMIN_EMAIL
+    read -sp "   ${BLUE}►${NC} Passwort für pgAdmin Admin: " PGADMIN_PASSWORD
+    echo ""
+    echo ""
+    
+    # Konfigurationsdatei erstellen
+    mkdir -p /var/lib/pgadmin
+    
+    cat > /var/lib/pgadmin/config_local.py <<EOF
+# pgAdmin 4 Konfiguration (ohne Apache2, nur Python Server)
+import os
+
+# Server Mode
+SERVER_MODE = True
+
+# Bind-Adresse (nur localhost, nginx proxied darauf)
+DEFAULT_SERVER = '127.0.0.1'
+DEFAULT_SERVER_PORT = 5050
+
+# Session und Security
+SECRET_KEY = '$(openssl rand -base64 32)'
+SECURITY_PASSWORD_SALT = '$(openssl rand -base64 32)'
+
+# Datenverzeichnis
+DATA_DIR = '/var/lib/pgadmin'
+LOG_FILE = '/var/log/pgadmin/pgadmin4.log'
+SQLITE_PATH = os.path.join(DATA_DIR, 'pgadmin4.db')
+SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions')
+STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
+
+# Disable Update Check
+UPGRADE_CHECK_ENABLED = False
+EOF
+    
+    # Verzeichnisse und Berechtigungen
+    mkdir -p /var/log/pgadmin
+    chown -R www-data:www-data /var/lib/pgadmin
+    chown -R www-data:www-data /var/log/pgadmin
+    chmod 700 /var/lib/pgadmin
+    
+    # pgAdmin initialisieren und Admin-User erstellen
+    info "Erstelle pgAdmin Admin-Benutzer..."
+    cd /usr/pgadmin4/web
+    
+    # Python-Skript zum User-Erstellen
+    cat > /tmp/create_pgadmin_user.py <<EOF
+import sys
+sys.path.insert(0, '/usr/pgadmin4/web')
+
+from pgadmin import create_app
+from pgadmin.model import db, User
+from werkzeug.security import generate_password_hash
+
+app = create_app()
+
+with app.app_context():
+    db.create_all()
+    
+    # Prüfe ob User schon existiert
+    user = User.query.filter_by(email='${PGADMIN_EMAIL}').first()
+    
+    if not user:
+        user = User(
+            email='${PGADMIN_EMAIL}',
+            password=generate_password_hash('${PGADMIN_PASSWORD}'),
+            active=True,
+            role=1  # Admin role
+        )
+        db.session.add(user)
+        db.session.commit()
+        print('Admin user created successfully!')
+    else:
+        print('Admin user already exists!')
+EOF
+    
+    # User erstellen
+    sudo -u www-data python3 /tmp/create_pgadmin_user.py 2>&1 | tee -a "$LOG_FILE"
+    rm /tmp/create_pgadmin_user.py
+    
+    success "pgAdmin Admin-Benutzer erstellt"
+    
+    # systemd Service für pgAdmin erstellen
+    info "Erstelle pgAdmin systemd Service..."
+    cat > /etc/systemd/system/pgadmin4.service <<EOF
+[Unit]
+Description=pgAdmin 4 Web Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/usr/pgadmin4/web
+Environment="PGADMIN_SETUP_EMAIL=${PGADMIN_EMAIL}"
+Environment="PGADMIN_SETUP_PASSWORD=${PGADMIN_PASSWORD}"
+
+# pgAdmin starten
+ExecStart=/usr/bin/python3 /usr/pgadmin4/web/pgAdmin4.py
+
+# Auto-Restart bei Fehler
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Service aktivieren und starten
+    systemctl daemon-reload
+    systemctl enable pgadmin4 > /dev/null 2>&1
+    systemctl start pgadmin4
+    
+    # Warte kurz damit Service startet
+    sleep 3
+    
+    # Prüfe ob Service läuft
+    if systemctl is-active --quiet pgadmin4; then
+        success "pgAdmin 4 Service läuft"
         
         # Nginx-Config für pgAdmin erstellen
         info "Erstelle Nginx-Konfiguration für pgAdmin..."
@@ -743,49 +865,60 @@ NGINX_PGADMIN
         # Nginx Config aktivieren
         ln -sf /etc/nginx/sites-available/pgadmin /etc/nginx/sites-enabled/
         
-        success "Nginx-Konfiguration erstellt"
+        # Nginx neu laden damit pgAdmin-Config aktiv wird
+        systemctl reload nginx 2>&1 | tee -a "$LOG_FILE" || true
+        
+        success "Nginx-Konfiguration erstellt und aktiviert"
         echo ""
         echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
         echo -e "${GREEN}║         ✅ pgAdmin 4 erfolgreich installiert! ✅          ║${NC}"
         echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
         echo ""
-        echo -e "${YELLOW}📝 Wichtige Schritte nach der Installation:${NC}"
+        echo -e "${YELLOW}📝 Zugriff und Konfiguration:${NC}"
         echo ""
-        echo -e "${CYAN}1️⃣  IP-Whitelist konfigurieren:${NC}"
-        echo -e "    ${GREEN}nano /etc/nginx/sites-available/pgadmin${NC}"
-        echo -e "    Füge deine IPs hinzu und aktiviere 'deny all'"
+        echo -e "${CYAN}🌐 pgAdmin öffnen:${NC}"
+        echo -e "    • Via Domain: ${GREEN}http://pgadmin.$DOMAIN${NC}"
+        echo -e "    • Lokal:      ${GREEN}http://$(hostname -I | awk '{print $1}'):5050${NC}"
         echo ""
-        echo -e "${CYAN}2️⃣  Nginx neu laden:${NC}"
-        echo -e "    ${GREEN}sudo systemctl reload nginx${NC}"
+        echo -e "${CYAN}🔐 Login-Daten:${NC}"
+        echo -e "    • E-Mail:   ${GREEN}${PGADMIN_EMAIL}${NC}"
+        echo -e "    • Passwort: ${GREEN}[Das gerade eingegebene Passwort]${NC}"
         echo ""
-        echo -e "${CYAN}3️⃣  pgAdmin öffnen:${NC}"
-        echo -e "    ${GREEN}http://pgadmin.fmsv.bartholmes.eu${NC}"
-        echo -e "    Oder: ${GREEN}http://$(hostname -I | awk '{print $1}'):5050${NC}"
+        echo -e "${CYAN}🔧 PostgreSQL-Server in pgAdmin hinzufügen:${NC}"
+        echo -e "    1. Rechtsklick auf 'Servers' → 'Register' → 'Server'"
+        echo -e "    2. Name:     ${GREEN}FMSV Dingden${NC}"
+        echo -e "    3. Host:     ${GREEN}localhost${NC}"
+        echo -e "    4. Port:     ${GREEN}5432${NC}"
+        echo -e "    5. Database: ${GREEN}${DB_NAME}${NC}"
+        echo -e "    6. Username: ${GREEN}${DB_USER}${NC}"
+        echo -e "    7. Password: ${GREEN}[DB Passwort]${NC}"
         echo ""
-        echo -e "${CYAN}4️⃣  Bei pgAdmin einloggen:${NC}"
-        echo -e "    E-Mail:   ${GREEN}[Die gerade eingegebene E-Mail]${NC}"
-        echo -e "    Passwort: ${GREEN}[Das gerade eingegebene Passwort]${NC}"
-        echo ""
-        echo -e "${CYAN}5️⃣  PostgreSQL-Server in pgAdmin hinzufügen:${NC}"
-        echo -e "    • Rechtsklick auf 'Servers' → 'Register' → 'Server'"
-        echo -e "    • Name:     ${GREEN}FMSV Dingden${NC}"
-        echo -e "    • Host:     ${GREEN}localhost${NC}"
-        echo -e "    • Port:     ${GREEN}5432${NC}"
-        echo -e "    • Database: ${GREEN}[Wird später erstellt]${NC}"
-        echo -e "    • Username: ${GREEN}postgres${NC}"
-        echo -e "    • Password: ${GREEN}[PostgreSQL Passwort]${NC}"
+        echo -e "${CYAN}📊 Service-Befehle:${NC}"
+        echo -e "    • Status:   ${GREEN}systemctl status pgadmin4${NC}"
+        echo -e "    • Stop:     ${GREEN}systemctl stop pgadmin4${NC}"
+        echo -e "    • Start:    ${GREEN}systemctl start pgadmin4${NC}"
+        echo -e "    • Restart:  ${GREEN}systemctl restart pgadmin4${NC}"
+        echo -e "    • Logs:     ${GREEN}journalctl -u pgadmin4 -f${NC}"
         echo ""
         echo -e "${YELLOW}⚠️  SICHERHEITSHINWEIS:${NC}"
-        echo -e "    Konfiguriere UNBEDINGT die IP-Whitelist!"
-        echo -e "    Sonst ist pgAdmin für JEDEN erreichbar!"
+        echo -e "    Konfiguriere die IP-Whitelist in:"
+        echo -e "    ${CYAN}/etc/nginx/sites-available/pgadmin${NC}"
+        echo -e "    Aktiviere 'deny all' nach dem Hinzufügen deiner IPs!"
+        echo ""
+        echo -e "${YELLOW}💡 pgAdmin läuft jetzt als systemd Service (kein Apache2)!${NC}"
         echo ""
         echo -ne "${GREEN}Drücke Enter um fortzufahren...${NC}"
         read
     else
-        warning "pgAdmin Setup wurde übersprungen"
+        error "pgAdmin 4 Service konnte nicht gestartet werden!"
         echo ""
-        echo -e "${YELLOW}Du kannst pgAdmin später einrichten mit:${NC}"
-        echo -e "  ${CYAN}sudo /usr/pgadmin4/bin/setup-web.sh${NC}"
+        echo -e "${YELLOW}Debug-Befehle:${NC}"
+        echo -e "  ${CYAN}systemctl status pgadmin4${NC}"
+        echo -e "  ${CYAN}journalctl -u pgadmin4 -n 50${NC}"
+        echo ""
+        echo -e "${YELLOW}Du kannst pgAdmin später manuell reparieren mit:${NC}"
+        echo -e "  ${CYAN}systemctl restart pgadmin4${NC}"
+        echo ""
     fi
 else
     info "pgAdmin 4 wurde nicht installiert"
@@ -1084,23 +1217,44 @@ tunnel: $TUNNEL_ID
 credentials-file: /root/.cloudflared/$TUNNEL_ID.json
 
 ingress:
+  # pgAdmin (PostgreSQL Web Interface) - WICHTIG: VOR der Hauptdomain!
+  - hostname: pgadmin.$DOMAIN
+    service: http://localhost:5050
+    originRequest:
+      noTLSVerify: true
+  
+  # Hauptdomain - Frontend
   - hostname: $DOMAIN
     service: http://localhost:80
+  
+  # API Requests
   - hostname: $DOMAIN
     path: /api/*
     service: http://localhost:3000
+  
+  # Uploads
   - hostname: $DOMAIN
     path: /uploads/*
     service: http://localhost:80
+  
+  # Catch-all (404)
   - service: http_status:404
 EOF
     
-    success "Tunnel-Konfiguration erstellt"
+    success "Tunnel-Konfiguration erstellt (inkl. pgAdmin)"
     
     info "Konfiguriere DNS-Routing..."
+    
+    # Hauptdomain
     cloudflared tunnel route dns -f $TUNNEL_NAME $DOMAIN 2>/dev/null || true
     cloudflared tunnel route dns $TUNNEL_NAME $DOMAIN > /dev/null 2>&1
     success "DNS konfiguriert: $DOMAIN → Tunnel"
+    
+    # pgAdmin Subdomain
+    info "Konfiguriere pgAdmin-Subdomain..."
+    cloudflared tunnel route dns -f $TUNNEL_NAME pgadmin.$DOMAIN 2>/dev/null || true
+    cloudflared tunnel route dns $TUNNEL_NAME pgadmin.$DOMAIN > /dev/null 2>&1
+    success "DNS konfiguriert: pgadmin.$DOMAIN → Tunnel"
     
     info "Installiere Tunnel als Service..."
     cloudflared service install > /dev/null 2>&1
@@ -1833,9 +1987,13 @@ echo ""
 echo -e "  ${GREEN}Website:${NC}       https://$DOMAIN"
 echo -e "  ${GREEN}Lokal:${NC}         http://localhost"
 echo ""
-echo -e "  ${GREEN}pgAdmin 4:${NC}     http://pgadmin.$DOMAIN"
-echo -e "  ${GREEN}Lokal:${NC}         http://$(hostname -I | awk '{print $1}'):5050"
-echo -e "  ${CYAN}             → Datenbank-Verwaltung (PostgreSQL)${NC}"
+echo -e "  ${GREEN}pgAdmin 4:${NC}"
+if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
+echo -e "    ${GREEN}Via Tunnel:  https://pgadmin.$DOMAIN${NC}"
+fi
+echo -e "    ${GREEN}Lokal:       http://$(hostname -I | awk '{print $1}'):5050${NC}"
+echo -e "  ${CYAN}             → Datenbank-Verwaltung (nginx + Python, kein Apache2)${NC}"
+echo -e "  ${YELLOW}             ⚠️  IP-Whitelist konfigurieren! Siehe pgAdmin-Setup.md${NC}"
 echo ""
 echo -e "  ${YELLOW}Test-Accounts (falls aktiviert):${NC}"
 echo -e "  ${BLUE}•${NC} Admin:  ${GREEN}admin@fmsv-dingden.de${NC} / ${GREEN}admin123${NC}"

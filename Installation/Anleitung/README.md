@@ -72,11 +72,40 @@ Dokumentation für Installation und Konfiguration.
 - pgAdmin 4 Web Interface
 - IP-Whitelist konfigurieren
 - HTTP Basic Auth
+- Cloudflare Tunnel Integration
 - Server hinzufügen
 - Backup & Restore
 - Troubleshooting
 
 → [`pgAdmin-Setup.md`](pgAdmin-Setup.md)
+
+---
+
+### Cloudflare-Access-pgAdmin.md
+**pgAdmin mit Cloudflare Access absichern**
+
+- Zero Trust Authentifizierung
+- E-Mail/Google/GitHub Login
+- Kostenlos (bis 50 User)
+- Session-Management
+- Logs & Analytics
+- IP-Whitelist + Auth kombinieren
+
+→ [`Cloudflare-Access-pgAdmin.md`](Cloudflare-Access-pgAdmin.md)
+
+---
+
+### pgAdmin-Sicherheits-Checkliste.md
+**Sicherheits-Check für pgAdmin**
+
+- Sicherheitsstufen (Basis bis Paranoid)
+- Quick-Check Tests
+- Empfohlene Konfigurationen
+- Warnsignale erkennen
+- Wartungs-Checkliste
+- Sicherheits-Score
+
+→ [`pgAdmin-Sicherheits-Checkliste.md`](pgAdmin-Sicherheits-Checkliste.md)
 
 ---
 
@@ -116,6 +145,9 @@ Dokumentation für Installation und Konfiguration.
 
 **Probleme mit Cloudflare Tunnel?**
 → Siehe [`Cloudflare-Tunnel-Setup.md`](Cloudflare-Tunnel-Setup.md)
+
+**pgAdmin absichern?**
+→ Siehe [`pgAdmin-Sicherheits-Checkliste.md`](pgAdmin-Sicherheits-Checkliste.md)
 
 ---
 

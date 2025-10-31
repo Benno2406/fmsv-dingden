@@ -278,4 +278,26 @@ sudo chmod +x /usr/local/bin/fmsv-restart
 
 ---
 
+---
+
+### `remove-apache2.sh` - Apache2 Entfernen
+```bash
+sudo /var/www/fmsv-dingden/Installation/scripts/remove-apache2.sh
+```
+
+Entfernt Apache2 falls es installiert wurde:
+- Stoppt Apache2 Service
+- Deinstalliert Apache2-Pakete
+- Optional: Löscht Konfigurationen
+- Räumt auf
+
+**Wann verwenden?**
+- Falls pgAdmin versehentlich Apache2 installiert hat
+- Zur Vereinfachung (nur nginx verwenden)
+- Zum Ressourcen sparen
+
+**Wichtig:** Diese Installation benötigt **kein Apache2**! pgAdmin läuft als eigenständiger Python-Service mit nginx als Reverse Proxy.
+
+---
+
 **Viel Erfolg! 🚀**

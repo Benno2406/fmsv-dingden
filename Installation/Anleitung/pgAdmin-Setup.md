@@ -28,25 +28,82 @@ http://DEINE-SERVER-IP:5050
 http://pgadmin.fmsv.bartholmes.eu
 ```
 
-### Via Cloudflare Tunnel
-Falls du Cloudflare Tunnel verwendest, füge zur Tunnel-Config hinzu:
+### Via Cloudflare Tunnel ⭐ **Empfohlen!**
 
-```bash
-nano ~/.cloudflared/config.yml
+**✅ pgAdmin ist bereits via Cloudflare Tunnel erreichbar!**
+
+Falls das Install-Script Cloudflare Tunnel aktiviert hat, ist pgAdmin bereits unter der Subdomain erreichbar:
+
+```
+https://pgadmin.fmsv.bartholmes.eu
 ```
 
-Füge hinzu:
+**Vorteile:**
+- ✅ Automatisches SSL/TLS (HTTPS)
+- ✅ Kein Port-Forwarding nötig
+- ✅ DDoS-Schutz durch Cloudflare
+- ✅ Weltweit erreichbar (sicher mit IP-Whitelist!)
+
+**Konfiguration prüfen:**
+```bash
+cat ~/.cloudflared/config.yml
+```
+
+Sollte enthalten:
 ```yaml
 ingress:
   - hostname: pgadmin.fmsv.bartholmes.eu
     service: http://localhost:5050
+    originRequest:
+      noTLSVerify: true
   # ... andere Einträge ...
 ```
 
-Dann:
+**Falls pgAdmin fehlt in der Config:**
+
+1. **Config bearbeiten:**
+   ```bash
+   sudo nano ~/.cloudflared/config.yml
+   ```
+
+2. **pgAdmin-Block GANZ OBEN hinzufügen** (vor der Hauptdomain!):
+   ```yaml
+   ingress:
+     # pgAdmin - MUSS VOR der Hauptdomain stehen!
+     - hostname: pgadmin.fmsv.bartholmes.eu
+       service: http://localhost:5050
+       originRequest:
+         noTLSVerify: true
+     
+     # Hauptdomain
+     - hostname: fmsv.bartholmes.eu
+       service: http://localhost:80
+     # ... rest ...
+   ```
+
+3. **DNS-Route hinzufügen:**
+   ```bash
+   cloudflared tunnel route dns fmsv-dingden pgadmin.fmsv.bartholmes.eu
+   ```
+
+4. **Tunnel neu starten:**
+   ```bash
+   sudo systemctl restart cloudflared
+   ```
+
+5. **Status prüfen:**
+   ```bash
+   sudo systemctl status cloudflared
+   journalctl -u cloudflared -n 20
+   ```
+
+**Test:**
 ```bash
-cloudflared tunnel route dns fmsv-dingden pgadmin.fmsv.bartholmes.eu
-sudo systemctl restart cloudflared
+# pgAdmin erreichbar?
+curl -I https://pgadmin.fmsv.bartholmes.eu
+
+# DNS-Route vorhanden?
+cloudflared tunnel route dns list
 ```
 
 ---
@@ -54,6 +111,40 @@ sudo systemctl restart cloudflared
 ## 🔒 **IP-Whitelist konfigurieren (WICHTIG!)**
 
 ⚠️ **SICHERHEITSRISIKO:** Standardmäßig ist pgAdmin für JEDEN erreichbar!
+
+### 🎯 **Zwei Möglichkeiten zur Absicherung:**
+
+#### **Option A: Cloudflare Access (empfohlen für Tunnel-Nutzer)**
+
+Falls du Cloudflare Tunnel verwendest, kannst du **Cloudflare Access** nutzen - eine kostenlose Zero-Trust-Lösung:
+
+**Vorteile:**
+- ✅ Zentrale Verwaltung im Cloudflare Dashboard
+- ✅ Mehrere Authentifizierungsmethoden (E-Mail, Google, etc.)
+- ✅ Kein nginx-Config nötig
+- ✅ Logs & Analytics
+
+**Setup:**
+1. Cloudflare Dashboard → **Zero Trust** → **Access** → **Applications**
+2. **Add an application** → **Self-hosted**
+3. Application Name: `pgAdmin FMSV`
+4. Subdomain: `pgadmin`
+5. Domain: `fmsv.bartholmes.eu`
+6. **Create Policy:**
+   - Policy Name: `Allow Admin`
+   - Action: `Allow`
+   - Include: `Emails` → Deine E-Mail-Adresse(n)
+7. **Save**
+
+**Fertig!** pgAdmin ist jetzt nur für autorisierte E-Mails erreichbar.
+
+**Mehr Info:** https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/self-hosted-apps/
+
+---
+
+#### **Option B: nginx IP-Whitelist (klassisch)**
+
+Für lokalen Zugriff oder ohne Cloudflare Access:
 
 ### Schritt 1: Nginx-Config öffnen
 ```bash
@@ -273,6 +364,18 @@ sudo systemctl disable pgadmin4
 sudo systemctl enable pgadmin4
 ```
 
+### Logs anzeigen
+```bash
+# Live-Logs (letzte 50 Zeilen)
+sudo journalctl -u pgadmin4 -n 50
+
+# Live-Log (folgt neuen Einträgen)
+sudo journalctl -u pgadmin4 -f
+
+# pgAdmin-Logdatei
+sudo tail -f /var/log/pgadmin/pgadmin4.log
+```
+
 ---
 
 ## 🔧 **Troubleshooting**
@@ -283,13 +386,30 @@ sudo systemctl enable pgadmin4
 # Service-Status prüfen
 sudo systemctl status pgadmin4
 
-# Apache läuft? (pgAdmin nutzt Apache intern)
-sudo systemctl status apache2
+# Läuft der Service?
+systemctl is-active pgadmin4
 
 # Logs ansehen
 sudo journalctl -u pgadmin4 -n 50
 
 # Neustart
+sudo systemctl restart pgadmin4
+
+# nginx läuft?
+sudo systemctl status nginx
+```
+
+**WICHTIG:** Diese Installation verwendet **KEIN Apache2**! pgAdmin läuft als eigenständiger Python-Service mit nginx als Reverse Proxy.
+
+### Problem: Port 5050 nicht erreichbar
+**Lösung:**
+```bash
+# Prüfe ob pgAdmin auf Port 5050 hört
+sudo netstat -tulpn | grep 5050
+# oder
+sudo ss -tulpn | grep 5050
+
+# Falls nicht:
 sudo systemctl restart pgadmin4
 ```
 
@@ -304,9 +424,44 @@ sudo systemctl start postgresql
 
 ### Problem: "Passwort vergessen"
 **Lösung - pgAdmin Admin-Passwort zurücksetzen:**
+
+**Methode 1: Via Python Script:**
 ```bash
-# Erneutes Setup (überschreibt Admin-User)
-sudo /usr/pgadmin4/bin/setup-web.sh
+# Service stoppen
+sudo systemctl stop pgadmin4
+
+# Passwort ändern
+cd /usr/pgadmin4/web
+sudo -u www-data python3 <<'PYEOF'
+import sys
+sys.path.insert(0, '/usr/pgadmin4/web')
+from pgadmin import create_app
+from pgadmin.model import db, User
+from werkzeug.security import generate_password_hash
+
+app = create_app()
+with app.app_context():
+    email = input('E-Mail: ')
+    password = input('Neues Passwort: ')
+    user = User.query.filter_by(email=email).first()
+    if user:
+        user.password = generate_password_hash(password)
+        db.session.commit()
+        print('✅ Passwort geändert!')
+    else:
+        print('❌ User nicht gefunden!')
+PYEOF
+
+# Service wieder starten
+sudo systemctl start pgadmin4
+```
+
+**Methode 2: Komplett neu initialisieren:**
+```bash
+sudo systemctl stop pgadmin4
+sudo rm -rf /var/lib/pgadmin/*
+sudo systemctl start pgadmin4
+# Beim ersten Login wird neuer Admin erstellt
 ```
 
 ### Problem: Kann nicht verbinden (IP-Whitelist)
@@ -391,6 +546,36 @@ sudo certbot --nginx -d pgadmin.fmsv.bartholmes.eu
 
 ---
 
+## 💡 **Wichtige Unterschiede zu Standard-pgAdmin-Installation**
+
+Diese Installation verwendet **nginx statt Apache2**!
+
+### Vorteile:
+- ✅ **Einheitlich:** Alles läuft über nginx (Frontend, Backend, pgAdmin)
+- ✅ **Einfacher:** Nur ein Webserver zu verwalten
+- ✅ **Performanter:** nginx ist leichtgewichtiger als Apache
+- ✅ **Sicherer:** Weniger Angriffsfläche
+
+### Technische Details:
+- pgAdmin läuft als **systemd Service** (nicht als Apache-WSGI-App)
+- Python-Server auf Port **5050**
+- nginx als **Reverse Proxy**
+- Logs via **journalctl** (nicht Apache-Logs!)
+
+### Service-Management:
+```bash
+# pgAdmin Service
+systemctl status pgadmin4
+
+# nginx (Reverse Proxy)
+systemctl status nginx
+
+# KEIN Apache2!
+systemctl status apache2  # ← Sollte nicht existieren
+```
+
+---
+
 ## ✅ **Checkliste nach Installation**
 
 - [ ] pgAdmin Login erfolgreich
@@ -401,5 +586,6 @@ sudo certbot --nginx -d pgadmin.fmsv.bartholmes.eu
 - [ ] Backup erstellt und getestet
 - [ ] Optional: Basic Auth aktiviert
 - [ ] Optional: Automatische Backups eingerichtet
+- [ ] Service läuft: `systemctl is-active pgadmin4`
 
 **Bei Problemen:** Siehe `HILFE-UEBERSICHT.md` im Installation-Ordner
