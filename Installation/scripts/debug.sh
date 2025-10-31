@@ -1262,9 +1262,18 @@ fix_pgadmin() {
             # Stoppe Apache
             systemctl stop apache2 2>/dev/null || true
             
-            # Entferne alle existierenden pgAdmin Configs
+            # Entferne ALLE existierenden pgAdmin Configs (auch aus conf-*)
+            info "Bereinige alle pgAdmin-Konfigurationen..."
             rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
             rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/conf-available/*pgadmin* 2>/dev/null
+            
+            # Deaktiviere eventuell aktivierte pgAdmin-Configs
+            a2dissite pgadmin4 2>/dev/null || true
+            a2disconf pgadmin4 2>/dev/null || true
+            
+            fix_applied "Alle alten pgAdmin-Konfigurationen entfernt"
             
             # Erstelle neue, saubere pgAdmin Konfiguration
             cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
@@ -1383,6 +1392,12 @@ EOF
             info "[3/4] pgAdmin Konfiguration neu erstellen..."
             rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
             rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/conf-available/*pgadmin* 2>/dev/null
+            
+            # Deaktiviere eventuell aktivierte pgAdmin-Configs
+            a2dissite pgadmin4 2>/dev/null || true
+            a2disconf pgadmin4 2>/dev/null || true
             
             cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
 <VirtualHost *:1880>

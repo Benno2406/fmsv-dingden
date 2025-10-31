@@ -733,9 +733,18 @@ EOF
     # Apache2 VirtualHost für pgAdmin vollständig neu schreiben
     info "Erstelle pgAdmin VirtualHost-Konfiguration..."
     
-    # Entferne alle existierenden pgAdmin Configs
+    # Entferne ALLE existierenden pgAdmin Configs (auch aus conf-*)
+    info "Bereinige alte pgAdmin-Konfigurationen..."
     rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
     rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
+    rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
+    rm -f /etc/apache2/conf-available/*pgadmin* 2>/dev/null
+    
+    # Deaktiviere eventuell aktivierte pgAdmin-Configs
+    a2dissite pgadmin4 2>/dev/null || true
+    a2disconf pgadmin4 2>/dev/null || true
+    
+    success "Alte Konfigurationen entfernt"
     
     # Erstelle neue, saubere pgAdmin Konfiguration
     cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'

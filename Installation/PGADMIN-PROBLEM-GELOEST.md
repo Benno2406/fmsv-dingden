@@ -162,8 +162,25 @@ ufw status | grep 1880
 - Falls doch Probleme auftreten: `fmsv-debug` → Option 13 → Option 5
 - Vollständige Dokumentation in `PGADMIN-FIX.md`
 
+## Update: WSGI-Duplikat-Problem
+
+⚠️ **Hinweis:** Falls du weiterhin das "Name duplicates previous WSGI daemon definition" Problem hast, wurde ein erweiterter Fix implementiert!
+
+**Neue Lösung:**
+- Siehe **[PGADMIN-WSGI-DUPLIKAT-FIX.md](PGADMIN-WSGI-DUPLIKAT-FIX.md)** für die endgültige Lösung
+- Das Problem lag darin, dass auch `conf-available/` und `conf-enabled/` bereinigt werden müssen
+- Beide Scripts (`install.sh` und `debug.sh`) wurden aktualisiert
+
+**Quick-Fix:**
+```bash
+sudo fmsv-debug
+# Wähle: 13) pgAdmin reparieren
+# Dann:  5) Alle Reparaturen durchführen
+```
+
 ## Weitere Hilfe
 
+- **WSGI-Duplikat-Problem:** `PGADMIN-WSGI-DUPLIKAT-FIX.md` ⭐ **NEU!**
 - **Vollständige Diagnose:** `fmsv-debug` → Option 1
 - **pgAdmin Reparatur:** `fmsv-debug` → Option 13
 - **Apache Logs:** `journalctl -u apache2 -f`

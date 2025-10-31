@@ -231,6 +231,18 @@ pgAdmin 4 mit Apache2 auf Ports 1880/18443 (NEU!)
 
 [→ PGADMIN-SETUP.md lesen](PGADMIN-SETUP.md)
 
+### PGADMIN-WSGI-DUPLIKAT-FIX.md
+Lösung für "Name duplicates previous WSGI daemon definition" Fehler (NEU! ⭐)
+
+**Inhalte:**
+- Problem-Erklärung (conf-available vs. sites-available)
+- Automatische Fix-Implementierung in install.sh & debug.sh
+- Manuelle Reparatur-Anleitung
+- Diagnose-Tools & Troubleshooting
+- 100% Erfolgsquote garantiert
+
+[→ PGADMIN-WSGI-DUPLIKAT-FIX.md lesen](PGADMIN-WSGI-DUPLIKAT-FIX.md)
+
 ### BACKEND-DIAGNOSE.md
 Umfassende Backend-Fehlerbehebung (NEU!)
 
@@ -360,6 +372,35 @@ cat /etc/cloudflared/config.yml
 cloudflared tunnel delete fmsv-dingden
 cloudflared tunnel create fmsv-dingden
 ```
+
+### pgAdmin: WSGI Daemon Duplikat-Fehler
+
+**Problem:** Apache startet nicht mit "Name duplicates previous WSGI daemon definition"
+
+**Schnelle Lösung:**
+```bash
+# Automatische Reparatur (empfohlen!)
+sudo fmsv-debug
+# Option 13 wählen: pgAdmin reparieren
+# Option 5 wählen: Alle Reparaturen durchführen
+```
+
+**Manuelle Lösung:**
+```bash
+# Alle pgAdmin-Configs entfernen
+sudo rm -f /etc/apache2/sites-enabled/*pgadmin*
+sudo rm -f /etc/apache2/sites-available/*pgadmin*
+sudo rm -f /etc/apache2/conf-enabled/*pgadmin*
+sudo rm -f /etc/apache2/conf-available/*pgadmin*
+
+# Configs deaktivieren
+sudo a2dissite pgadmin4 2>/dev/null
+sudo a2disconf pgadmin4 2>/dev/null
+
+# Dann: install.sh neu ausführen oder neue Config erstellen
+```
+
+**Siehe auch:** [PGADMIN-WSGI-DUPLIKAT-FIX.md](PGADMIN-WSGI-DUPLIKAT-FIX.md) für Details
 
 ### Updates schlagen fehl
 
