@@ -1,193 +1,312 @@
-# FMSV Dingden - Git Ignore
-# Dateien die NICHT zu GitHub hochgeladen werden
+# =====================================
+# FMSV Dingden - Git Ignore File
+# =====================================
+# WICHTIG: Diese Datei in .gitignore umbenennen!
+# mv gitignore.txt .gitignore
 
-# WICHTIG: Diese Datei umbenennen zu: .gitignore (ohne .txt)
-
-# ============================================
-# Dependencies
-# ============================================
+# =====================================
+# Node.js Dependencies
+# =====================================
 node_modules/
-backend/node_modules/
-
-# ============================================
-# Build Output
-# ============================================
-dist/
-build/
-*.tsbuildinfo
-
-# ============================================
-# Environment Variables (SENSIBEL!)
-# ============================================
-.env
-backend/.env
-.env.local
-.env.development
-.env.production
-.env.test
-
-# ============================================
-# Logs
-# ============================================
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# Application Logs
-Logs/*.log
-Logs/Audit/*.log
-Logs/**/*.log
+# =====================================
+# Build & Distribution
+# =====================================
+dist/
+dist-ssr/
+build/
+*.local
 
-# ABER: .gitkeep und README.md behalten!
-!Logs/.gitkeep
-!Logs/Audit/.gitkeep
-!Logs/README.md
-!Logs/Audit/README.md
+# =====================================
+# Environment Variables
+# =====================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+backend/.env
+backend/.env.local
+backend/.env.production
 
-# ============================================
-# Uploads & User Data (WICHTIG!)
-# ============================================
-Saves/*
+# AUSNAHME: Example-Dateien bleiben im Repo
+!.env.example
+!backend/env.example.txt
 
-# ABER: .gitkeep und README.md behalten!
-!Saves/.gitkeep
-!Saves/README.md
+# =====================================
+# Logs & Temporary Files
+# =====================================
+logs/
+*.log
+Logs/**/*
+!Logs/gitkeep.txt
+!Logs/Audit/gitkeep.txt
 
-# ============================================
-# Backups
-# ============================================
-*.backup
-*.bak
+# =====================================
+# Uploads & User Data
+# =====================================
+Saves/**/*
+!Saves/gitkeep.txt
+uploads/
+temp/
+tmp/
 
-# SQL Dumps & Backups - ABER schema.sql behalten!
-*.sql
-!backend/database/schema.sql
-
-# SQLite & andere Datenbanken
+# =====================================
+# Database
+# =====================================
 *.sqlite
+*.sqlite3
 *.db
+*.sql.backup
+*.sql.bak
+backup_*.sql
 
-# ============================================
-# Operating System Files
-# ============================================
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-desktop.ini
-
-# Linux
-*~
-.directory
-.Trash-*
-
-# ============================================
+# =====================================
 # IDE & Editor Files
-# ============================================
-# VSCode
-.vscode/*
+# =====================================
+
+# Visual Studio Code
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
 
-# JetBrains IDEs
+# JetBrains (WebStorm, IntelliJ, etc.)
 .idea/
 *.iml
-*.ipr
 *.iws
-out/
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
 
 # Vim
 *.swp
 *.swo
 *~
-.netrwhist
+.*.swp
+.*.swo
 
 # Emacs
 *~
 \#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
+.\#*
 
-# Sublime Text
-*.sublime-workspace
-*.sublime-project
+# =====================================
+# Operating System Files
+# =====================================
 
-# ============================================
-# Temporary Files
-# ============================================
-*.tmp
-*.temp
-.cache/
-tmp/
-temp/
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-# ============================================
-# Coverage & Tests
-# ============================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# =====================================
+# Testing & Coverage
+# =====================================
 coverage/
-*.lcov
+*.cover
+*.py,cover
 .nyc_output/
-test-results/
-.jest/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.ruff_cache/
 
-# ============================================
-# Cloudflare
-# ============================================
-.cloudflared/
+# =====================================
+# TypeScript
+# =====================================
+*.tsbuildinfo
+next-env.d.ts
 
-# ============================================
-# SSL Certificates (falls vorhanden)
-# ============================================
+# =====================================
+# Cache & Temporary
+# =====================================
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.eslintcache
+*.pid
+*.seed
+*.pid.lock
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# =====================================
+# SSL Certificates (Local Development)
+# =====================================
 *.pem
 *.key
-*.cert
 *.crt
 *.csr
 *.p12
 *.pfx
+ssl/
+certs/
 
-# ============================================
-# Package Manager
-# ============================================
-# NPM
-npm-debug.log*
-.npm/
+# AUSNAHME: Public certificates für Production
+!Installation/ssl/*.crt
 
-# Yarn
-yarn-error.log
-.yarn/
-.yarnrc.yml
+# =====================================
+# Security & Credentials
+# =====================================
+.npmrc
+.yarnrc
+secrets/
+*.secret
+credentials.json
+service-account.json
+firebase-adminsdk-*.json
 
-# PNPM
-pnpm-lock.yaml
-.pnpm-debug.log
+# =====================================
+# Cloudflare Tunnel
+# =====================================
+.cloudflared/
+cloudflared.log
 
-# ============================================
-# Build Tools
-# ============================================
-.vite/
-vite.config.ts.timestamp-*
+# =====================================
+# Backup & Archive Files
+# =====================================
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
 
-# ============================================
-# Docker (falls verwendet)
-# ============================================
+# =====================================
+# Docker (falls später verwendet)
+# =====================================
 docker-compose.override.yml
+.docker/
 
-# ============================================
-# Sonstiges
-# ============================================
-*.pid
-*.seed
-*.pid.lock
+# =====================================
+# Misc
+# =====================================
+.vercel
+.turbo
+.contentlayer
+.solid
+*.tgz
+*.gz
+
+# =====================================
+# Project Specific
+# =====================================
+
+# Test-Datenbanken
+fmsv_test*
+
+# Temporäre Upload-Ordner
+backend/uploads/
+backend/temp/
+
+# Build-Artefakte
+*.map
+
+# Debug-Dateien
+debug.log
+error.log
+
+# Session-Daten
+sessions/
+.sessions/
+
+# =====================================
+# WICHTIGE AUSNAHMEN (Bleiben im Repo)
+# =====================================
+# Diese Dateien SOLLEN im Repository bleiben:
+
+!.gitkeep
+!gitkeep.txt
+!README.md
+!*.example
+!*.example.*
+!Installation/
+!backend/database/
+!backend/scripts/
+!workflows/
+
+# =====================================
+# Hinweise
+# =====================================
+# 
+# Diese .gitignore schützt:
+# ✅ Sensible Daten (.env, Credentials)
+# ✅ Dependencies (node_modules)
+# ✅ Build-Artefakte (dist, build)
+# ✅ User-Uploads (Saves/, uploads/)
+# ✅ Logs (Logs/)
+# ✅ IDE-Dateien (.vscode, .idea)
+# ✅ OS-Dateien (.DS_Store, Thumbs.db)
+# ✅ Temporäre Dateien (cache, temp)
+# 
+# WICHTIG:
+# • Umbenennen: mv gitignore.txt .gitignore
+# • .env.example BLEIBT im Repo als Vorlage
+# • gitkeep.txt Dateien BLEIBEN erhalten
+# • Installation/ Scripts BLEIBEN erhalten
+#
+# =====================================

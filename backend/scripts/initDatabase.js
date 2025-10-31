@@ -1,56 +1,139 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pool from '../config/database.js';
-import { logger } from '../utils/logger.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const fs = require('fs');
+const path = require('path');
+const pool = require('../config/database');
+const { logger } = require('../utils/logger');
 
 async function initDatabase() {
+  const client = await pool.connect();
+  
   try {
     logger.info('🚀 Initialisiere Datenbank...');
     logger.info(`📂 Working Directory: ${process.cwd()}`);
-    logger.info(`📂 Script Directory: ${__dirname}`);
-
-    // Read schema file
-    const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
-    logger.info(`📄 Suche Schema-Datei: ${schemaPath}`);
     
-    // Check if schema file exists
-    if (!fs.existsSync(schemaPath)) {
-      logger.error(`❌ Schema-Datei nicht gefunden: ${schemaPath}`);
-      logger.error('');
-      logger.error('Mögliche Ursachen:');
-      logger.error('  • Datei wurde nicht vom Repository geklont');
-      logger.error('  • Falsches Working Directory');
-      logger.error('  • Dateiberechtigungen');
-      logger.error('');
-      logger.error(`Prüfe ob die Datei existiert mit: ls -la ${schemaPath}`);
-      process.exit(1);
-    }
-    
-    logger.info('✅ Schema-Datei gefunden');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    logger.info(`📊 Schema-Größe: ${schema.length} bytes`);
-
     // Test database connection
     logger.info('🔌 Teste Datenbankverbindung...');
-    const client = await pool.connect();
+    await client.query('SELECT NOW()');
     logger.info('✅ Datenbankverbindung erfolgreich');
-    client.release();
-
-    // Execute schema
-    logger.info('⚙️  Führe Schema-SQL aus...');
-    await pool.query(schema);
-
-    logger.info('✅ Datenbank erfolgreich initialisiert!');
-    logger.info('📊 Alle Tabellen, Indizes und Trigger wurden erstellt.');
     
-    await pool.end();
-    process.exit(0);
+    // Enable UUID extension
+    logger.info('📦 Aktiviere UUID Extension...');
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    logger.info('✅ UUID Extension aktiviert');
+    
+    // Load table schemas in order
+    logger.info('');
+    logger.info('📊 Erstelle Tabellen...');
+    logger.info('─'.repeat(60));
+    
+    const tableFiles = [
+      '01-users.sql',
+      '02-refresh_tokens.sql',
+      '03-two_fa_sessions.sql',
+      '04-two_fa_backup_codes.sql',
+      '05-roles.sql',
+      '06-permissions.sql',
+      '07-role_permissions.sql',
+      '08-user_roles.sql',
+      '09-articles.sql',
+      '10-events.sql',
+      '11-flugbuch.sql',
+      '12-images.sql',
+      '13-protocols.sql',
+      '14-notifications.sql',
+      '15-audit_log.sql'
+    ];
+    
+    for (const file of tableFiles) {
+      const filePath = path.join(__dirname, '..', 'database', 'tables', file);
+      
+      if (!fs.existsSync(filePath)) {
+        logger.error(`❌ Datei nicht gefunden: ${filePath}`);
+        throw new Error(`Table file missing: ${file}`);
+      }
+      
+      const sql = fs.readFileSync(filePath, 'utf8');
+      const tableName = file.replace(/^\d+-/, '').replace('.sql', '');
+      
+      logger.info(`  📄 ${tableName}...`);
+      
+      try {
+        await client.query(sql);
+        logger.info(`  ✅ ${tableName} erstellt`);
+      } catch (error) {
+        logger.error(`  ❌ Fehler bei ${tableName}:`);
+        logger.error(`     ${error.message}`);
+        throw error;
+      }
+    }
+    
+    logger.info('─'.repeat(60));
+    logger.info('✅ Alle Tabellen erfolgreich erstellt!');
+    
+    // Load initial data
+    logger.info('');
+    logger.info('📊 Lade Initial-Daten...');
+    logger.info('─'.repeat(60));
+    
+    const dataFiles = [
+      '01-roles.sql',
+      '02-permissions-members.sql',
+      '03-permissions-roles.sql',
+      '04-permissions-articles.sql',
+      '05-permissions-events.sql',
+      '06-permissions-flugbuch.sql',
+      '07-permissions-images.sql',
+      '08-permissions-documents.sql',
+      '09-permissions-protocols.sql',
+      '10-permissions-other.sql',
+      '11-role-permissions-superadmin.sql',
+      '12-role-permissions-admin.sql',
+      '13-role-permissions-vorstand.sql',
+      '14-role-permissions-webmaster.sql',
+      '15-role-permissions-other-roles.sql',
+      '16-role-permissions-members.sql'
+    ];
+    
+    for (const file of dataFiles) {
+      const filePath = path.join(__dirname, '..', 'database', 'data', file);
+      
+      if (!fs.existsSync(filePath)) {
+        logger.error(`❌ Datei nicht gefunden: ${filePath}`);
+        throw new Error(`Data file missing: ${file}`);
+      }
+      
+      const sql = fs.readFileSync(filePath, 'utf8');
+      const dataName = file.replace(/^\d+-/, '').replace('.sql', '');
+      
+      logger.info(`  📄 ${dataName}...`);
+      
+      try {
+        await client.query(sql);
+        logger.info(`  ✅ ${dataName} geladen`);
+      } catch (error) {
+        logger.error(`  ❌ Fehler bei ${dataName}:`);
+        logger.error(`     ${error.message}`);
+        throw error;
+      }
+    }
+    
+    logger.info('─'.repeat(60));
+    logger.info('✅ Alle Initial-Daten erfolgreich geladen!');
+    
+    // Summary
+    logger.info('');
+    logger.info('🎉 Datenbank-Initialisierung abgeschlossen!');
+    logger.info('');
+    logger.info('📊 Zusammenfassung:');
+    logger.info(`   • ${tableFiles.length} Tabellen erstellt`);
+    logger.info(`   • ${dataFiles.length} Datensätze geladen`);
+    logger.info('   • RBAC-System vollständig konfiguriert');
+    logger.info('   • 12 Rollen angelegt');
+    logger.info('   • 100+ Permissions konfiguriert');
+    logger.info('');
+    
   } catch (error) {
-    logger.error('❌ Fehler beim Initialisieren der Datenbank:');
+    logger.error('');
+    logger.error('❌ Datenbank-Initialisierung fehlgeschlagen!');
     logger.error('');
     
     if (error.code) {
@@ -83,8 +166,20 @@ async function initDatabase() {
     }
     
     logger.error('');
-    process.exit(1);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
   }
 }
 
-initDatabase();
+// Run initialization
+initDatabase()
+  .then(() => {
+    logger.info('✨ Fertig!');
+    process.exit(0);
+  })
+  .catch((error) => {
+    logger.error('Installation fehlgeschlagen!');
+    process.exit(1);
+  });

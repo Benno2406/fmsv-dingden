@@ -119,4 +119,58 @@ Du solltest sehen:
 - `/backend/middleware/rbac.js` - Permission-Checks
 - `/backend/middleware/twoFactor.js` - 2FA-Logik
 
+---
+
+## ✅ UPDATE (31.10.2025): Modulares DB-Setup implementiert!
+
+**Das Stack-Overflow-Problem ist jetzt gelöst!** 🎉
+
+### Was wurde gemacht?
+
+1. **Schema aufgeteilt:**
+   - `schema.sql` → 15 Tabellen-Dateien (`tables/01-15`)
+   - Neue Initial-Daten → 16 Daten-Dateien (`data/01-16`)
+
+2. **initDatabase.js neu geschrieben:**
+   - Lädt jetzt Dateien Schritt für Schritt
+   - **Kein Stack Overflow mehr**
+   - Detaillierte Fehlerbehandlung pro Datei
+   - Auf CommonJS umgestellt (kein ESM mehr)
+
+3. **Keine Änderung am install.sh nötig:**
+   - Script verwendet weiterhin `node scripts/initDatabase.js`
+   - Funktioniert automatisch mit neuem modularen System
+
+### Neue Struktur
+
+```
+backend/database/
+├── tables/             # 15 Tabellen
+│   ├── 01-users.sql
+│   ├── 02-refresh_tokens.sql
+│   ├── ...
+│   └── 15-audit_log.sql
+│
+└── data/               # 16 Initial-Daten
+    ├── 01-roles.sql                    # 12 Rollen
+    ├── 02-permissions-members.sql      # Mitglieder-Permissions
+    ├── ...
+    └── 16-role-permissions-members.sql # Mitglieder-Zuordnung
+```
+
+### Vorteile
+
+✅ **Kein Stack Overflow** bei großen SQL-Dateien  
+✅ **Bessere Fehlerbehandlung** - siehst genau welche Datei fehlschlägt  
+✅ **Modular** - einzelne Tabellen/Daten können separat geladen werden  
+✅ **Wartbarkeit** - jede Tabelle in eigener Datei  
+✅ **Detaillierte Logs** - Schritt-für-Schritt-Ausgabe
+
+### Für Details siehe:
+
+- `/backend/database/MIGRATION-INFO.md` - Vollständige Migrations-Dokumentation
+- `/backend/database/README.md` - Neue Struktur-Übersicht
+
+---
+
 Fertig! 🎉
