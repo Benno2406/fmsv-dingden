@@ -105,9 +105,9 @@ esac
 # 3. GitHub Repository
 ################################################################################
 
-echo ""
-echo -e "${YELLOW}3. GitHub Repository${NC}"
-echo ""
+echo "" >&2
+echo -e "${YELLOW}3. GitHub Repository${NC}" >&2
+echo "" >&2
 
 DEFAULT_REPO="https://github.com/Benno2406/fmsv-dingden.git"
 export GITHUB_REPO=$(ask_input "GitHub Repository URL" "$DEFAULT_REPO")
@@ -134,9 +134,9 @@ fi
 # 5. Domain
 ################################################################################
 
-echo ""
-echo -e "${YELLOW}5. Domain-Konfiguration${NC}"
-echo ""
+echo "" >&2
+echo -e "${YELLOW}5. Domain-Konfiguration${NC}" >&2
+echo "" >&2
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     export DOMAIN=$(ask_input "Deine Domain" "fmsv.bartholmes.eu")
@@ -159,7 +159,7 @@ if ask_yes_no "pgAdmin 4 installieren?" "n"; then
     info "pgAdmin wird installiert"
     
     # pgAdmin Domain (optional)
-    echo ""
+    echo "" >&2
     if ask_yes_no "Separate Domain für pgAdmin?" "n"; then
         export PGADMIN_DOMAIN=$(ask_input "pgAdmin Domain" "pgadmin.$DOMAIN")
         info "pgAdmin Domain: $PGADMIN_DOMAIN"

@@ -116,49 +116,27 @@ spinner() {
 # Eingabe-Funktionen
 ################################################################################
 
-# Ja/Nein Frage
-ask_yes_no() {
-    local question="$1"
-    local default="${2:-n}"
-    
-    local prompt
-    if [ "$default" = "y" ]; then
-        prompt="(J/n)"
-    else
-        prompt="(j/N)"
-    fi
-    
-    echo -ne "   ${BLUE}►${NC} $question $prompt: "
-    read -n 1 -r
-    echo
-    
-    if [ "$default" = "y" ]; then
-        [[ ! $REPLY =~ ^[Nn]$ ]]
-    else
-        [[ $REPLY =~ ^[Jj]$ ]]
-    fi
-}
-
 # Text-Eingabe
 ask_input() {
     local question="$1"
     local default="$2"
     local secret="${3:-no}"
     
-    # Flush stdout vor Prompt
+    # Prompt auf stderr (damit es sichtbar bleibt)
     if [ -n "$default" ]; then
-        printf "   ${BLUE}►${NC} %s ${DIM}[%s]${NC}: " "$question" "$default"
+        printf "   ${BLUE}►${NC} %s ${DIM}[%s]${NC}: " "$question" "$default" >&2
     else
-        printf "   ${BLUE}►${NC} %s: " "$question"
+        printf "   ${BLUE}►${NC} %s: " "$question" >&2
     fi
     
     if [ "$secret" = "yes" ]; then
         read -s REPLY
-        echo
+        echo >&2  # Newline auf stderr
     else
         read -r REPLY
     fi
     
+    # Return-Wert auf stdout
     echo "${REPLY:-$default}"
 }
 
@@ -168,45 +146,46 @@ ask_password() {
     local min_length="${2:-8}"
     
     while true; do
-        # Flush stdout vor Prompt
-        printf "   ${BLUE}►${NC} %s ${DIM}(min. %d Zeichen)${NC}: " "$question" "$min_length"
+        # Prompt auf stderr
+        printf "   ${BLUE}►${NC} %s ${DIM}(min. %d Zeichen)${NC}: " "$question" "$min_length" >&2
         read -s PASSWORD1
-        echo
+        echo >&2  # Newline auf stderr
         
         # Validierung: Nicht leer
         if [ -z "$PASSWORD1" ]; then
             warning "Passwort darf nicht leer sein!"
-            echo ""
+            echo "" >&2
             continue
         fi
         
         # Validierung: Mindestlänge
         if [ ${#PASSWORD1} -lt $min_length ]; then
             warning "Passwort zu kurz! (${#PASSWORD1} Zeichen, min: $min_length)"
-            echo ""
+            echo "" >&2
             continue
         fi
         
         # Validierung: Keine Leerzeichen
         if [[ "$PASSWORD1" =~ [[:space:]] ]]; then
             warning "Passwort darf keine Leerzeichen enthalten!"
-            echo ""
+            echo "" >&2
             continue
         fi
         
-        # Bestätigung
-        printf "   ${BLUE}►${NC} Passwort wiederholen: "
+        # Bestätigung auf stderr
+        printf "   ${BLUE}►${NC} Passwort wiederholen: " >&2
         read -s PASSWORD2
-        echo
+        echo >&2  # Newline auf stderr
         
         if [ "$PASSWORD1" = "$PASSWORD2" ]; then
             success "Passwort validiert (${#PASSWORD1} Zeichen)"
+            # Return-Wert auf stdout
             echo "$PASSWORD1"
             return 0
         fi
         
         warning "Passwörter stimmen nicht überein!"
-        echo ""
+        echo "" >&2
     done
 }
 
@@ -224,17 +203,17 @@ ask_yes_no() {
         default="n"
     fi
     
-    # Flush stdout vor Prompt
-    printf "   ${BLUE}►${NC} %s %s: " "$question" "$prompt"
+    # Prompt auf stderr
+    printf "   ${BLUE}►${NC} %s %s: " "$question" "$prompt" >&2
     read -n 1 -r REPLY
-    echo
+    echo >&2  # Newline auf stderr
     
     # Wenn leer, Default verwenden
     if [ -z "$REPLY" ]; then
         REPLY="$default"
     fi
     
-    # Prüfe Antwort
+    # Prüfe Antwort (nur Return-Code, kein stdout!)
     if [[ $REPLY =~ ^[JjYy]$ ]]; then
         return 0
     else
