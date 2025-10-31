@@ -3,12 +3,15 @@
 ################################################################################
 # FMSV Dingden - All-in-One Installation Script
 # Mit integrierten Hilfen und SSH/PuTTY-Support
-# Version: 3.1 - Verbesserte Fehlerbehandlung & Struktur
 ################################################################################
 
 ################################################################################
 # 1. KONFIGURATION & GLOBALE VARIABLEN
 ################################################################################
+
+# Script Version
+SCRIPT_VERSION="4.0.0"
+SCRIPT_DATE="2025-10-31"
 
 # Installation Paths
 INSTALL_DIR="/var/www/fmsv-dingden"
@@ -96,6 +99,7 @@ touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/tmp/fmsv-install.log"
 {
     echo "═══════════════════════════════════════════════════════════"
     echo "  FMSV Installation gestartet: $(date)"
+    echo "  Script-Version: $SCRIPT_VERSION ($SCRIPT_DATE)"
     echo "═══════════════════════════════════════════════════════════"
 } >> "$LOG_FILE"
 
@@ -147,7 +151,72 @@ else
 fi
 
 ################################################################################
-# 5. UI & OUTPUT FUNKTIONEN
+# 5. HILFE & VERSION FUNKTIONEN
+################################################################################
+
+show_help() {
+    cat << EOF
+╔═══════════════════════════════════════════════════════════╗
+║        FMSV Dingden - Installations-Programm              ║
+║                 Version $SCRIPT_VERSION ($SCRIPT_DATE)        ║
+╚═══════════════════════════════════════════════════════════╝
+
+BESCHREIBUNG:
+    Automatische Installation des FMSV Dingden Webportals
+    mit PostgreSQL, Node.js, Nginx und optionalem Cloudflare Tunnel.
+
+VERWENDUNG:
+    sudo ./install.sh [OPTIONEN]
+
+OPTIONEN:
+    --help, -h          Zeigt diese Hilfe an
+    --version, -v       Zeigt die Script-Version an
+    --no-cloudflare     Überspringt Cloudflare Tunnel Setup
+
+VORAUSSETZUNGEN:
+    - Debian 12 (Bookworm) oder höher
+    - Root-Zugriff
+    - Internetverbindung
+    - Mindestens 2 GB RAM
+    - Mindestens 10 GB freier Speicherplatz
+
+INSTALLATION:
+    1. Script ausführbar machen:
+       chmod +x install.sh
+
+    2. Als root ausführen:
+       su -
+       ./install.sh
+
+HILFE & SUPPORT:
+    - Logs: /var/log/fmsv-install.log
+    - Dokumentation: ./Installation/README.md
+    - GitHub: https://github.com/Benno2406/fmsv-dingden
+
+AUTOR:
+    FMSV Dingden e.V.
+    
+EOF
+}
+
+show_version() {
+    echo "FMSV Dingden Installation Script"
+    echo "Version: $SCRIPT_VERSION"
+    echo "Datum: $SCRIPT_DATE"
+    echo ""
+    echo "Features:"
+    echo "  • PostgreSQL 16 + pgAdmin4 (optional)"
+    echo "  • Node.js 20 Backend"
+    echo "  • React + TypeScript Frontend"
+    echo "  • Nginx Reverse Proxy"
+    echo "  • Cloudflare Tunnel (optional)"
+    echo "  • JWT + 2FA Authentifizierung"
+    echo "  • RBAC Permissions System"
+    echo "  • Auto-Update System"
+}
+
+################################################################################
+# 6. UI & OUTPUT FUNKTIONEN
 ################################################################################
 
 print_header() {
@@ -334,7 +403,7 @@ ask_choice() {
 }
 
 ################################################################################
-# 7. SSH & CLOUDFLARE FUNKTIONEN
+# 8. SSH & CLOUDFLARE FUNKTIONEN
 ################################################################################
 
 detect_ssh_session() {
@@ -471,7 +540,7 @@ cloudflare_login_with_help() {
 }
 
 ################################################################################
-# 8. SYSTEM-PRÜFUNGEN
+# 9. SYSTEM-PRÜFUNGEN
 ################################################################################
 
 check_root() {
@@ -538,7 +607,7 @@ check_disk_space() {
 }
 
 ################################################################################
-# 9. INSTALLATIONS-SCHRITTE
+# 10. INSTALLATIONS-SCHRITTE
 ################################################################################
 
 # -----------------------------------------------------------------------------
@@ -1799,7 +1868,7 @@ step_final_steps() {
 }
 
 ################################################################################
-# 10. HAUPTPROGRAMM
+# 11. HAUPTPROGRAMM
 ################################################################################
 
 main() {
@@ -1808,6 +1877,10 @@ main() {
         case $arg in
             --help|-h)
                 show_help
+                exit 0
+                ;;
+            --version|-v)
+                show_version
                 exit 0
                 ;;
             --no-cloudflare)
@@ -1826,7 +1899,8 @@ main() {
     echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                           ║${NC}"
     echo -e "${CYAN}║        FMSV Dingden - Installations-Programm              ║${NC}"
-    echo -e "${CYAN}║                   Version 3.1                             ║${NC}"
+    echo -e "${CYAN}║                 Version $SCRIPT_VERSION                          ║${NC}"
+    echo -e "${CYAN}║                   ($SCRIPT_DATE)                       ║${NC}"
     echo -e "${CYAN}║                                                           ║${NC}"
     echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
     echo ""

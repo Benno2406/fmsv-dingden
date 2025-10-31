@@ -34,10 +34,16 @@ sudo ./install.sh
 ### Optionen
 
 ```bash
-sudo ./install.sh                # Normale Installation
-sudo ./install.sh --help        # Hilfe anzeigen
+sudo ./install.sh                  # Normale Installation
+sudo ./install.sh --help           # Hilfe anzeigen
+sudo ./install.sh --version        # Zeigt Script-Version an
 sudo ./install.sh --no-cloudflare  # Cloudflare überspringen
 ```
+
+**Verfügbare Optionen:**
+- `--help, -h` - Zeigt ausführliche Hilfe an
+- `--version, -v` - Zeigt Script-Version und Features
+- `--no-cloudflare` - Überspringt Cloudflare Tunnel Setup
 
 ### Installations-Modus
 
@@ -285,9 +291,18 @@ sudo ./debug.sh
 ### install.sh
 
 - **Zweck:** Einmalige Erstinstallation
+- **Version:** 4.0.0 (2025-10-31)
 - **Dauer:** 10-30 Minuten (je nach Server)
 - **Root-Rechte:** Erforderlich
 - **Logs:** `/var/log/fmsv-install.log`
+
+**Neue Features in Version 4.0:**
+- ✅ pgAdmin4 Installation (optional, mit Apache2 auf Ports 1880/18443)
+- ✅ Nginx Reverse Proxy für pgAdmin4
+- ✅ Cloudflare Tunnel für pgAdmin4 Subdomain
+- ✅ Erweiterte Firewall-Regeln für pgAdmin4
+- ✅ Verbesserte Versions-Anzeige
+- ✅ Neue CLI-Optionen (--version, --help)
 
 ### debug.sh
 
