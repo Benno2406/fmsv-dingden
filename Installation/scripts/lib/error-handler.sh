@@ -3,20 +3,15 @@
 # Zentrale Fehlerbehandlung für Installation Scripts
 ################################################################################
 
-# Libraries laden
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/colors.sh"
-source "$SCRIPT_DIR/logging.sh"
-source "$SCRIPT_DIR/ui.sh"
+# HINWEIS: Diese Library benötigt colors.sh, logging.sh und ui.sh
+#          Diese müssen VORHER geladen werden!
 
 ################################################################################
 # Error-Handler Setup
 ################################################################################
 
-# Exit bei Fehler (kann für bestimmte Befehle mit || true deaktiviert werden)
-set -o errexit   # Exit bei Fehler
-set -o pipefail  # Exit bei Fehler in Pipeline
-set -o nounset   # Exit bei Nutzung undefinierter Variablen
+# Exit bei Fehler wird vom Haupt-Script gesetzt
+# (kann hier nicht gesetzt werden, da es beim Source zu früh triggern würde)
 
 # Globaler Error-Trap
 trap 'error_trap $? $LINENO $BASH_COMMAND' ERR

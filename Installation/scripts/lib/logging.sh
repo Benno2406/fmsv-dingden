@@ -3,12 +3,14 @@
 # Logging-Funktionen für Installation Scripts
 ################################################################################
 
-# Globale Log-Datei Variable
-LOG_FILE=""
-
 # Logging initialisieren
 init_logging() {
-    LOG_FILE="$1"
+    local log_file="$1"
+    
+    # Setze LOG_FILE falls noch nicht gesetzt
+    if [ -z "$LOG_FILE" ]; then
+        export LOG_FILE="$log_file"
+    fi
     
     # Erstelle Log-Verzeichnis falls nicht vorhanden
     local log_dir=$(dirname "$LOG_FILE")
@@ -16,7 +18,7 @@ init_logging() {
     
     # Erstelle/Öffne Log-Datei
     touch "$LOG_FILE"
-    chmod 644 "$LOG_FILE"
+    chmod 644 "$LOG_FILE" 2>/dev/null || true
     
     # Header schreiben
     {
@@ -40,8 +42,8 @@ log() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
     # In Log-Datei schreiben (falls initialisiert)
-    if [ -n "$LOG_FILE" ]; then
-        echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+    if [ -n "${LOG_FILE:-}" ] && [ -f "$LOG_FILE" ]; then
+        echo "[$timestamp] [$level] $message" >> "$LOG_FILE" 2>/dev/null || true
     fi
 }
 
@@ -71,13 +73,16 @@ log_step() {
     shift
     local message="$*"
     
-    {
-        echo ""
-        echo "========================================================================"
-        echo "STEP $step: $message"
-        echo "========================================================================"
-        echo ""
-    } >> "$LOG_FILE"
+    # Nur loggen wenn LOG_FILE gesetzt ist
+    if [ -n "${LOG_FILE:-}" ]; then
+        {
+            echo ""
+            echo "========================================================================"
+            echo "STEP $step: $message"
+            echo "========================================================================"
+            echo ""
+        } >> "$LOG_FILE" 2>/dev/null || true
+    fi
 }
 
 # Command-Output loggen
@@ -90,13 +95,25 @@ log_command() {
     log_debug "Command: $command"
     
     # Command ausführen und Output loggen
-    if eval "$command" >> "$LOG_FILE" 2>&1; then
-        log_success "$description completed"
-        return 0
+    if [ -n "${LOG_FILE:-}" ] && [ -f "$LOG_FILE" ]; then
+        if eval "$command" >> "$LOG_FILE" 2>&1; then
+            log_success "$description completed"
+            return 0
+        else
+            local exit_code=$?
+            log_error "$description failed (exit code: $exit_code)"
+            return $exit_code
+        fi
     else
-        local exit_code=$?
-        log_error "$description failed (exit code: $exit_code)"
-        return $exit_code
+        # Ohne Log-Datei
+        if eval "$command" > /dev/null 2>&1; then
+            log_success "$description completed"
+            return 0
+        else
+            local exit_code=$?
+            log_error "$description failed (exit code: $exit_code)"
+            return $exit_code
+        fi
     fi
 }
 
@@ -104,11 +121,13 @@ log_command() {
 finish_logging() {
     local status="$1"
     
-    {
-        echo ""
-        echo "========================================================================"
-        echo "Installation $status"
-        echo "Finished: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "========================================================================"
-    } >> "$LOG_FILE"
+    if [ -n "${LOG_FILE:-}" ] && [ -f "$LOG_FILE" ]; then
+        {
+            echo ""
+            echo "========================================================================"
+            echo "Installation $status"
+            echo "Finished: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "========================================================================"
+        } >> "$LOG_FILE" 2>/dev/null || true
+    fi
 }

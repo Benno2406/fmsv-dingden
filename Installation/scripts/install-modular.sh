@@ -60,6 +60,16 @@ clear
 print_banner
 print_version "$SCRIPT_VERSION"
 
+################################################################################
+# Logging initialisieren
+################################################################################
+
+init_logging "$LOG_FILE"
+log_info "===== Installation Started ====="
+log_info "Version: $SCRIPT_VERSION"
+log_info "User: $(whoami)"
+log_info "Directory: $INSTALL_DIR"
+
 echo ""
 echo -e "${CYAN}Diese Installation richtet folgendes ein:${NC}"
 echo -e "  ${GREEN}•${NC} PostgreSQL Datenbank mit granularem RBAC-System"
@@ -74,18 +84,9 @@ echo ""
 
 if ! ask_yes_no "Installation starten?" "y"; then
     info "Installation abgebrochen"
+    log_info "Installation aborted by user"
     exit 0
 fi
-
-################################################################################
-# Logging initialisieren
-################################################################################
-
-init_logging "$LOG_FILE"
-log_info "===== Installation Started ====="
-log_info "Version: $SCRIPT_VERSION"
-log_info "User: $(whoami)"
-log_info "Directory: $INSTALL_DIR"
 
 ################################################################################
 # SCHRITT 1: System-Prüfung

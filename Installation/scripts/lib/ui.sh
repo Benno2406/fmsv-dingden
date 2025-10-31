@@ -208,6 +208,37 @@ ask_password() {
     done
 }
 
+# Ja/Nein-Frage
+ask_yes_no() {
+    local question="$1"
+    local default="${2:-n}"
+    
+    local prompt
+    if [[ $default =~ ^[Jj]$ ]] || [[ $default =~ ^[Yy]$ ]]; then
+        prompt="(J/n)"
+        default="j"
+    else
+        prompt="(j/N)"
+        default="n"
+    fi
+    
+    echo -ne "   ${BLUE}►${NC} $question $prompt: "
+    read -n 1 -r REPLY
+    echo
+    
+    # Wenn leer, Default verwenden
+    if [ -z "$REPLY" ]; then
+        REPLY="$default"
+    fi
+    
+    # Prüfe Antwort
+    if [[ $REPLY =~ ^[JjYy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Auswahl aus Liste
 ask_choice() {
     local question="$1"
