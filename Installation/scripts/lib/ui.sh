@@ -248,12 +248,14 @@ ask_choice() {
     shift
     local options=("$@")
     
+    # WICHTIG: echo direkt, KEIN -e für einfachen Text!
     echo ""
-    echo -e "   ${CYAN}$question${NC}"
+    printf "   ${CYAN}%s${NC}\n" "$question"
     echo ""
     
+    # Optionen anzeigen mit printf
     for i in "${!options[@]}"; do
-        echo -e "     ${GREEN}$((i+1)).${NC} ${options[$i]}"
+        printf "     ${GREEN}%d.${NC} %s\n" "$((i+1))" "${options[$i]}"
     done
     
     echo ""

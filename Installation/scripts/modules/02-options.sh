@@ -67,9 +67,6 @@ esac
 echo ""
 echo -e "${YELLOW}2. Update-Kanal${NC}"
 echo ""
-echo -e "${DIM}Stable: Stabile Releases (empfohlen)${NC}"
-echo -e "${DIM}Testing: Neueste Features (kann instabil sein)${NC}"
-echo ""
 
 # Frage nach Kanal mit Error-Handling
 while true; do
@@ -124,9 +121,6 @@ info "Repository: $GITHUB_REPO"
 echo ""
 echo -e "${YELLOW}4. Cloudflare Tunnel (Optional)${NC}"
 echo ""
-echo -e "${DIM}Cloudflare Tunnel ermöglicht sicheren Zugriff ohne Port-Forwarding${NC}"
-echo -e "${DIM}Vorteile: SSL, DDoS-Schutz, keine offenen Ports${NC}"
-echo ""
 
 if ask_yes_no "Cloudflare Tunnel installieren?" "n"; then
     export USE_CLOUDFLARE="j"
@@ -145,12 +139,8 @@ echo -e "${YELLOW}5. Domain-Konfiguration${NC}"
 echo ""
 
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    echo -e "${DIM}Die Domain wird für Cloudflare Tunnel und SSL verwendet${NC}"
-    echo ""
     export DOMAIN=$(ask_input "Deine Domain" "fmsv.bartholmes.eu")
 else
-    echo -e "${DIM}Die Domain wird für Nginx und SSL (Certbot) verwendet${NC}"
-    echo ""
     export DOMAIN=$(ask_input "Deine Domain (oder IP-Adresse)" "fmsv.bartholmes.eu")
 fi
 
@@ -162,9 +152,6 @@ info "Domain: $DOMAIN"
 
 echo ""
 echo -e "${YELLOW}6. pgAdmin 4 (Optional)${NC}"
-echo ""
-echo -e "${DIM}pgAdmin ist eine grafische Oberfläche für PostgreSQL${NC}"
-echo -e "${DIM}Läuft auf Port 1880/18443 (via Apache2)${NC}"
 echo ""
 
 if ask_yes_no "pgAdmin 4 installieren?" "n"; then
@@ -192,13 +179,21 @@ fi
 echo ""
 echo -e "${YELLOW}7. Auto-Update System (Optional)${NC}"
 echo ""
-echo -e "${DIM}Automatische Updates via systemd Timer${NC}"
-echo ""
 
-UPDATE_CHOICE=$(ask_choice "Auto-Update Zeitplan" \
-    "Täglich (03:00 Uhr)" \
-    "Wöchentlich (Sonntag 03:00 Uhr)" \
-    "Manuell (keine Auto-Updates)")
+# Frage nach Auto-Update mit Error-Handling
+while true; do
+    UPDATE_CHOICE=$(ask_choice "Auto-Update Zeitplan" \
+        "Täglich (03:00 Uhr)" \
+        "Wöchentlich (Sonntag 03:00 Uhr)" \
+        "Manuell (keine Auto-Updates)")
+    
+    if [ $? -eq 0 ]; then
+        break
+    else
+        warning "Bitte wähle eine gültige Option!"
+        echo ""
+    fi
+done
 
 case $UPDATE_CHOICE in
     0)
@@ -212,6 +207,11 @@ case $UPDATE_CHOICE in
     2)
         export AUTO_UPDATE_SCHEDULE="manual"
         info "Keine Auto-Updates (manuelle Updates)"
+        ;;
+    *)
+        # Fallback
+        export AUTO_UPDATE_SCHEDULE="manual"
+        warning "Unbekannte Auswahl - verwende manuelle Updates"
         ;;
 esac
 
