@@ -196,8 +196,9 @@ sudo ./install-modular.sh
 | Grafische Verzögerung | ✅ BEHOBEN | In v3.1 gefixt |
 | INSTALL_MODE nicht gesetzt | ✅ BEHOBEN | In v3.1 gefixt |
 | Scripts löschen sich selbst | ✅ BEHOBEN | In v3.1 gefixt |
-| **Optionen nicht sichtbar** | ✅ BEHOBEN | In v3.1 gefixt |
-| **AUTO_UPDATE_SCHEDULE fehlt** | ✅ BEHOBEN | In v3.1 gefixt |
+| Optionen nicht sichtbar | ✅ BEHOBEN | In v3.1 gefixt |
+| AUTO_UPDATE_SCHEDULE fehlt | ✅ BEHOBEN | In v3.1 gefixt |
+| **🔥 FARBEN funktionieren nicht** | ✅ **KRITISCH BEHOBEN** | **In v3.1 gefixt** |
 
 **Keine offenen Bugs!** 🎉
 

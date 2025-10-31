@@ -248,19 +248,19 @@ ask_choice() {
     shift
     local options=("$@")
     
-    # WICHTIG: echo direkt, KEIN -e für einfachen Text!
+    # WICHTIG: echo (ohne -e) für einfachen Text!
     echo ""
-    printf "   ${CYAN}%s${NC}\n" "$question"
+    echo "   ${CYAN}$question${NC}"
     echo ""
     
-    # Optionen anzeigen mit printf
+    # Optionen anzeigen mit echo (ohne -e)
     for i in "${!options[@]}"; do
-        printf "     ${GREEN}%d.${NC} %s\n" "$((i+1))" "${options[$i]}"
+        echo "     ${GREEN}$((i+1)).${NC} ${options[$i]}"
     done
     
     echo ""
     # Flush stdout vor Prompt
-    printf "   ${BLUE}►${NC} Auswahl (1-%d): " "${#options[@]}"
+    echo -n "   ${BLUE}►${NC} Auswahl (1-${#options[@]}): "
     read -r choice
     
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
