@@ -15,6 +15,20 @@ Moderne Vereinshomepage für den Flugmodellsportverein Dingden mit integrierter 
 
 ---
 
+## 🔧 BACKEND STARTET NICHT?
+
+**Schnelle Hilfe:**
+```bash
+cd backend
+chmod +x diagnose.sh quick-start.sh
+./diagnose.sh        # Diagnose
+./quick-start.sh     # Automatischer Start
+```
+
+📖 **Details:** [`WAS-WURDE-GEMACHT.md`](WAS-WURDE-GEMACHT.md)
+
+---
+
 ## 🚀 Features
 
 ### Frontend (React + TypeScript)

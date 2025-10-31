@@ -1,6 +1,6 @@
-import { logger } from '../utils/logger.js';
+const { logger } = require('../utils/logger');
 
-export const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, next) => {
   // Log error
   logger.error('Error:', {
     message: err.message,
@@ -62,3 +62,5 @@ export const errorHandler = (err, req, res, next) => {
     })
   });
 };
+
+module.exports = { errorHandler };

@@ -2,6 +2,17 @@
 
 Sicheres Node.js Backend mit PostgreSQL, JWT-Authentifizierung und 2FA.
 
+## 🚨 Backend startet nicht?
+
+**Schnelle Diagnose:**
+```bash
+cd backend
+chmod +x diagnose.sh
+./diagnose.sh
+```
+
+📖 **Ausführliche Hilfe:** [BACKEND-NICHT-ERREICHBAR.md](./BACKEND-NICHT-ERREICHBAR.md)
+
 ## Features
 
 ✅ **Sicherheit**

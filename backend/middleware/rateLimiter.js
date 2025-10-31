@@ -1,9 +1,9 @@
-import rateLimit from 'express-rate-limit';
-import { logger } from '../utils/logger.js';
-import { logAudit, AUDIT_ACTIONS } from '../utils/audit.js';
+const rateLimit = require('express-rate-limit');
+const { logger } = require('../utils/logger');
+const { logAudit, AUDIT_ACTIONS } = require('../utils/audit');
 
 // General API rate limiter
-export const generalLimiter = rateLimit({
+const generalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: {
@@ -34,7 +34,7 @@ export const generalLimiter = rateLimit({
 });
 
 // Strict limiter for authentication endpoints
-export const authLimiter = rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 attempts
   skipSuccessfulRequests: true,
@@ -64,7 +64,7 @@ export const authLimiter = rateLimit({
 });
 
 // Upload limiter
-export const uploadLimiter = rateLimit({
+const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 50, // 50 uploads per hour
   message: {
@@ -74,8 +74,15 @@ export const uploadLimiter = rateLimit({
 });
 
 // Setup rate limiters
-export const setupRateLimiter = (app) => {
+const setupRateLimiter = (app) => {
   app.use('/api/', generalLimiter);
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
+};
+
+module.exports = {
+  generalLimiter,
+  authLimiter,
+  uploadLimiter,
+  setupRateLimiter
 };

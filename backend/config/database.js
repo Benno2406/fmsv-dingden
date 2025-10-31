@@ -38,10 +38,14 @@ const query = async (text, params) => {
   try {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    logger.debug('Query ausgeführt', { text, duration, rows: result.rowCount });
+    // Nur Query-Typ loggen, nicht den gesamten Text (verhindert Stack Overflow)
+    const queryType = text.trim().split(' ')[0];
+    logger.debug(`Query ausgeführt: ${queryType}`, { duration, rows: result.rowCount });
     return result;
   } catch (error) {
-    logger.error('Query Fehler:', { text, error: error.message });
+    // Nur Fehler-Message loggen, nicht den gesamten Query-Text
+    const queryType = text.trim().split(' ')[0];
+    logger.error(`Query Fehler (${queryType}):`, error.message);
     throw error;
   }
 };
