@@ -1,328 +1,281 @@
-# Installations-Scripts
+# FMSV Dingden - Wartungs-Scripts
 
-Automatisierte Installation und Updates für FMSV Dingden.
-
-## 🚀 Scripts
-
-### install.sh - Haupt-Installation
-
-**Das eine Script für alles!**
-
-```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-chmod +x install.sh
-sudo ./install.sh
-```
-
-**Features:**
-- ✅ Systematische Installation mit 14 Schritten
-- ✅ Fortschrittsanzeige für jeden Schritt
-- ✅ Farbcodierte Ausgabe (Info/Erfolg/Warnung/Fehler)
-- ✅ PostgreSQL + Node.js Installation
-- ✅ Wahl zwischen Stable/Testing
-- ✅ Optional: Cloudflare Tunnel
-- ✅ GitHub Auto-Update System
-- ✅ Interaktiver Dialog
-
-**Installiert:**
-- Backend (Node.js, Express, PostgreSQL)
-- Frontend (React, Vite)
-- Nginx (Webserver)
-- Cloudflare Tunnel (optional)
-- Auto-Update Timer (optional)
-
-**Dauer:** ~10-15 Minuten
-
-**Beispiel-Ausgabe:** Siehe [`/Installation/BEISPIEL-AUSGABE.md`](../BEISPIEL-AUSGABE.md)
+Diese Scripts helfen dir bei der Verwaltung deiner FMSV-Installation.
 
 ---
 
-### update.sh - Manuelle Updates
+## 📋 **Verfügbare Scripts**
 
+### `install.sh` - Haupt-Installation
 ```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-chmod +x update.sh
-sudo ./update.sh
+sudo ./install.sh
 ```
 
-**Features:**
-- ✅ Systematische Updates mit Fortschrittsanzeige
-- ✅ Update von GitHub ziehen
-- ✅ Zwischen Stable/Testing wechseln
-- ✅ Automatisches Backup vor Update
-- ✅ Service-Neustart
-- ✅ Farbcodierte Ausgabe
+Führt die komplette Installation durch:
+- System-Updates
+- PostgreSQL Installation
+- pgAdmin 4 Installation
+- Node.js & Backend Setup
+- Frontend Build
+- Nginx Konfiguration
+- Cloudflare Tunnel (optional)
+- Auto-Update System
 
 **Optionen:**
-1. Update durchführen (7 Schritte)
-   - Auf Updates prüfen
-   - Backup erstellen
-   - Updates ziehen
-   - Backend aktualisieren
-   - Frontend bauen
-   - Services neu starten
-   - Überprüfung
-
-2. Branch wechseln (8 Schritte)
-   - Branch auswählen
-   - Backup erstellen
-   - Branch wechseln
-   - Konfiguration anpassen
-   - Backend aktualisieren
-   - Frontend bauen
-   - Services neu starten
-   - Überprüfung
-
-3. Abbrechen
+- `--help` - Hilfe anzeigen
+- `--no-cloudflare` - Cloudflare Tunnel überspringen
 
 ---
 
-### auto-update.sh - Automatische Updates
-
-**Automatisch erstellt** durch `install.sh` (falls Auto-Update aktiviert).
-
+### `restart.sh` - Service Neustart
 ```bash
-# Manuell ausführen
-/var/www/fmsv-dingden/Installation/scripts/auto-update.sh
-
-# Via systemd
-systemctl start fmsv-auto-update.service
-
-# Timer-Status
-systemctl status fmsv-auto-update.timer
+sudo fmsv-restart
+# oder
+sudo /var/www/fmsv-dingden/Installation/scripts/restart.sh
 ```
 
-**Läuft automatisch:**
-- Täglich um 03:00 Uhr (oder)
-- Wöchentlich Sonntag 03:00 Uhr
+Startet alle Services neu:
+- PostgreSQL
+- FMSV Backend
+- Nginx
+- Cloudflare Tunnel (falls vorhanden)
 
-**Macht:**
-- Git Pull vom konfigurierten Branch
-- Backend-Update (npm install)
-- Frontend-Update (npm build)
-- Service-Neustart
+Führt automatisch API-Tests durch.
 
-**Logs:**
-```bash
-tail -f /var/log/fmsv-auto-update.log
-```
+**Wann verwenden?**
+- Nach Config-Änderungen
+- Bei "Backend nicht erreichbar" Fehlern
+- Nach System-Updates
+- Wenn Services hängen
 
 ---
 
-## 🎯 Empfohlener Workflow
-
-### Erstinstallation
-
+### `rebuild-frontend.sh` - Frontend neu builden
 ```bash
-# 1. Repository klonen
-cd /var/www
-git clone https://github.com/dein-username/fmsv-dingden.git
-
-# 2. Installation starten
-cd fmsv-dingden/Installation/scripts
-chmod +x install.sh
-sudo ./install.sh
+sudo fmsv-rebuild
+# oder
+sudo /var/www/fmsv-dingden/Installation/scripts/rebuild-frontend.sh
 ```
 
-### Manuelle Updates
+Baut das Frontend mit Production-Einstellungen neu:
+- Erstellt `.env.production` falls nicht vorhanden
+- Erstellt `.env.development` falls nicht vorhanden
+- Installiert Dependencies
+- Führt Production-Build durch
+- Setzt Berechtigungen
+- Lädt Nginx neu
 
-```bash
-# Update-Script ausführen
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./update.sh
-# Option 1 wählen
-```
-
-### Branch wechseln
-
-```bash
-# Update-Script ausführen
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./update.sh
-# Option 2 wählen
-```
+**Wann verwenden?**
+- Nach Frontend-Code-Änderungen
+- Bei "Backend nicht erreichbar" (erste Hilfe)
+- Nach Git Pull von neuen Frontend-Updates
+- Wenn `.env` Dateien fehlen
 
 ---
 
-## 📋 Update-Kanäle
+### `update.sh` - System-Update
+```bash
+sudo fmsv-update
+# oder
+sudo /var/www/fmsv-dingden/Installation/scripts/update.sh
+```
 
-### Stable (main)
+Aktualisiert das komplette System:
+- Git Pull vom Repository
+- Backend Dependencies
+- Frontend Build
+- Service Neustart
+- Backup-Empfehlung vor Update
 
-**Empfohlen für:**
-- Production-Server
-- Vereins-Website
-- Maximale Stabilität
-
-**Updates:**
-- Nur getestete Features
-- Seltenere Updates
-- Release-Notes
-
-**Branch:** `main`
-
-### Testing (testing)
-
-**Empfohlen für:**
-- Entwicklungs-Server
-- Test-Umgebungen
-- Feature-Preview
-
-**Updates:**
-- Neueste Features
-- Häufigere Updates
-- Kann instabil sein
-
-**Branch:** `testing`
+**Wann verwenden?**
+- Für manuelle Updates (wenn Auto-Update deaktiviert)
+- Wenn neue Features verfügbar sind
+- Nach Bug-Fixes im Repository
 
 ---
 
-## 🔄 GitHub Integration
-
-### Lokaler PC ↔ GitHub ↔ Server
-
-```
-┌──────────────┐
-│  Lokaler PC  │
-└──────┬───────┘
-       │ git push
-       ▼
-┌──────────────┐
-│   GitHub     │ ← main (Stable)
-│              │ ← testing (Testing)
-└──────┬───────┘
-       │ auto-update
-       ▼
-┌──────────────┐
-│   Server     │
-└──────────────┘
-```
-
-### Workflow
-
-**Lokaler PC:**
+### `debug.sh` - Diagnose
 ```bash
-# Feature entwickeln
-git checkout testing
-git add .
-git commit -m "Neues Feature"
-git push origin testing
-
-# Nach Testing → Stable
-git checkout main
-git merge testing
-git push origin main
+sudo fmsv-debug
+# oder
+sudo /var/www/fmsv-dingden/Installation/scripts/debug.sh
 ```
 
-**Server:**
-```bash
-# Testing-Server (auto-update von testing)
-# Zieht automatisch neueste Changes
+Führt vollständige Diagnose durch:
+- System-Informationen
+- Service-Status
+- Port-Checks
+- Datei-Berechtigungen
+- Config-Validierung
+- API-Tests
+- Log-Auszüge
 
-# Production-Server (auto-update von main)
-# Zieht nur stabile Releases
+**Wann verwenden?**
+- Bei Problemen jeder Art
+- Vor Support-Anfragen
+- Zur Fehlersuche
+- Zum Überprüfen der Installation
+
+---
+
+## 🚀 **Quick-Start nach Problemen**
+
+### Problem: Backend nicht erreichbar
+```bash
+# 1. Services neu starten
+sudo fmsv-restart
+
+# 2. Wenn das nicht hilft: Frontend neu builden
+sudo fmsv-rebuild
+
+# 3. Immer noch Probleme? Debug-Info holen
+sudo fmsv-debug
+```
+
+### Problem: Updates verfügbar
+```bash
+# 1. Backup erstellen (empfohlen)
+sudo -u postgres pg_dump fmsv_database > backup_$(date +%Y%m%d).sql
+
+# 2. Update durchführen
+sudo fmsv-update
+
+# 3. Prüfen ob alles läuft
+sudo fmsv-restart
+```
+
+### Problem: Nach Config-Änderung
+```bash
+# Backend .env geändert?
+sudo systemctl restart fmsv-backend
+
+# Nginx Config geändert?
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Frontend .env geändert?
+sudo fmsv-rebuild
 ```
 
 ---
 
-## ⚙️ Konfiguration
+## 📝 **Script-Standorte**
 
-### Auto-Update aktivieren/deaktivieren
+Nach Installation sind die Scripts an 2 Stellen verfügbar:
 
-**Stoppen:**
+### 1. Original-Verzeichnis
 ```bash
-systemctl stop fmsv-auto-update.timer
-systemctl disable fmsv-auto-update.timer
+/var/www/fmsv-dingden/Installation/scripts/
+├── install.sh           # Haupt-Installation
+├── restart.sh           # Service Neustart
+├── rebuild-frontend.sh  # Frontend Build
+├── update.sh            # System Update
+└── debug.sh             # Diagnose
 ```
 
-**Starten:**
+### 2. System-Befehle (kopiert während Installation)
 ```bash
-systemctl start fmsv-auto-update.timer
-systemctl enable fmsv-auto-update.timer
+/usr/local/bin/
+├── fmsv-restart  → restart.sh
+├── fmsv-rebuild  → rebuild-frontend.sh
+├── fmsv-update   → update.sh
+└── fmsv-debug    → debug.sh
 ```
 
-**Zeitplan ändern:**
-```bash
-# Timer-Konfiguration bearbeiten
-nano /etc/systemd/system/fmsv-auto-update.timer
+Die System-Befehle sind überall verfügbar (im PATH).
 
-# Reload
-systemctl daemon-reload
-systemctl restart fmsv-auto-update.timer
+---
+
+## 🔒 **Berechtigungen**
+
+Alle Scripts benötigen **root-Rechte**:
+
+```bash
+# Richtig ✅
+sudo fmsv-restart
+
+# Falsch ❌
+fmsv-restart
 ```
 
-### Branch manuell wechseln
+**Warum?**
+- Service-Verwaltung (systemctl)
+- Port-Binding (Port 80/443)
+- Datei-Berechtigungen setzen
+- Nginx-Konfiguration
 
+---
+
+## 🧪 **Scripts testen**
+
+### Test 1: Restart-Script
 ```bash
-cd /var/www/fmsv-dingden
+sudo fmsv-restart
+# Sollte alle Services starten und API-Test durchführen
+```
 
-# Zu Testing
-git checkout testing
-git pull origin testing
+### Test 2: Debug-Script
+```bash
+sudo fmsv-debug
+# Sollte umfangreiche System-Info ausgeben
+```
 
-# Zu Stable
-git checkout main
-git pull origin main
-
-# .env anpassen
-nano backend/.env
-# UPDATE_BRANCH=main (oder testing)
-# UPDATE_CHANNEL=Stable (oder Testing)
-
-# Services neu starten
-systemctl restart fmsv-backend
-systemctl restart nginx
+### Test 3: Rebuild-Script
+```bash
+sudo fmsv-rebuild
+# Sollte Frontend bauen und Nginx neu laden
 ```
 
 ---
 
-## 🆘 Troubleshooting
+## 📚 **Weitere Informationen**
 
-### Installation schlägt fehl
+- **Installation:** `/var/www/fmsv-dingden/Installation/Anleitung/Installation.md`
+- **API-Probleme:** `/var/www/fmsv-dingden/Installation/Anleitung/Frontend-Backend-Verbindung.md`
+- **pgAdmin:** `/var/www/fmsv-dingden/Installation/Anleitung/pgAdmin-Setup.md`
 
+---
+
+## ⚠️ **Wichtige Hinweise**
+
+### Vor Updates
+- **Backup erstellen!**
+  ```bash
+  sudo -u postgres pg_dump fmsv_database > backup.sql
+  cp -r /var/www/fmsv-dingden/Saves /root/backup_saves/
+  ```
+
+### Bei Problemen
+1. **Logs ansehen:**
+   ```bash
+   journalctl -u fmsv-backend -n 50
+   tail -f /var/log/nginx/error.log
+   ```
+
+2. **Services prüfen:**
+   ```bash
+   systemctl status fmsv-backend
+   systemctl status nginx
+   systemctl status postgresql
+   ```
+
+3. **API-Test:**
+   ```bash
+   curl http://localhost:3000/api/health
+   curl http://localhost/api/health
+   ```
+
+### Scripts bearbeiten
+Scripts können bearbeitet werden:
 ```bash
-# Logs prüfen
-journalctl -xe
+# Original bearbeiten
+sudo nano /var/www/fmsv-dingden/Installation/scripts/restart.sh
 
-# Script mit Debug
-bash -x install.sh
-```
-
-### Update funktioniert nicht
-
-```bash
-# Git-Status prüfen
-cd /var/www/fmsv-dingden
-git status
-git fetch origin
-
-# Lokale Änderungen verwerfen
-git reset --hard origin/main
-
-# Update erneut versuchen
-./Installation/scripts/update.sh
-```
-
-### Auto-Update läuft nicht
-
-```bash
-# Timer aktiv?
-systemctl status fmsv-auto-update.timer
-
-# Service-Logs
-journalctl -u fmsv-auto-update.service -f
-
-# Manuell testen
-/var/www/fmsv-dingden/Installation/scripts/auto-update.sh
+# Nach Änderung neu kopieren
+sudo cp /var/www/fmsv-dingden/Installation/scripts/restart.sh /usr/local/bin/fmsv-restart
+sudo chmod +x /usr/local/bin/fmsv-restart
 ```
 
 ---
 
-## 📚 Weitere Dokumentation
-
-- **Installation:** [`/Installation/Anleitung/Installation.md`](../Anleitung/Installation.md)
-- **E-Mail Setup:** [`/Installation/Anleitung/E-Mail-Setup.md`](../Anleitung/E-Mail-Setup.md)
-- **Cloudflare Tunnel:** [`/Installation/Anleitung/Cloudflare-Tunnel-Setup.md`](../Anleitung/Cloudflare-Tunnel-Setup.md)
-
----
-
-**Ein Script. Alles drin. Einfach.** 🚀
+**Viel Erfolg! 🚀**
