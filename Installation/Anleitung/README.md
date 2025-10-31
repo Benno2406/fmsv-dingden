@@ -66,82 +66,16 @@ Dokumentation für Installation und Konfiguration.
 
 ---
 
-### pgAdmin-Setup.md
-**PostgreSQL Datenbank-Verwaltung**
+### Database-Admin-NodeJS.md
+**Integrierte Datenbank-Verwaltung**
 
-- pgAdmin 4 Web Interface
-- IP-Whitelist konfigurieren
-- HTTP Basic Auth
-- Cloudflare Tunnel Integration
-- Server hinzufügen
-- Backup & Restore
-- Troubleshooting
-
-→ [`pgAdmin-Setup.md`](pgAdmin-Setup.md)
-
----
-
-### Cloudflare-Access-pgAdmin.md
-**pgAdmin mit Cloudflare Access absichern**
-
-- Zero Trust Authentifizierung
-- E-Mail/Google/GitHub Login
-- Kostenlos (bis 50 User)
-- Session-Management
-- Logs & Analytics
-- IP-Whitelist + Auth kombinieren
-
-→ [`Cloudflare-Access-pgAdmin.md`](Cloudflare-Access-pgAdmin.md)
-
----
-
-### pgAdmin-Sicherheits-Checkliste.md
-**Sicherheits-Check für pgAdmin**
-
-- Sicherheitsstufen (Basis bis Paranoid)
-- Quick-Check Tests
-- Empfohlene Konfigurationen
-- Warnsignale erkennen
-- Wartungs-Checkliste
-- Sicherheits-Score
-
-→ [`pgAdmin-Sicherheits-Checkliste.md`](pgAdmin-Sicherheits-Checkliste.md)
-
----
-
-### pgAdmin-Troubleshooting.md
-**pgAdmin Reparatur & Fehlerbehebung**
-
-- Flask/Python Module fehlen
-- Service startet nicht
-- Login funktioniert nicht
-- Cloudflare Tunnel Probleme
-- Komplette Neuinstallation
-- Health Check Monitoring
-
-→ [`pgAdmin-Troubleshooting.md`](pgAdmin-Troubleshooting.md)
-
----
-
-### ~~pgAdmin-ohne-Apache2.md~~ ❌ OBSOLET
-**Alte Anleitung - Nicht mehr benötigt!**
-
-pgAdmin wird **NICHT MEHR verwendet**! Stattdessen: Node.js Database Admin (siehe unten)
-
-→ ~~[`pgAdmin-ohne-Apache2.md`](pgAdmin-ohne-Apache2.md)~~ (veraltet)
-
----
-
-### Database-Admin-NodeJS.md 🆕 **NEUE LÖSUNG!**
-**Datenbank-Verwaltung direkt in Node.js/React**
-
-- ❌ Kein pgAdmin mehr!
-- ✅ Node.js + React Lösung
-- ✅ Keine zusätzliche Software
-- ✅ Perfekte Integration
+- ✅ Node.js + React basiert
+- ✅ Vollständig integriert
+- ✅ Sicher & performant
 - ✅ Webmaster-only Zugriff
-- Backend-Routes & Frontend-Page
-- Features, Sicherheit, Vergleich
+- ✅ SQL-Konsole mit Syntax-Highlighting
+- Backend-Routes & Frontend-Interface
+- Backup & Restore Funktionen
 
 → [`Database-Admin-NodeJS.md`](Database-Admin-NodeJS.md)
 
@@ -184,8 +118,8 @@ pgAdmin wird **NICHT MEHR verwendet**! Stattdessen: Node.js Database Admin (sieh
 **Probleme mit Cloudflare Tunnel?**
 → Siehe [`Cloudflare-Tunnel-Setup.md`](Cloudflare-Tunnel-Setup.md)
 
-**pgAdmin absichern?**
-→ Siehe [`pgAdmin-Sicherheits-Checkliste.md`](pgAdmin-Sicherheits-Checkliste.md)
+**Datenbank-Verwaltung?**
+→ Siehe [`Database-Admin-NodeJS.md`](Database-Admin-NodeJS.md)
 
 ---
 

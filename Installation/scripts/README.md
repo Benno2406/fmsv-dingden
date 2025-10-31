@@ -14,7 +14,6 @@ sudo ./install.sh
 Führt die komplette Installation durch:
 - System-Updates
 - PostgreSQL Installation
-- pgAdmin 4 Installation
 - Node.js & Backend Setup
 - Frontend Build
 - Nginx Konfiguration
@@ -232,7 +231,7 @@ sudo fmsv-rebuild
 
 - **Installation:** `/var/www/fmsv-dingden/Installation/Anleitung/Installation.md`
 - **API-Probleme:** `/var/www/fmsv-dingden/Installation/Anleitung/Frontend-Backend-Verbindung.md`
-- **pgAdmin:** `/var/www/fmsv-dingden/Installation/Anleitung/pgAdmin-Setup.md`
+- **Datenbank-Admin:** `/var/www/fmsv-dingden/Installation/Anleitung/Database-Admin-NodeJS.md`
 
 ---
 
@@ -274,57 +273,6 @@ sudo nano /var/www/fmsv-dingden/Installation/scripts/restart.sh
 # Nach Änderung neu kopieren
 sudo cp /var/www/fmsv-dingden/Installation/scripts/restart.sh /usr/local/bin/fmsv-restart
 sudo chmod +x /usr/local/bin/fmsv-restart
-```
-
----
-
----
-
-### `remove-apache2.sh` - Apache2 Entfernen
-```bash
-sudo /var/www/fmsv-dingden/Installation/scripts/remove-apache2.sh
-```
-
-Entfernt Apache2 falls es installiert wurde:
-- Stoppt Apache2 Service
-- Deinstalliert Apache2-Pakete
-- Optional: Löscht Konfigurationen
-- Räumt auf
-
-**Wann verwenden?**
-- Falls pgAdmin versehentlich Apache2 installiert hat
-- Zur Vereinfachung (nur nginx verwenden)
-- Zum Ressourcen sparen
-
-**Wichtig:** Diese Installation benötigt **kein Apache2**! pgAdmin läuft als eigenständiger Python-Service mit nginx als Reverse Proxy.
-
----
-
-### `fix-pgadmin.sh` - pgAdmin Reparatur ⚡
-```bash
-sudo /var/www/fmsv-dingden/Installation/scripts/fix-pgadmin.sh
-```
-
-Interaktives Menü zur Behebung von pgAdmin-Problemen:
-1. **Service-Probleme** - Service startet nicht
-2. **Python-Dependencies** - Flask/Module fehlen
-3. **Admin-User** - User zurücksetzen/erstellen
-4. **Neuinstallation** - Komplett neu installieren
-5. **Health Check** - Status & Diagnose
-6. **Beenden**
-
-**Wann verwenden?**
-- pgAdmin Service startet nicht
-- "ModuleNotFoundError: No module named 'flask'"
-- Login funktioniert nicht
-- Port-Probleme (5050 belegt)
-- Nach Updates wenn pgAdmin nicht mehr läuft
-
-**Beispiel:**
-```bash
-sudo ./fix-pgadmin.sh
-# Option 2 wählen bei Flask-Fehler
-# Option 1 wählen bei Service-Problemen
 ```
 
 ---

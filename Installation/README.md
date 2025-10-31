@@ -48,16 +48,15 @@ Das wars! Das Script führt dich durch:
 
 ## 🆕 NEU: Database Admin in Node.js!
 
-**pgAdmin war gestern!** Wir haben eine **viel bessere Lösung** gebaut:
+**Integriertes Datenbank-Management** direkt in der App:
 
-✅ **Keine pgAdmin-Installation** mehr nötig  
-✅ **Node.js/React** statt Python/Flask  
-✅ **Integriert** in die Haupt-App  
-✅ **Schneller, sicherer, einfacher**  
+✅ **Node.js/React** basiert  
+✅ **Vollständig integriert** in die Haupt-App  
+✅ **Sicher & performant**  
+✅ **SQL-Konsole** mit Syntax-Highlighting  
 
-→ **[NEUE-DATABASE-ADMIN-LÖSUNG.md](NEUE-DATABASE-ADMIN-LÖSUNG.md)** - Alle Details!  
-→ **[MIGRATION-pgAdmin-zu-NodeJS.md](MIGRATION-pgAdmin-zu-NodeJS.md)** - 5-Minuten-Migration  
 → **[Database-Admin-NodeJS.md](Anleitung/Database-Admin-NodeJS.md)** - Vollständige Dokumentation  
+→ **[QUICK-START-Database-Admin.md](QUICK-START-Database-Admin.md)** - Schnellstart  
 
 **Zugriff:** Login als Webmaster → Verwaltung → "Datenbank" in Sidebar 🚀
 
