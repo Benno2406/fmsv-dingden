@@ -657,12 +657,23 @@ INSTALL_PGADMIN=$REPLY
 if [[ $REPLY =~ ^[Jj]$ ]]; then
     info "Installiere Apache2 mit angepassten Ports (1880/18443)..."
     
-    # Apache2 installieren
-    if apt-get install -y -qq apache2 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-        success "Apache2 installiert"
+    # Apache2 + WSGI Module installieren
+    info "Installiere Apache2 und benötigte Module..."
+    if apt-get install -y -qq apache2 libapache2-mod-wsgi-py3 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+        success "Apache2 + WSGI Module installiert"
     else
         error "Apache2 Installation fehlgeschlagen"
     fi
+    
+    # Apache Module aktivieren
+    info "Aktiviere Apache Module..."
+    a2enmod ssl > /dev/null 2>&1
+    a2enmod wsgi > /dev/null 2>&1
+    a2enmod proxy > /dev/null 2>&1
+    a2enmod proxy_http > /dev/null 2>&1
+    a2enmod headers > /dev/null 2>&1
+    a2enmod rewrite > /dev/null 2>&1
+    success "Apache Module aktiviert"
     
     # Apache2 Ports ändern zu 1880 und 18443
     info "Konfiguriere Apache2 Ports..."
@@ -671,7 +682,6 @@ if [[ $REPLY =~ ^[Jj]$ ]]; then
     cat > /etc/apache2/ports.conf << 'EOF'
 # Apache2 läuft auf alternativen Ports (nginx läuft auf 80/443)
 Listen 1880
-Listen 18443
 
 <IfModule ssl_module>
     Listen 18443
@@ -683,6 +693,14 @@ Listen 18443
 EOF
     
     success "Apache2 Ports konfiguriert (1880/18443)"
+    
+    # Teste Apache Konfiguration
+    info "Teste Apache Konfiguration..."
+    if apache2ctl configtest 2>&1 | grep -q "Syntax OK"; then
+        success "Apache Konfiguration OK"
+    else
+        warning "Apache Konfiguration hat Warnungen (nicht kritisch)"
+    fi
     
     # pgAdmin 4 Repository hinzufügen
     info "Füge pgAdmin 4 Repository hinzu..."
@@ -724,10 +742,22 @@ EOF
         success "pgAdmin VirtualHost auf Port 1880 angepasst"
     fi
     
+    # Apache2 Konfiguration testen
+    info "Teste Apache Konfiguration..."
+    APACHE_TEST=$(apache2ctl configtest 2>&1)
+    if echo "$APACHE_TEST" | grep -q "Syntax OK"; then
+        success "Apache Konfiguration OK"
+    else
+        warning "Apache Konfiguration hat Warnungen:"
+        echo "$APACHE_TEST" | grep -v "AH00558" | sed 's/^/   /'
+    fi
+    
     # Apache2 neu starten
     info "Starte Apache2..."
-    systemctl restart apache2
+    systemctl restart apache2 2>&1 | tee -a "$LOG_FILE" > /dev/null
     systemctl enable apache2 > /dev/null 2>&1
+    
+    sleep 2  # Warte kurz bis Apache vollständig gestartet ist
     
     if systemctl is-active --quiet apache2; then
         success "Apache2 läuft auf Port 1880/18443"
@@ -745,16 +775,63 @@ EOF
         echo -e "${GREEN}║            pgAdmin 4 erfolgreich installiert!          ║${NC}"
         echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
         echo ""
-        echo -e "${YELLOW}Zugriff:${NC}"
-        echo -e "  ${CYAN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
-        echo -e "  ${CYAN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
+        echo -e "${CYAN}Zugriff:${NC}"
+        echo -e "  ${GREEN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
+        echo -e "  ${GREEN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
         echo ""
         echo -e "${YELLOW}Optional - Nginx Reverse Proxy:${NC}"
         echo -e "  Du kannst später eine Nginx-Konfiguration erstellen für:"
         echo -e "  ${CYAN}pgadmin.deineadomain.de${NC} → http://localhost:1880"
         echo ""
     else
-        error "Apache2 konnte nicht gestartet werden"
+        warning "Apache2 konnte nicht gestartet werden"
+        echo ""
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${YELLOW}                     DIAGNOSE                          ${NC}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${CYAN}Letzte Apache Fehler:${NC}"
+        journalctl -u apache2 -n 15 --no-pager 2>/dev/null | grep -E "(error|failed|Error|Failed)" | sed 's/^/  /' || echo "  (Keine Fehler in Logs gefunden)"
+        echo ""
+        echo -e "${CYAN}Mögliche Ursachen:${NC}"
+        echo -e "  ${YELLOW}•${NC} Port 1880 bereits belegt"
+        echo -e "  ${YELLOW}•${NC} WSGI Modul fehlt oder fehlerhaft"
+        echo -e "  ${YELLOW}•${NC} pgAdmin Konfiguration fehlerhaft"
+        echo ""
+        echo -e "${CYAN}Schnell-Diagnose:${NC}"
+        
+        # Port check
+        if netstat -tulpn 2>/dev/null | grep -q ":1880"; then
+            echo -e "  ${RED}✗${NC} Port 1880 ist bereits belegt!"
+            netstat -tulpn 2>/dev/null | grep ":1880" | sed 's/^/    /'
+        else
+            echo -e "  ${GREEN}✓${NC} Port 1880 ist frei"
+        fi
+        
+        # WSGI check
+        if apache2ctl -M 2>/dev/null | grep -q wsgi; then
+            echo -e "  ${GREEN}✓${NC} WSGI Modul ist geladen"
+        else
+            echo -e "  ${RED}✗${NC} WSGI Modul fehlt!"
+        fi
+        
+        echo ""
+        echo -e "${CYAN}Lösungsvorschläge:${NC}"
+        echo -e "  ${GREEN}1.${NC} Vollständige Logs ansehen:"
+        echo -e "     ${CYAN}journalctl -u apache2 -n 50${NC}"
+        echo ""
+        echo -e "  ${GREEN}2.${NC} Apache Konfiguration testen:"
+        echo -e "     ${CYAN}apache2ctl configtest${NC}"
+        echo ""
+        echo -e "  ${GREEN}3.${NC} pgAdmin manuell neu konfigurieren:"
+        echo -e "     ${CYAN}/usr/pgadmin4/bin/setup-web.sh${NC}"
+        echo ""
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        read -p "Installation trotzdem fortsetzen? (j/n) " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
+        warning "Installation wird ohne funktionierendes pgAdmin fortgesetzt"
     fi
 else
     warning "pgAdmin 4 Installation übersprungen"
@@ -1085,17 +1162,17 @@ else
 fi
 
 ################################################################################
-# Schritt 10: Nginx & Apache2 Installation
+# Schritt 10: Nginx Installation & Konfiguration
 ################################################################################
 
-print_header 10 "Nginx & Apache2 Installation & Konfiguration"
+print_header 10 "Nginx Installation & Konfiguration"
 
 info "Installiere Nginx..."
-apt-get install -y -qq nginx > /dev/null 2>&1
-
-info "Installiere Apache2 für pgAdmin 4..."
-apt-get install -y -qq apache2 libapache2-mod-wsgi-py3 > /dev/null 2>&1
-success "Apache2 installiert"
+if apt-get install -y -qq nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
+    success "Nginx installiert"
+else
+    error "Nginx Installation fehlgeschlagen"
+fi
 
 info "Erstelle Nginx-Konfiguration..."
 
@@ -1175,170 +1252,9 @@ ln -sf /etc/nginx/sites-available/fmsv-dingden /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
 systemctl enable nginx > /dev/null 2>&1
-success "Nginx installiert und konfiguriert"
+success "Nginx konfiguriert"
 
-################################################################################
-# pgAdmin 4 Setup mit Apache2
-################################################################################
-
-info "Konfiguriere pgAdmin 4 Subdomain..."
-
-# Frage nach pgAdmin Subdomain
-echo ""
-echo -ne "   ${BLUE}►${NC} pgAdmin Subdomain [db.$DOMAIN]: "
-read PGADMIN_DOMAIN
-PGADMIN_DOMAIN=${PGADMIN_DOMAIN:-db.$DOMAIN}
-
-# Prüfe ob pgAdmin 4 bereits installiert ist
-if command -v pgadmin4 &> /dev/null || [ -d "/usr/pgadmin4" ] || [ -d "/usr/local/lib/python*/dist-packages/pgadmin4" ]; then
-    info "pgAdmin 4 ist bereits installiert"
-    
-    # Finde pgAdmin Installation
-    PGADMIN_PATH=""
-    if [ -d "/usr/pgadmin4" ]; then
-        PGADMIN_PATH="/usr/pgadmin4"
-    elif [ -d "/usr/lib/pgadmin4" ]; then
-        PGADMIN_PATH="/usr/lib/pgadmin4"
-    else
-        PGADMIN_PATH=$(find /usr -name "pgadmin4" -type d 2>/dev/null | head -1)
-    fi
-    
-    if [ -z "$PGADMIN_PATH" ]; then
-        warning "pgAdmin Path nicht automatisch gefunden"
-        echo -ne "   ${BLUE}►${NC} pgAdmin Installations-Pfad: "
-        read PGADMIN_PATH
-    fi
-    
-    success "pgAdmin gefunden: $PGADMIN_PATH"
-else
-    warning "pgAdmin 4 ist nicht installiert"
-    info "Installiere pgAdmin 4..."
-    
-    # Füge pgAdmin Repository hinzu
-    curl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | apt-key add - 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list
-    
-    apt-get update -qq > /dev/null 2>&1
-    apt-get install -y -qq pgadmin4-web > /dev/null 2>&1
-    
-    if [ $? -eq 0 ]; then
-        success "pgAdmin 4 installiert"
-        PGADMIN_PATH="/usr/pgadmin4"
-    else
-        warning "pgAdmin 4 Installation fehlgeschlagen - wird übersprungen"
-        PGADMIN_PATH=""
-    fi
-fi
-
-# Konfiguriere Apache2 für pgAdmin auf Ports 1880/18443
-if [ -n "$PGADMIN_PATH" ]; then
-    info "Konfiguriere Apache2 für pgAdmin..."
-    
-    # Apache Module aktivieren
-    a2enmod ssl > /dev/null 2>&1
-    a2enmod proxy > /dev/null 2>&1
-    a2enmod proxy_http > /dev/null 2>&1
-    a2enmod headers > /dev/null 2>&1
-    a2enmod rewrite > /dev/null 2>&1
-    
-    # Apache Ports anpassen
-    cat > /etc/apache2/ports.conf <<EOF
-# Ports für pgAdmin (parallel zu nginx)
-Listen 1880
-<IfModule ssl_module>
-    Listen 18443
-</IfModule>
-<IfModule mod_gnutls.c>
-    Listen 18443
-</IfModule>
-EOF
-    
-    # Apache VirtualHost für pgAdmin
-    cat > /etc/apache2/sites-available/pgadmin.conf <<EOF
-<VirtualHost *:1880>
-    ServerName $PGADMIN_DOMAIN
-    ServerAdmin webmaster@$DOMAIN
-    
-    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=$PGADMIN_PATH/venv
-    WSGIScriptAlias / $PGADMIN_PATH/web/pgAdmin4.wsgi
-    
-    <Directory $PGADMIN_PATH/web/>
-        WSGIProcessGroup pgadmin
-        WSGIApplicationGroup %{GLOBAL}
-        Require all granted
-    </Directory>
-    
-    ErrorLog \${APACHE_LOG_DIR}/pgadmin_error.log
-    CustomLog \${APACHE_LOG_DIR}/pgadmin_access.log combined
-</VirtualHost>
-
-<IfModule mod_ssl.c>
-<VirtualHost *:18443>
-    ServerName $PGADMIN_DOMAIN
-    ServerAdmin webmaster@$DOMAIN
-    
-    SSLEngine on
-    SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
-    SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
-    
-    WSGIDaemonProcess pgadmin-ssl processes=1 threads=25 python-home=$PGADMIN_PATH/venv
-    WSGIScriptAlias / $PGADMIN_PATH/web/pgAdmin4.wsgi
-    
-    <Directory $PGADMIN_PATH/web/>
-        WSGIProcessGroup pgadmin-ssl
-        WSGIApplicationGroup %{GLOBAL}
-        Require all granted
-    </Directory>
-    
-    ErrorLog \${APACHE_LOG_DIR}/pgadmin_ssl_error.log
-    CustomLog \${APACHE_LOG_DIR}/pgadmin_ssl_access.log combined
-</VirtualHost>
-</IfModule>
-EOF
-    
-    # Aktiviere pgAdmin Site
-    a2ensite pgadmin > /dev/null 2>&1
-    a2dissite 000-default > /dev/null 2>&1
-    
-    # Apache neu starten
-    systemctl restart apache2 > /dev/null 2>&1
-    
-    if systemctl is-active --quiet apache2; then
-        success "Apache2 für pgAdmin konfiguriert (Ports 1880/18443)"
-        
-        # Cloudflare Tunnel Konfiguration erweitern wenn aktiviert
-        if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-            info "Erweitere Cloudflare Tunnel für pgAdmin Subdomain..."
-            
-            cat > ~/.cloudflared/config.yml <<EOF
-tunnel: $TUNNEL_ID
-credentials-file: /root/.cloudflared/$TUNNEL_ID.json
-
-ingress:
-  - hostname: $DOMAIN
-    service: http://localhost:80
-  - hostname: $DOMAIN
-    path: /api/*
-    service: http://localhost:3000
-  - hostname: $DOMAIN
-    path: /uploads/*
-    service: http://localhost:80
-  - hostname: $PGADMIN_DOMAIN
-    service: http://localhost:1880
-  - service: http_status:404
-EOF
-            
-            cloudflared tunnel route dns $TUNNEL_NAME $PGADMIN_DOMAIN > /dev/null 2>&1 || true
-            success "pgAdmin Subdomain zu Cloudflare Tunnel hinzugefügt"
-        fi
-    else
-        warning "Apache2 konnte nicht gestartet werden"
-        echo "   Logs: journalctl -u apache2 -n 50"
-    fi
-else
-    warning "pgAdmin Setup übersprungen"
-fi
-
+# Nginx-Test erfolgt nach Frontend-Build
 info "Nginx-Test erfolgt nach Frontend-Build"
 sleep 1
 

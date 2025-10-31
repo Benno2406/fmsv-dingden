@@ -37,6 +37,10 @@ systemctl status postgresql
 # Apache2 (pgAdmin)
 systemctl status apache2
 
+# pgAdmin reparieren falls nötig
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./fix-pgadmin.sh
+
 # Cloudflare Tunnel (falls aktiviert)
 systemctl status cloudflared
 ```

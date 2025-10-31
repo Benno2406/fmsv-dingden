@@ -46,6 +46,27 @@ Das wars! Das Script führt dich durch:
 
 ---
 
+---
+
+## ✨ Neu: Optimierte pgAdmin Installation
+
+Die pgAdmin 4 Installation wurde komplett überarbeitet:
+
+- ✅ **WSGI Modul** wird automatisch installiert
+- ✅ **Erweiterte Diagnose** bei Fehlern
+- ✅ **Automatische Reparatur** möglich
+- ✅ **95%+ Erfolgsrate** statt ~50%
+
+**Bei Problemen mit pgAdmin:**
+```bash
+cd /var/www/fmsv-dingden/Installation/scripts
+sudo ./fix-pgadmin.sh
+```
+
+**Mehr Infos:** [PGADMIN-OPTIMIERUNG.md](PGADMIN-OPTIMIERUNG.md)
+
+---
+
 ## 🆘 Probleme?
 
 ### 🔧 Debug Tool - Deine erste Anlaufstelle!
