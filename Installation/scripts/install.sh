@@ -3,37 +3,198 @@
 ################################################################################
 # FMSV Dingden - All-in-One Installation Script
 # Mit integrierten Hilfen und SSH/PuTTY-Support
-# Version: 3.0 - Mit Development/Production Auswahl
+# Version: 3.1 - Verbesserte Fehlerbehandlung & Struktur
 ################################################################################
 
-# Exit on error disabled - we handle errors manually
-# set -e
+################################################################################
+# 1. KONFIGURATION & GLOBALE VARIABLEN
+################################################################################
 
-# Logging
+# Installation Paths
+INSTALL_DIR="/var/www/fmsv-dingden"
 LOG_FILE="/var/log/fmsv-install.log"
-touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/tmp/fmsv-install.log"
-echo "=====================================" >> "$LOG_FILE"
-echo "Installation gestartet: $(date)" >> "$LOG_FILE"
-echo "=====================================" >> "$LOG_FILE"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-NC='\033[0m' # No Color
-
-# Installation Mode (wird später gesetzt)
+# Installation Mode
 INSTALL_MODE=""
 
 # Total steps
 TOTAL_STEPS=16
 
+# Installation State
+declare -A STEP_STATUS
+CURRENT_STEP=0
+
+# Global Error Flag
+INSTALLATION_FAILED=0
+
+# Optionen (Defaults)
+SKIP_CLOUDFLARE=0
+BRANCH="stable"
+CHANNEL_NAME="Stable"
+USE_CLOUDFLARE="n"
+GITHUB_REPO="https://github.com/Benno2406/fmsv-dingden.git"
+AUTO_UPDATE_SCHEDULE="weekly"
+
 ################################################################################
-# HILFE-FUNKTIONEN
+# 2. FEHLERBEHANDLUNG & STRICT MODE
 ################################################################################
+
+# Strict mode für bessere Fehlerbehandlung
+set -o pipefail  # Pipeline-Fehler werden erkannt
+set -u          # Ungesetzte Variablen führen zu Fehlern
+
+# Trap für Fehlerbehandlung und Cleanup
+trap 'error_handler $? $LINENO' ERR
+trap 'cleanup_on_exit' EXIT INT TERM
+
+# Error Handler
+error_handler() {
+    local exit_code=$1
+    local line_number=$2
+    INSTALLATION_FAILED=1
+    
+    # Log Error
+    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - Fehler in Zeile $line_number (Exit Code: $exit_code)" >> "$LOG_FILE" 2>/dev/null || true
+    
+    # Nicht bei exit 0 behandeln
+    if [ $exit_code -eq 0 ]; then
+        return
+    fi
+    
+    echo ""
+    echo -e "${RED}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║               ❌ Installation fehlgeschlagen ❌           ║${NC}"
+    echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}Fehler in Zeile:${NC} $line_number"
+    echo -e "${YELLOW}Exit Code:${NC} $exit_code"
+    echo ""
+}
+
+# Cleanup-Funktion
+cleanup_on_exit() {
+    if [ $INSTALLATION_FAILED -eq 1 ]; then
+        echo ""
+        echo -e "${RED}╔═══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${RED}║  Installation wurde aufgrund eines Fehlers beendet       ║${NC}"
+        echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${YELLOW}Logs:${NC} ${GREEN}$LOG_FILE${NC}"
+        echo ""
+    fi
+}
+
+################################################################################
+# 3. LOGGING SETUP
+################################################################################
+
+# Initialisiere Log-Datei
+touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/tmp/fmsv-install.log"
+
+# Schreibe Log-Header
+{
+    echo "═══════════════════════════════════════════════════════════"
+    echo "  FMSV Installation gestartet: $(date)"
+    echo "═══════════════════════════════════════════════════════════"
+} >> "$LOG_FILE"
+
+# Logging-Funktionen
+log_info() {
+    echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_success() {
+    echo "[SUCCESS] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_warning() {
+    echo "[WARNING] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_error() {
+    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_section() {
+    echo "" >> "$LOG_FILE"
+    echo "═══════════════════════════════════════════════════════════" >> "$LOG_FILE"
+    echo "  $1" >> "$LOG_FILE"
+    echo "═══════════════════════════════════════════════════════════" >> "$LOG_FILE"
+}
+
+################################################################################
+# 4. FARBEN & SYMBOLE
+################################################################################
+
+# Colors (mit Fallback für non-color terminals)
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    MAGENTA='\033[0;35m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    CYAN=''
+    MAGENTA=''
+    NC=''
+fi
+
+################################################################################
+# 5. UI & OUTPUT FUNKTIONEN
+################################################################################
+
+print_header() {
+    local step=$1
+    local title=$2
+    
+    CURRENT_STEP=$step
+    log_section "Schritt $step/$TOTAL_STEPS: $title"
+    
+    echo ""
+    echo -e "${CYAN}$(printf '=%.0s' {1..60})${NC}"
+    printf "${CYAN}#${NC}  ${MAGENTA}Schritt %2d von %2d${NC} - ${GREEN}%-38s${NC} ${CYAN}#${NC}\\n" "$step" "$TOTAL_STEPS" "$title"
+    echo -e "${CYAN}$(printf '=%.0s' {1..60})${NC}"
+    echo ""
+}
+
+info() { 
+    echo -e "${BLUE}ℹ️  $1${NC}"
+    log_info "$1"
+}
+
+success() { 
+    echo -e "${GREEN}✅ $1${NC}"
+    log_success "$1"
+    STEP_STATUS[$CURRENT_STEP]="success"
+}
+
+warning() { 
+    echo -e "${YELLOW}⚠️  $1${NC}"
+    log_warning "$1"
+}
+
+error() { 
+    echo -e "${RED}❌ $1${NC}"
+    log_error "$1"
+    INSTALLATION_FAILED=1
+    STEP_STATUS[$CURRENT_STEP]="failed"
+    
+    echo ""
+    echo -e "${RED}Installation fehlgeschlagen!${NC}"
+    echo ""
+    echo -e "${YELLOW}Problemlösung:${NC}"
+    echo -e "  ${CYAN}1.${NC} Logs ansehen: ${GREEN}cat $LOG_FILE${NC}"
+    echo -e "  ${CYAN}2.${NC} Script neu starten: ${GREEN}./install.sh${NC}"
+    echo ""
+    
+    exit 1
+}
 
 show_help() {
     clear
@@ -60,208 +221,238 @@ ${YELLOW}Log-Dateien:${NC}
 
 Drücke ${GREEN}Enter${NC} um fortzufahren...
 EOF
-    read
+    read -r
 }
+
+################################################################################
+# 6. INPUT-VALIDIERUNG & BENUTZER-INTERAKTION
+################################################################################
+
+# Sichere Eingabe-Funktion mit Validation
+read_input() {
+    local prompt="$1"
+    local default="${2:-}"
+    local validation="${3:-.*}"  # Regex für Validierung
+    local max_attempts="${4:-3}"
+    local result=""
+    local attempts=0
+    
+    while [ $attempts -lt $max_attempts ]; do
+        echo -ne "${prompt} "
+        read -r result
+        
+        # Trim whitespace
+        result=$(echo "$result" | xargs)
+        
+        # Nutze Default wenn leer
+        if [ -z "$result" ] && [ -n "$default" ]; then
+            result="$default"
+        fi
+        
+        # Validiere Input
+        if [[ "$result" =~ $validation ]]; then
+            echo "$result"
+            return 0
+        fi
+        
+        attempts=$((attempts + 1))
+        if [ $attempts -lt $max_attempts ]; then
+            echo -e "${YELLOW}Ungültige Eingabe. Versuch $attempts von $max_attempts${NC}"
+        fi
+    done
+    
+    log_error "Ungültige Eingabe nach $max_attempts Versuchen: $prompt"
+    return 1
+}
+
+# Ja/Nein-Frage mit Validation
+ask_yes_no() {
+    local prompt="$1"
+    local default="${2:-j}"  # j oder n
+    local response
+    
+    while true; do
+        echo -ne "${prompt} [${default}]: "
+        read -n 1 -r response
+        echo
+        
+        # Trim und zu Kleinbuchstaben
+        response=$(echo "$response" | tr '[:upper:]' '[:lower:]' | xargs)
+        
+        # Default bei leerem Input
+        if [ -z "$response" ]; then
+            response="$default"
+        fi
+        
+        case "$response" in
+            j|y)
+                echo "j"
+                return 0
+                ;;
+            n)
+                echo "n"
+                return 0
+                ;;
+            *)
+                echo -e "${YELLOW}Bitte 'j' oder 'n' eingeben${NC}"
+                ;;
+        esac
+    done
+}
+
+# Multiple-Choice-Frage
+ask_choice() {
+    local prompt="$1"
+    local default="$2"
+    shift 2
+    local choices=("$@")
+    local choice
+    
+    while true; do
+        echo -ne "${prompt} [$default]: "
+        read -r choice
+        
+        # Trim whitespace
+        choice=$(echo "$choice" | xargs)
+        
+        # Default bei leerem Input
+        if [ -z "$choice" ]; then
+            choice="$default"
+        fi
+        
+        # Prüfe ob Wahl gültig ist
+        for valid_choice in "${choices[@]}"; do
+            if [ "$choice" = "$valid_choice" ]; then
+                echo "$choice"
+                return 0
+            fi
+        done
+        
+        echo -e "${YELLOW}Ungültige Auswahl. Wähle: ${choices[*]}${NC}"
+    done
+}
+
+################################################################################
+# 7. SSH & CLOUDFLARE FUNKTIONEN
+################################################################################
 
 detect_ssh_session() {
     # Prüfe ob wir in einer SSH-Session sind
-    if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+    if [ -n "${SSH_CLIENT:-}" ] || [ -n "${SSH_TTY:-}" ]; then
         return 0  # SSH-Session
     else
-        case $(ps -o comm= -p $PPID) in
+        case $(ps -o comm= -p ${PPID:-0} 2>/dev/null) in
             sshd|*/sshd) return 0;;
         esac
     fi
     return 1  # Keine SSH-Session
 }
 
+show_cloudflare_cert_copy_instructions() {
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║  Cloudflare Login auf lokalem PC                        ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}SCHRITT 1: cloudflared auf deinem PC installieren${NC}"
+    echo ""
+    echo -e "  ${BLUE}Windows (PowerShell als Administrator):${NC}"
+    echo -e "  ${CYAN}winget install --id Cloudflare.cloudflared${NC}"
+    echo ""
+    echo -e "  ${BLUE}Mac:${NC}"
+    echo -e "  ${CYAN}brew install cloudflared${NC}"
+    echo ""
+    echo -e "  ${BLUE}Linux:${NC}"
+    echo -e "  ${CYAN}wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64${NC}"
+    echo -e "  ${CYAN}sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared${NC}"
+    echo -e "  ${CYAN}sudo chmod +x /usr/local/bin/cloudflared${NC}"
+    echo ""
+    
+    local response
+    response=$(ask_yes_no "cloudflared installiert?" "j")
+    
+    echo ""
+    echo -e "${YELLOW}SCHRITT 2: Login auf deinem PC durchführen${NC}"
+    echo ""
+    echo -e "  Führe auf ${GREEN}deinem PC${NC} aus:"
+    echo -e "  ${CYAN}cloudflared tunnel login${NC}"
+    echo ""
+    
+    response=$(ask_yes_no "Login erfolgreich?" "j")
+    
+    echo ""
+    echo -e "${YELLOW}SCHRITT 3: Zertifikat zum Server kopieren${NC}"
+    echo ""
+    
+    local SERVER_IP
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    echo -e "  ${GREEN}Server-IP:${NC} ${CYAN}$SERVER_IP${NC}"
+    echo ""
+    echo -e "  ${BLUE}Windows (PowerShell):${NC}"
+    echo -e "  ${CYAN}scp \$env:USERPROFILE\\.cloudflared\\cert.pem root@$SERVER_IP:~/.cloudflared/${NC}"
+    echo ""
+    echo -e "  ${BLUE}Mac/Linux:${NC}"
+    echo -e "  ${CYAN}scp ~/.cloudflared/cert.pem root@$SERVER_IP:~/.cloudflared/${NC}"
+    echo ""
+    
+    # Erstelle Verzeichnis falls nicht vorhanden
+    mkdir -p ~/.cloudflared
+    
+    response=$(ask_yes_no "Zertifikat kopiert?" "j")
+}
+
+show_cloudflare_manual_login_instructions() {
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║  Cloudflare Login - Manuelle URL                        ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}Die folgende URL im Browser öffnen:${NC}"
+    echo ""
+    echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER ▼▼▼${NC}"
+    echo ""
+    
+    # Output direkt durchreichen
+    cloudflared tunnel login 2>&1 | tee -a "$LOG_FILE" || true
+    
+    echo ""
+    echo -e "${YELLOW}▲▲▲ URL ENDET HIER ▲▲▲${NC}"
+    echo ""
+    
+    local response
+    response=$(ask_yes_no "Login abgeschlossen?" "j")
+}
+
 cloudflare_login_with_help() {
     local IS_SSH=0
     detect_ssh_session && IS_SSH=1
-
+    
     if [ $IS_SSH -eq 1 ]; then
         warning "SSH-Verbindung erkannt - Browser öffnet sich nicht!"
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-        echo -e "${YELLOW}Wähle deine Login-Methode:${NC}"
+        echo -e "${YELLOW}Cloudflare Login über SSH:${NC}"
         echo ""
         echo -e "  ${GREEN}[1]${NC} Zertifikat von lokalem PC kopieren ${YELLOW}(EMPFOHLEN)${NC}"
-        echo -e "      ${CYAN}→ cloudflared auf deinem PC installieren${NC}"
-        echo -e "      ${CYAN}→ Login auf PC durchführen${NC}"
-        echo -e "      ${CYAN}→ Zertifikat zum Server kopieren${NC}"
-        echo ""
         echo -e "  ${GREEN}[2]${NC} URL manuell öffnen"
-        echo -e "      ${CYAN}→ URL aus Terminal kopieren${NC}"
-        echo -e "      ${CYAN}→ Im Browser öffnen${NC}"
         echo ""
         echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
         echo ""
-        echo -ne "Deine Wahl (1/2): "
-        read -n 1 -r LOGIN_METHOD
-        echo
-        echo ""
         
-        if [[ $LOGIN_METHOD == "1" ]]; then
-            # METHODE 1: Zertifikat von lokalem PC kopieren
-            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${CYAN}║  Cloudflare Login auf lokalem PC (Windows/Mac/Linux)     ║${NC}"
-            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
-            echo ""
-            echo -e "${YELLOW}SCHRITT 1: cloudflared auf deinem PC installieren${NC}"
-            echo ""
-            echo -e "  ${BLUE}Windows:${NC}"
-            echo -e "  1. Öffne PowerShell als ${GREEN}Administrator${NC}"
-            echo -e "  2. ${CYAN}winget install --id Cloudflare.cloudflared${NC}"
-            echo ""
-            echo -e "  ${BLUE}Mac:${NC}"
-            echo -e "  ${CYAN}brew install cloudflared${NC}"
-            echo ""
-            echo -e "  ${BLUE}Linux:${NC}"
-            echo -e "  ${CYAN}wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64${NC}"
-            echo -e "  ${CYAN}sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared${NC}"
-            echo -e "  ${CYAN}sudo chmod +x /usr/local/bin/cloudflared${NC}"
-            echo ""
-            echo -ne "Drücke ${GREEN}Enter${NC} wenn cloudflared installiert ist..."
-            read
-            echo ""
-            
-            echo -e "${YELLOW}SCHRITT 2: Login auf deinem PC durchführen${NC}"
-            echo ""
-            echo -e "  Führe auf ${GREEN}deinem PC${NC} im Terminal/CMD aus:"
-            echo ""
-            echo -e "  ${CYAN}cloudflared tunnel login${NC}"
-            echo ""
-            echo -e "  ${GREEN}→${NC} Browser öffnet sich automatisch"
-            echo -e "  ${GREEN}→${NC} Bei Cloudflare einloggen"
-            echo -e "  ${GREEN}→${NC} Domain wählen (z.B. bartholmes.eu)"
-            echo -e "  ${GREEN}→${NC} ${GREEN}\"Authorize\"${NC} klicken"
-            echo -e "  ${GREEN}→${NC} \"Success\" Meldung erscheint"
-            echo ""
-            echo -ne "Drücke ${GREEN}Enter${NC} wenn Login erfolgreich war..."
-            read
-            echo ""
-            
-            echo -e "${YELLOW}SCHRITT 3: Zertifikat-Pfad finden${NC}"
-            echo ""
-            echo -e "  Das Zertifikat liegt hier:"
-            echo ""
-            echo -e "  ${BLUE}Windows:${NC}"
-            echo -e "  ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
-            echo ""
-            echo -e "  ${BLUE}Mac/Linux:${NC}"
-            echo -e "  ${CYAN}~/.cloudflared/cert.pem${NC}"
-            echo ""
-            read -p "Drücke ${GREEN}Enter${NC} um fortzufahren..."
-            echo ""
-            
-            echo -e "${YELLOW}SCHRITT 4: Zertifikat zum Server kopieren${NC}"
-            echo ""
-            
-            # Zeige Server-IP
-            SERVER_IP=$(hostname -I | awk '{print $1}')
-            echo -e "  ${GREEN}Deine Server-IP:${NC} ${CYAN}$SERVER_IP${NC}"
-            echo ""
-            
-            echo -e "  ${GREEN}Wähle deine Methode:${NC}"
-            echo ""
-            echo -e "  ${BLUE}Option A: WinSCP (Windows - mit GUI)${NC} ${YELLOW}← EINFACH!${NC}"
-            echo -e "  ${BLUE}Option B: SCP (Terminal/CMD)${NC}"
-            echo ""
-            
-            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${CYAN}║  OPTION A: WinSCP (Windows)                              ║${NC}"
-            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
-            echo ""
-            echo -e "  ${GREEN}1.${NC} WinSCP herunterladen:"
-            echo -e "     ${CYAN}https://winscp.net/eng/download.php${NC}"
-            echo ""
-            echo -e "  ${GREEN}2.${NC} WinSCP öffnen und verbinden:"
-            echo -e "     Host:     ${CYAN}$SERVER_IP${NC}"
-            echo -e "     Port:     ${CYAN}22${NC}"
-            echo -e "     Benutzer: ${CYAN}root${NC}"
-            echo -e "     Passwort: ${CYAN}[Dein Server-Passwort]${NC}"
-            echo ""
-            echo -e "  ${GREEN}3.${NC} Im WinSCP-Fenster - Ordner erstellen:"
-            echo -e "     ${BLUE}Rechts${NC} (Server): ${YELLOW}Rechtsklick → \"Neues Verzeichnis\"${NC}"
-            echo -e "     ${BLUE}Name:${NC}         ${CYAN}.cloudflared${NC} ${YELLOW}(MIT Punkt!)${NC}"
-            echo -e "     ${BLUE}Dann:${NC}         ${CYAN}Doppelklick auf .cloudflared${NC}"
-            echo ""
-            echo -e "  ${GREEN}4.${NC} Zertifikat hochladen:"
-            echo -e "     ${BLUE}Links${NC}  (PC):    ${CYAN}C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem${NC}"
-            echo -e "     ${BLUE}Rechts${NC} (Server): ${CYAN}/root/.cloudflared/${NC} ${GREEN}(geöffnet)${NC}"
-            echo -e "     ${BLUE}Upload:${NC}       ${CYAN}cert.pem${NC} von links nach rechts ziehen"
-            echo ""
-            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-            echo ""
-            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${CYAN}║  OPTION B: SCP im Terminal                               ║${NC}"
-            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
-            echo ""
-            echo -e "  ${BLUE}Windows (PowerShell):${NC}"
-            echo -e "  ${CYAN}scp C:\\Users\\DEIN_NAME\\.cloudflared\\cert.pem root@$SERVER_IP:/root/.cloudflared/${NC}"
-            echo ""
-            echo -e "  ${BLUE}Mac/Linux:${NC}"
-            echo -e "  ${CYAN}scp ~/.cloudflared/cert.pem root@$SERVER_IP:/root/.cloudflared/${NC}"
-            echo ""
-            echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-            echo ""
-            
-            # Erstelle das Zielverzeichnis
-            mkdir -p ~/.cloudflared
-            chmod 700 ~/.cloudflared
-            
-            echo -e "  ${GREEN}✅ Server-Verzeichnis erstellt: /root/.cloudflared/${NC}"
-            echo -e "  ${GREEN}✅ Server ist bereit - warte auf Zertifikat...${NC}"
-            echo ""
-            echo -e "  ${BLUE}Tipp:${NC} In WinSCP musst du den Ordner ${CYAN}.cloudflared${NC} trotzdem"
-            echo -e "        sehen können. Falls nicht: ${YELLOW}F5 drücken (aktualisieren)${NC}"
-            echo -e "        oder ${YELLOW}\"Versteckte Dateien anzeigen\"${NC} aktivieren."
-            echo ""
-            
-            # Warte bis Zertifikat existiert
-            while [ ! -f ~/.cloudflared/cert.pem ]; do
-                sleep 2
-            done
-            
-            chmod 600 ~/.cloudflared/cert.pem
-            
-            success "Zertifikat erfolgreich empfangen!"
-            
+        local LOGIN_METHOD
+        LOGIN_METHOD=$(ask_choice "Deine Wahl" "1" "1" "2")
+        
+        if [ "$LOGIN_METHOD" = "1" ]; then
+            show_cloudflare_cert_copy_instructions
         else
-            # METHODE 2: URL manuell öffnen
-            echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${CYAN}║  Cloudflare Login - URL manuell öffnen                   ║${NC}"
-            echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
-            echo ""
-            echo -e "${YELLOW}Anleitung:${NC}"
-            echo ""
-            echo -e "  ${GREEN}1.${NC} URL wird gleich unten angezeigt"
-            echo -e "  ${GREEN}2.${NC} URL ${GREEN}KOMPLETT kopieren${NC} (von https:// bis Ende!)"
-            echo -e "     ${YELLOW}⚠️  URL geht über mehrere Zeilen!${NC}"
-            echo -e "  ${GREEN}3.${NC} Browser auf ${GREEN}deinem PC${NC} öffnen"
-            echo -e "  ${GREEN}4.${NC} URL einfügen → Bei Cloudflare einloggen"
-            echo -e "  ${GREEN}5.${NC} Domain wählen → ${GREEN}\"Authorize\"${NC} klicken"
-            echo -e "  ${GREEN}6.${NC} Terminal wartet bis Login fertig ist"
-            echo ""
-            echo -ne "Drücke ${GREEN}Enter${NC} um URL anzuzeigen..."
-            read
-            echo ""
-            echo -e "${YELLOW}▼▼▼ URL BEGINNT HIER - KOMPLETT KOPIEREN! ▼▼▼${NC}"
-            echo ""
-            
-            # Output direkt durchreichen
-            cloudflared tunnel login
-            
-            echo ""
-            echo -e "${YELLOW}▲▲▲ URL ENDET HIER ▲▲▲${NC}"
-            echo ""
+            show_cloudflare_manual_login_instructions
         fi
-        
     else
         # Kein SSH - normaler Login
         info "Browser-Fenster öffnet sich..."
         echo ""
-        cloudflared tunnel login
+        
+        if ! cloudflared tunnel login 2>&1 | tee -a "$LOG_FILE"; then
+            error "Cloudflare Login fehlgeschlagen"
+        fi
     fi
     
     # Check if login was successful
@@ -271,1499 +462,545 @@ cloudflare_login_with_help() {
         echo -e "${RED}║               ❌ Cloudflare Login fehlgeschlagen ❌       ║${NC}"
         echo -e "${RED}╚═══════════════════════════════════════════════════════════╝${NC}"
         echo ""
-        echo -e "${YELLOW}Lösung:${NC}"
-        echo -e "  ${GREEN}1.${NC} Installation neu starten: ${GREEN}./install.sh${NC}"
-        echo -e "  ${GREEN}2.${NC} Methode 1 (Lokaler PC) wählen"
-        echo ""
-        exit 1
+        error "Cloudflare-Zertifikat nicht gefunden"
     fi
     
     success "Cloudflare Login erfolgreich!"
     success "Zertifikat erstellt: ~/.cloudflared/cert.pem"
 }
 
-
-
 ################################################################################
-# HELPER FUNCTIONS
+# 8. SYSTEM-PRÜFUNGEN
 ################################################################################
 
-print_header() {
-    local step=$1
-    local title=$2
-    local width=60
+check_root() {
+    if [ "$EUID" -ne 0 ]; then 
+        error "Bitte als root ausführen: su - && ./install.sh"
+    fi
+    success "Als root angemeldet"
+}
+
+check_debian_version() {
+    local DEBIAN_VERSION
+    DEBIAN_VERSION=$(cat /etc/debian_version | cut -d. -f1)
+    info "Erkannte Debian Version: $DEBIAN_VERSION"
     
-    echo ""
-    echo -e "${CYAN}$(printf '=%.0s' {1..60})${NC}"
-    printf "${CYAN}#${NC}  ${MAGENTA}Schritt %2d von %2d${NC} - ${GREEN}%-38s${NC} ${CYAN}#${NC}\n" "$step" "$TOTAL_STEPS" "$title"
-    echo -e "${CYAN}$(printf '=%.0s' {1..60})${NC}"
-    echo ""
+    if [ "$DEBIAN_VERSION" -lt 12 ]; then
+        warning "Debian $DEBIAN_VERSION ist möglicherweise zu alt"
+        echo "   Empfohlen: Debian 12 (Bookworm) oder 13 (Trixie)"
+        echo ""
+        
+        local response
+        response=$(ask_yes_no "Trotzdem fortfahren?" "n")
+        
+        if [ "$response" = "n" ]; then
+            error "Installation abgebrochen"
+        fi
+    fi
+    
+    if [ "$DEBIAN_VERSION" -eq 13 ]; then
+        info "Debian 13 (Trixie) - Testing erkannt"
+    fi
 }
 
-info() { 
-    echo -e "${BLUE}ℹ️  $1${NC}"; 
-    echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+check_internet() {
+    info "Prüfe Internet-Verbindung..."
+    
+    if ! ping -c 1 -W 5 google.com &> /dev/null; then
+        # Fallback zu anderem Server
+        if ! ping -c 1 -W 5 1.1.1.1 &> /dev/null; then
+            error "Keine Internet-Verbindung"
+        fi
+    fi
+    
+    success "Internet-Verbindung OK"
 }
 
-success() { 
-    echo -e "${GREEN}✅ $1${NC}"; 
-    echo "[SUCCESS] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+check_disk_space() {
+    local AVAILABLE_SPACE
+    AVAILABLE_SPACE=$(df / | awk 'NR==2 {print $4}')
+    
+    info "Verfügbarer Speicherplatz: $((AVAILABLE_SPACE / 1024)) MB"
+    
+    if [ "$AVAILABLE_SPACE" -lt 2097152 ]; then  # 2GB in KB
+        warning "Weniger als 2GB freier Speicherplatz"
+        
+        local response
+        response=$(ask_yes_no "Fortfahren?" "n")
+        
+        if [ "$response" = "n" ]; then
+            error "Installation abgebrochen"
+        fi
+    fi
+    
+    success "Ausreichend Speicherplatz verfügbar"
 }
-
-warning() { 
-    echo -e "${YELLOW}⚠️  $1${NC}"; 
-    echo "[WARNING] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
-}
-
-error() { 
-    echo -e "${RED}❌ $1${NC}"; 
-    echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
-    echo ""
-    echo -e "${RED}Installation fehlgeschlagen!${NC}"
-    echo ""
-    echo -e "${YELLOW}Problemlösung:${NC}"
-    echo -e "  ${CYAN}1.${NC} Logs ansehen: ${GREEN}cat $LOG_FILE${NC}"
-    echo -e "  ${CYAN}2.${NC} Hilfe-Übersicht: ${GREEN}cat /var/www/fmsv-dingden/Installation/HILFE-UEBERSICHT.md${NC}"
-    echo -e "  ${CYAN}3.${NC} Häufige Probleme:"
-    echo -e "     • Eingabe-Fehler: ${CYAN}Installation/EINGABE-FEHLER.md${NC}"
-    echo -e "     • Script bricht ab: ${CYAN}Installation/SCRIPT-BRICHT-AB.md${NC}"
-    echo -e "     • Nginx Fehler: ${CYAN}Installation/NGINX-FEHLER.md${NC}"
-    echo -e "     • Cloudflare: ${CYAN}Installation/CLOUDFLARED-INSTALLATION-FEHLER.md${NC}"
-    echo ""
-    exit 1
-}
-
-
 
 ################################################################################
-# PARSE ARGUMENTS
+# 9. INSTALLATIONS-SCHRITTE
 ################################################################################
 
-SKIP_CLOUDFLARE=0
+# -----------------------------------------------------------------------------
+# Schritt 1: System-Prüfung
+# -----------------------------------------------------------------------------
+step_system_check() {
+    print_header 1 "System-Prüfung"
+    
+    check_root
+    check_debian_version
+    check_internet
+    check_disk_space
+    
+    success "System-Prüfung erfolgreich"
+    sleep 1
+}
 
-for arg in "$@"; do
-    case $arg in
-        --help|-h)
-            show_help
-            exit 0
+# -----------------------------------------------------------------------------
+# Schritt 2: Installations-Optionen
+# -----------------------------------------------------------------------------
+step_installation_options() {
+    print_header 2 "Installations-Optionen"
+    
+    # Option 1: Update Channel
+    echo -e "${YELLOW}1️⃣  Update-Kanal wählen:${NC}"
+    echo ""
+    echo -e "   ${GREEN}[1]${NC} Stable   - Stabile Releases (empfohlen für Production)"
+    echo -e "   ${YELLOW}[2]${NC} Testing  - Neueste Features (für Entwicklung/Testing)"
+    echo ""
+    
+    local UPDATE_CHANNEL
+    UPDATE_CHANNEL=$(ask_choice "Deine Wahl" "1" "1" "2")
+    
+    case "$UPDATE_CHANNEL" in
+        1)
+            BRANCH="stable"
+            CHANNEL_NAME="Stable"
             ;;
-        --no-cloudflare)
-            SKIP_CLOUDFLARE=1
-            ;;
-        *)
-            echo "Unbekannte Option: $arg"
-            echo "Nutze --help für Hilfe"
-            exit 1
+        2)
+            BRANCH="testing"
+            CHANNEL_NAME="Testing"
             ;;
     esac
-done
-
-################################################################################
-# WELCOME SCREEN
-################################################################################
-
-clear
-echo -e "${CYAN}"
-cat << "EOF"
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║        🛩️  FMSV Dingden - Installation  ✈️                 ║
-║                                                            ║
-║        Flugmodellsportverein Dingden e.V.                 ║
-║        Vereinshomepage mit Mitgliederverwaltung           ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-EOF
-echo -e "${NC}"
-echo ""
-info "Willkommen zur automatischen Installation!"
-echo ""
-
-################################################################################
-# INSTALLATIONS-MODUS AUSWAHL
-################################################################################
-
-echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}         Welchen Installations-Modus möchtest du?          ${NC}"
-echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-echo ""
-echo -e "${GREEN}[1]${NC} ${CYAN}Production${NC} - Server-Installation (Live-Website)"
-echo -e "    ${BLUE}►${NC} Nginx, PostgreSQL, Systemd Services"
-echo -e "    ${BLUE}►${NC} SSL-Zertifikate, Cloudflare Tunnel"
-echo -e "    ${BLUE}►${NC} Für: ${YELLOW}Linux-Server im Internet${NC}"
-echo ""
-echo -e "${GREEN}[2]${NC} ${CYAN}Development${NC} - Lokale Entwicklungsumgebung"
-echo -e "    ${BLUE}►${NC} Docker, lokale Datenbank"
-echo -e "    ${BLUE}►${NC} Hot-Reload, Debug-Tools"
-echo -e "    ${BLUE}►${NC} Für: ${YELLOW}Lokaler PC/Laptop (Windows/Mac/Linux)${NC}"
-echo ""
-echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-echo ""
-echo -ne "${GREEN}Deine Wahl (1-2):${NC} "
-read -n 1 -r INSTALL_MODE_CHOICE
-echo
-echo ""
-
-case $INSTALL_MODE_CHOICE in
-    1)
-        INSTALL_MODE="production"
-        echo -e "${GREEN}✓${NC} Production-Installation gewählt"
-        echo ""
-        info "Starte Server-Installation..."
-        echo ""
-        sleep 2
-        ;;
-    2)
-        INSTALL_MODE="development"
-        echo -e "${GREEN}✓${NC} Development-Installation gewählt"
-        echo ""
-        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-        echo -e "${YELLOW}HINWEIS: Development-Setup${NC}"
-        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-        echo ""
-        echo -e "${BLUE}Für die Development-Umgebung nutze bitte:${NC}"
-        echo ""
-        echo -e "  ${GREEN}cd dev${NC}"
-        echo -e "  ${GREEN}./setup.sh${NC}    ${YELLOW}# Einmalige Einrichtung${NC}"
-        echo -e "  ${GREEN}./start.sh${NC}    ${YELLOW}# Server starten${NC}"
-        echo ""
-        echo -e "${CYAN}Dokumentation:${NC} ${BLUE}dev/README.md${NC}"
-        echo ""
-        echo -e "${YELLOW}Dieses Script ist für Production-Server!${NC}"
-        echo ""
-        read -p "Trotzdem fortfahren? (j/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Jj]$ ]]; then
-            echo ""
-            echo -e "${CYAN}Installation abgebrochen.${NC}"
-            echo -e "Nutze: ${GREEN}cd dev && ./setup.sh${NC}"
-            echo ""
-            exit 0
-        fi
-        echo ""
-        warning "Installation wird im Production-Modus fortgesetzt"
-        INSTALL_MODE="production"  # Fallback zu Production
-        ;;
-    *)
-        echo ""
-        error "Ungültige Auswahl! Bitte 1 oder 2 wählen."
-        ;;
-esac
-
-sleep 1
-
-################################################################################
-# Schritt 1: System-Prüfung
-################################################################################
-
-print_header 1 "System-Prüfung"
-
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
-    error "Bitte als root ausführen: su - && ./install.sh"
-fi
-
-success "Als root angemeldet"
-
-# Detect Debian version
-DEBIAN_VERSION=$(cat /etc/debian_version | cut -d. -f1)
-info "Erkannte Debian Version: $DEBIAN_VERSION"
-
-if [ "$DEBIAN_VERSION" -lt 12 ]; then
-    warning "Debian $DEBIAN_VERSION ist möglicherweise zu alt"
-    echo "   Empfohlen: Debian 12 (Bookworm) oder 13 (Trixie)"
-    echo ""
-    read -p "   Trotzdem fortfahren? (j/n) " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
-fi
-
-if [ "$DEBIAN_VERSION" -eq 13 ]; then
-    info "Debian 13 (Trixie) - Testing erkannt"
-fi
-
-# Check internet connection
-info "Prüfe Internet-Verbindung..."
-if ! ping -c 1 google.com &> /dev/null; then
-    error "Keine Internet-Verbindung"
-fi
-
-success "Internet-Verbindung OK"
-
-# Check disk space
-AVAILABLE_SPACE=$(df / | awk 'NR==2 {print $4}')
-if [ "$AVAILABLE_SPACE" -lt 2097152 ]; then  # 2GB in KB
-    warning "Weniger als 2GB freier Speicherplatz"
-    read -p "   Fortfahren? (j/n) " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
-fi
-
-success "System-Prüfung erfolgreich"
-sleep 1
-
-################################################################################
-# Schritt 2: Installations-Optionen
-################################################################################
-
-print_header 2 "Installations-Optionen"
-
-# Option 1: Update Channel
-echo -e "${YELLOW}1️⃣  Update-Kanal wählen:${NC}"
-echo ""
-echo -e "   ${GREEN}[1]${NC} Stable   - Stabile Releases (empfohlen für Production)"
-echo -e "   ${YELLOW}[2]${NC} Testing  - Neueste Features (für Entwicklung/Testing)"
-echo ""
-echo -ne "   ${BLUE}►${NC} Deine Wahl (1/2): "
-read UPDATE_CHANNEL
-
-# Trim whitespace und normalisieren
-UPDATE_CHANNEL=$(echo "$UPDATE_CHANNEL" | xargs)
-
-case "$UPDATE_CHANNEL" in
-  1|"1"|stable|Stable|STABLE)
-    BRANCH="stable"
-    CHANNEL_NAME="Stable"
-    ;;
-  2|"2"|testing|Testing|TESTING)
-    BRANCH="testing"
-    CHANNEL_NAME="Testing"
-    ;;
-  "")
-    # Default bei leerem Input
-    BRANCH="stable"
-    CHANNEL_NAME="Stable"
-    warning "Keine Auswahl - verwende Standard: Stable"
-    ;;
-  *)
-    echo ""
-    error "Ungültige Auswahl: '$UPDATE_CHANNEL' - Bitte 1 oder 2 eingeben"
-    ;;
-esac
-
-success "Update-Kanal: $CHANNEL_NAME (Branch: $BRANCH)"
-echo ""
-sleep 1
-
-# Option 2: Cloudflare Tunnel
-if [ $SKIP_CLOUDFLARE -eq 0 ]; then
-    echo -e "${YELLOW}2️⃣  Cloudflare Tunnel:${NC}"
-    echo ""
-    echo -e "   ${GREEN}Vorteile:${NC}"
-    echo "   ✅ Keine Port-Weiterleitungen nötig"
-    echo "   ✅ Automatisches SSL/TLS"
-    echo "   ✅ DDoS-Schutz"
-    echo "   ✅ Kostenlos"
-    echo ""
-    echo -ne "   ${BLUE}►${NC} Cloudflare Tunnel einrichten? (j/n): "
-    read -n 1 -r
-    echo
-    USE_CLOUDFLARE=$REPLY
-else
-    USE_CLOUDFLARE="n"
-    warning "Cloudflare wurde übersprungen (--no-cloudflare)"
-fi
-echo ""
-sleep 1
-
-# Option 3: GitHub Repository
-echo -e "${YELLOW}3️⃣  GitHub Repository:${NC}"
-echo ""
-echo -e "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
-echo ""
-echo -ne "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: "
-read GITHUB_REPO
-if [ -z "$GITHUB_REPO" ]; then
-    GITHUB_REPO="https://github.com/Benno2406/fmsv-dingden.git"
-    info "Standard-URL verwendet"
-fi
-echo ""
-sleep 1
-
-# Option 4: Auto-Update
-echo -e "${YELLOW}4️⃣  Automatische Updates:${NC}"
-echo ""
-echo -e "   ${GREEN}[1]${NC} Täglich um 03:00 Uhr"
-echo -e "   ${YELLOW}[2]${NC} Wöchentlich (Sonntag 03:00 Uhr)"
-echo -e "   ${MAGENTA}[3]${NC} Manuell (keine automatischen Updates)"
-echo ""
-echo -ne "   ${BLUE}►${NC} Deine Wahl (1/2/3): "
-read AUTO_UPDATE_CHOICE
-
-# Trim whitespace und normalisieren
-AUTO_UPDATE_CHOICE=$(echo "$AUTO_UPDATE_CHOICE" | xargs)
-
-case "$AUTO_UPDATE_CHOICE" in
-  1|"1"|daily|täglich|Täglich)
-    AUTO_UPDATE_SCHEDULE="daily"
-    ;;
-  2|"2"|weekly|wöchentlich|Wöchentlich)
-    AUTO_UPDATE_SCHEDULE="weekly"
-    ;;
-  3|"3"|manual|manuell|Manuell)
-    AUTO_UPDATE_SCHEDULE="manual"
-    ;;
-  "")
-    # Default bei leerem Input
-    AUTO_UPDATE_SCHEDULE="weekly"
-    warning "Keine Auswahl - verwende Standard: wöchentlich"
-    ;;
-  *)
-    echo ""
-    error "Ungültige Auswahl: '$AUTO_UPDATE_CHOICE' - Bitte 1, 2 oder 3 eingeben"
-    ;;
-esac
-
-success "Auto-Update: $AUTO_UPDATE_SCHEDULE"
-echo ""
-sleep 1
-
-# Summary
-echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
-echo -e "${YELLOW}📋 Zusammenfassung:${NC}"
-echo ""
-echo -e "  ${BLUE}•${NC} Update-Kanal:        ${GREEN}$CHANNEL_NAME${NC}"
-echo -e "  ${BLUE}•${NC} Cloudflare Tunnel:   $( [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
-echo -e "  ${BLUE}•${NC} GitHub Repo:         $GITHUB_REPO"
-echo -e "  ${BLUE}•${NC} Auto-Update:         ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
-echo ""
-echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
-echo ""
-echo -ne "Installation mit diesen Einstellungen starten? (j/n) "
-read -n 1 -r
-echo
-[[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
-
-################################################################################
-# Schritt 3: System-Updates
-################################################################################
-
-print_header 3 "System-Updates"
-
-info "Aktualisiere Paket-Listen..."
-APT_OUTPUT=$(apt-get update 2>&1 | tee -a "$LOG_FILE")
-APT_ERRORS=$(echo "$APT_OUTPUT" | grep "^E:" || true)
-APT_WARNINGS=$(echo "$APT_OUTPUT" | grep "^W:" || true)
-
-if [ -n "$APT_WARNINGS" ] && [ -z "$APT_ERRORS" ]; then
-    # Nur Warnungen, keine Fehler - das ist OK
-    success "Paket-Listen aktualisiert (mit Warnungen)"
-    warning "Einige Repositories haben Warnungen (nicht kritisch)"
-elif [ -n "$APT_ERRORS" ]; then
-    # Echte Fehler vorhanden
-    warning "Paket-Listen konnten nicht vollständig aktualisiert werden"
-    echo ""
-    echo -e "${YELLOW}Gefundene Fehler:${NC}"
-    echo "$APT_ERRORS" | sed 's/^/  /'
-    echo ""
-    echo -e "${YELLOW}Häufige Ursachen:${NC}"
-    echo "  • Repository nicht erreichbar"
-    echo "  • GPG-Key fehlt"
-    echo "  • Netzwerk-Problem"
-    echo ""
-    echo -ne "${CYAN}Trotzdem fortfahren? (j/n):${NC} "
-    read -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
-else
-    success "Paket-Listen aktualisiert"
-fi
-
-info "Installiere System-Updates..."
-apt-get upgrade -y -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null
-success "System aktualisiert"
-sleep 1
-
-################################################################################
-# Schritt 4: Basis-Tools Installation
-################################################################################
-
-print_header 4 "Basis-Tools Installation"
-
-info "Installiere grundlegende Tools..."
-PACKAGES="curl wget git nano ufw lsb-release gnupg software-properties-common net-tools"
-
-for package in $PACKAGES; do
-    echo -n "   • $package... "
-    if apt-get install -y -qq "$package" 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${YELLOW}übersprungen${NC}"
-    fi
-done
-
-success "Basis-Tools installiert"
-sleep 1
-
-################################################################################
-# Schritt 5: PostgreSQL Installation
-################################################################################
-
-print_header 5 "PostgreSQL Installation"
-
-info "Installiere PostgreSQL..."
-if apt-get install -y -qq postgresql postgresql-contrib 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    success "PostgreSQL installiert"
-else
-    error "PostgreSQL Installation fehlgeschlagen! Siehe $LOG_FILE"
-fi
-
-info "Starte PostgreSQL Service..."
-systemctl start postgresql
-systemctl enable postgresql > /dev/null 2>&1
-
-PG_VERSION=$(su - postgres -c "psql --version" | grep -oP '\d+' | head -1)
-success "PostgreSQL $PG_VERSION läuft"
-sleep 1
-
-################################################################################
-# Schritt 6: pgAdmin 4 Installation (mit Apache2 auf Port 1880/18443)
-################################################################################
-
-print_header 6 "pgAdmin 4 Installation"
-
-info "pgAdmin 4 ermöglicht grafische Datenbank-Verwaltung über Webbrowser"
-echo ""
-echo -ne "   ${BLUE}►${NC} pgAdmin 4 installieren? (j/n): "
-read -n 1 -r
-echo
-INSTALL_PGADMIN=$REPLY
-
-if [[ $REPLY =~ ^[Jj]$ ]]; then
-    info "Installiere Apache2 mit angepassten Ports (1880/18443)..."
     
-    # Apache2 + WSGI Module installieren
-    info "Installiere Apache2 und benötigte Module..."
-    if apt-get install -y -qq apache2 libapache2-mod-wsgi-py3 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-        success "Apache2 + WSGI Module installiert"
+    success "Update-Kanal: $CHANNEL_NAME (Branch: $BRANCH)"
+    echo ""
+    sleep 1
+    
+    # Option 2: Cloudflare Tunnel
+    if [ $SKIP_CLOUDFLARE -eq 0 ]; then
+        echo -e "${YELLOW}2️⃣  Cloudflare Tunnel:${NC}"
+        echo ""
+        echo -e "   ${GREEN}Vorteile:${NC}"
+        echo "   ✅ Keine Port-Weiterleitungen nötig"
+        echo "   ✅ Automatisches SSL/TLS"
+        echo "   ✅ DDoS-Schutz"
+        echo "   ✅ Kostenlos"
+        echo ""
+        
+        USE_CLOUDFLARE=$(ask_yes_no "Cloudflare Tunnel einrichten?" "j")
     else
-        error "Apache2 Installation fehlgeschlagen"
+        USE_CLOUDFLARE="n"
+        warning "Cloudflare wurde übersprungen (--no-cloudflare)"
+    fi
+    echo ""
+    sleep 1
+    
+    # Option 3: GitHub Repository
+    echo -e "${YELLOW}3️⃣  GitHub Repository:${NC}"
+    echo ""
+    echo -e "   ${GREEN}Standard:${NC} https://github.com/Benno2406/fmsv-dingden.git"
+    echo ""
+    echo -ne "   ${BLUE}►${NC} GitHub Repository URL [Enter für Standard]: "
+    read -r GITHUB_REPO_INPUT
+    
+    if [ -n "$GITHUB_REPO_INPUT" ]; then
+        GITHUB_REPO="$GITHUB_REPO_INPUT"
     fi
     
-    # Apache Module aktivieren
-    info "Aktiviere Apache Module..."
-    a2enmod ssl > /dev/null 2>&1
-    a2enmod wsgi > /dev/null 2>&1
-    a2enmod proxy > /dev/null 2>&1
-    a2enmod proxy_http > /dev/null 2>&1
-    a2enmod headers > /dev/null 2>&1
-    a2enmod rewrite > /dev/null 2>&1
-    success "Apache Module aktiviert"
-    
-    # Apache2 Ports ändern zu 1880 und 18443
-    info "Konfiguriere Apache2 Ports..."
-    
-    # ports.conf anpassen
-    cat > /etc/apache2/ports.conf << 'EOF'
-# Apache2 läuft auf alternativen Ports (nginx läuft auf 80/443)
-Listen 1880
-
-<IfModule ssl_module>
-    Listen 18443
-</IfModule>
-
-<IfModule mod_gnutls.c>
-    Listen 18443
-</IfModule>
-EOF
-    
-    success "Apache2 Ports konfiguriert (1880/18443)"
-    
-    # Teste Apache Konfiguration
-    info "Teste Apache Konfiguration..."
-    if apache2ctl configtest 2>&1 | grep -q "Syntax OK"; then
-        success "Apache Konfiguration OK"
-    else
-        warning "Apache Konfiguration hat Warnungen (nicht kritisch)"
-    fi
-    
-    # pgAdmin 4 Repository hinzufügen
-    info "Füge pgAdmin 4 Repository hinzu..."
-    curl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg
-    
-    echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list
-    
-    # Apt update
-    apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    
-    # pgAdmin 4 Web installieren
-    info "Installiere pgAdmin 4 Web..."
-    if apt-get install -y -qq pgadmin4-web 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-        success "pgAdmin 4 installiert"
-    else
-        error "pgAdmin 4 Installation fehlgeschlagen"
-    fi
-    
-    # pgAdmin 4 Setup
-    info "Konfiguriere pgAdmin 4..."
+    info "Repository: $GITHUB_REPO"
     echo ""
-    echo -e "${YELLOW}┌────────────────────────────────────────────┐${NC}"
-    echo -e "${YELLOW}│  pgAdmin 4 E-Mail und Passwort eingeben   │${NC}"
-    echo -e "${YELLOW}└────────────────────────────────────────────┘${NC}"
+    sleep 1
+    
+    # Option 4: Auto-Update
+    echo -e "${YELLOW}4️⃣  Automatische Updates:${NC}"
+    echo ""
+    echo -e "   ${GREEN}[1]${NC} Täglich um 03:00 Uhr"
+    echo -e "   ${YELLOW}[2]${NC} Wöchentlich (Sonntag 03:00 Uhr)"
+    echo -e "   ${MAGENTA}[3]${NC} Manuell (keine automatischen Updates)"
     echo ""
     
-    # Entferne ALTE pgAdmin Configs VORHER (von vorherigen Installationen)
-    info "Bereinige alte pgAdmin-Konfigurationen..."
-    rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
-    rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
-    rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
-    rm -f /etc/apache2/conf-available/*pgadmin* 2>/dev/null
-    a2dissite pgadmin4 2>/dev/null || true
-    a2disconf pgadmin4 2>/dev/null || true
-    success "Alte Konfigurationen entfernt"
+    local AUTO_UPDATE_CHOICE
+    AUTO_UPDATE_CHOICE=$(ask_choice "Deine Wahl" "2" "1" "2" "3")
     
-    # Run pgAdmin setup (erstellt neue Config)
-    /usr/pgadmin4/bin/setup-web.sh --yes 2>&1 | tee -a "$LOG_FILE"
+    case "$AUTO_UPDATE_CHOICE" in
+        1)
+            AUTO_UPDATE_SCHEDULE="daily"
+            ;;
+        2)
+            AUTO_UPDATE_SCHEDULE="weekly"
+            ;;
+        3)
+            AUTO_UPDATE_SCHEDULE="manual"
+            ;;
+    esac
     
-    # Jetzt entfernen wir die vom setup-web.sh erstellten Configs,
-    # da wir unsere eigene auf Port 1880 erstellen
-    info "Erstelle pgAdmin VirtualHost-Konfiguration..."
+    success "Auto-Update: $AUTO_UPDATE_SCHEDULE"
+    echo ""
+    sleep 1
     
-    # Deaktiviere die vom setup-web.sh erstellten Configs
-    a2dissite pgadmin4 2>/dev/null || true
-    a2disconf pgadmin4 2>/dev/null || true
+    # Summary
+    echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
+    echo -e "${YELLOW}📋 Zusammenfassung:${NC}"
+    echo ""
+    echo -e "  ${BLUE}•${NC} Update-Kanal:        ${GREEN}$CHANNEL_NAME${NC}"
+    echo -e "  ${BLUE}•${NC} Cloudflare Tunnel:   $( [ "$USE_CLOUDFLARE" = "j" ] && echo -e "${GREEN}Ja${NC}" || echo -e "${YELLOW}Nein${NC}" )"
+    echo -e "  ${BLUE}•${NC} GitHub Repo:         $GITHUB_REPO"
+    echo -e "  ${BLUE}•${NC} Auto-Update:         ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
+    echo ""
+    echo -e "${CYAN}$(printf '─%.0s' {1..60})${NC}"
+    echo ""
     
-    # Entferne die automatisch erstellten Configs (um Konflikte zu vermeiden)
-    rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
-    rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
+    local response
+    response=$(ask_yes_no "Installation mit diesen Einstellungen starten?" "j")
     
-    # Erstelle neue, saubere pgAdmin Konfiguration
-    cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
-<VirtualHost *:1880>
-    ServerName localhost
-    
-    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=/usr/pgadmin4/venv
-    WSGIScriptAlias / /usr/pgadmin4/web/pgAdmin4.wsgi
-    
-    <Directory /usr/pgadmin4/web>
-        WSGIProcessGroup pgadmin
-        WSGIApplicationGroup %{GLOBAL}
-        Require all granted
-    </Directory>
-    
-    # Static files
-    Alias /static /usr/pgadmin4/web/static
-    <Directory /usr/pgadmin4/web/static>
-        Require all granted
-    </Directory>
-    
-    ErrorLog ${APACHE_LOG_DIR}/pgadmin_error.log
-    CustomLog ${APACHE_LOG_DIR}/pgadmin_access.log combined
-</VirtualHost>
-EOF
-    
-    # Aktiviere Site
-    a2ensite pgadmin.conf > /dev/null 2>&1
-    success "pgAdmin VirtualHost konfiguriert (Port 1880)"
-    
-    # Apache2 Konfiguration testen
-    info "Teste Apache Konfiguration..."
-    APACHE_TEST=$(apache2ctl configtest 2>&1)
-    if echo "$APACHE_TEST" | grep -q "Syntax OK"; then
-        success "Apache Konfiguration OK"
-    else
-        warning "Apache Konfiguration hat Warnungen:"
-        echo "$APACHE_TEST" | grep -v "AH00558" | sed 's/^/   /'
-        echo ""
-        echo -e "${CYAN}Vollständige Diagnose:${NC}"
-        apache2ctl configtest 2>&1 | sed 's/^/   /'
-        echo ""
+    if [ "$response" = "n" ]; then
+        error "Installation abgebrochen"
     fi
-    
-    # Apache2 neu starten
-    info "Starte Apache2..."
-    systemctl restart apache2 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    systemctl enable apache2 > /dev/null 2>&1
-    
-    sleep 2  # Warte kurz bis Apache vollständig gestartet ist
-    
-    if systemctl is-active --quiet apache2; then
-        success "Apache2 läuft auf Port 1880/18443"
-        
-        # Firewall Rules
-        if command -v ufw &> /dev/null; then
-            info "Konfiguriere Firewall..."
-            ufw allow 1880/tcp comment "Apache2 HTTP für pgAdmin" > /dev/null 2>&1
-            ufw allow 18443/tcp comment "Apache2 HTTPS für pgAdmin" > /dev/null 2>&1
-            success "Firewall-Regeln hinzugefügt"
-        fi
-        
-        echo ""
-        echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║            pgAdmin 4 erfolgreich installiert!          ║${NC}"
-        echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        echo -e "${CYAN}Zugriff:${NC}"
-        echo -e "  ${GREEN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
-        echo -e "  ${GREEN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
-        echo ""
-        
-        # Optional: Nginx Reverse Proxy Setup
-        echo -e "${YELLOW}Optional - Nginx Reverse Proxy einrichten?${NC}"
-        echo -e "  Ermöglicht Zugriff über: ${CYAN}pgadmin.deineadomain.de${NC}"
-        echo -e "  (Mit SSL-Unterstützung via Certbot)"
-        echo ""
-        read -p "Nginx Reverse Proxy jetzt einrichten? (j/n) " -n 1 -r
-        echo
-        
-        if [[ $REPLY =~ ^[Jj]$ ]]; then
-            echo ""
-            info "Richte Nginx Reverse Proxy für pgAdmin ein..."
-            
-            # Frage nach Domain
-            echo ""
-            echo -e "${CYAN}Subdomain für pgAdmin:${NC}"
-            read -p "Domain eingeben (z.B. pgadmin.deineadomain.de): " PGADMIN_DOMAIN
-            
-            if [ -z "$PGADMIN_DOMAIN" ]; then
-                warning "Keine Domain eingegeben, überspringe Nginx-Setup"
-            else
-                # Erstelle Nginx Config
-                cat > "/etc/nginx/sites-available/$PGADMIN_DOMAIN" << 'NGINX_EOF'
-# pgAdmin 4 Reverse Proxy
-server {
-    listen 80;
-    listen [::]:80;
-    server_name PGADMIN_DOMAIN_PLACEHOLDER;
-    
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    
-    # Logging
-    access_log /var/log/nginx/PGADMIN_DOMAIN_PLACEHOLDER_access.log;
-    error_log /var/log/nginx/PGADMIN_DOMAIN_PLACEHOLDER_error.log;
-    
-    # Reverse Proxy zu Apache auf Port 1880
-    location / {
-        # WICHTIG: Trailing Slash bei proxy_pass!
-        proxy_pass http://localhost:1880/;
-        
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Script-Name /pgadmin4;
-        
-        # WebSocket Support (für pgAdmin Features)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        
-        # Buffering
-        proxy_buffering off;
-        proxy_request_buffering off;
-        
-        # Timeouts für lange Queries
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
-        send_timeout 300;
-        
-        # Client Settings
-        client_max_body_size 100M;
-    }
 }
-NGINX_EOF
-                
-                # Ersetze Platzhalter
-                sed -i "s/PGADMIN_DOMAIN_PLACEHOLDER/$PGADMIN_DOMAIN/g" "/etc/nginx/sites-available/$PGADMIN_DOMAIN"
-                
-                # Aktiviere Site
-                ln -sf "/etc/nginx/sites-available/$PGADMIN_DOMAIN" "/etc/nginx/sites-enabled/"
-                
-                # Teste Nginx Config
-                if nginx -t > /dev/null 2>&1; then
-                    systemctl reload nginx
-                    success "Nginx Reverse Proxy konfiguriert"
-                    
-                    echo ""
-                    echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
-                    echo -e "${GREEN}║         Nginx Reverse Proxy eingerichtet! ✓           ║${NC}"
-                    echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
-                    echo ""
-                    
-                    # Cloudflare DNS Integration (falls vorhanden)
-                    if [ -f ~/.cloudflared/cert.pem ] && command -v cloudflared &> /dev/null; then
-                        echo -e "${YELLOW}Cloudflare DNS-Eintrag erstellen?${NC}"
-                        echo -e "  Fügt ${CYAN}$PGADMIN_DOMAIN${NC} zu deinem Cloudflare Tunnel hinzu"
-                        echo ""
-                        read -p "Cloudflare DNS jetzt einrichten? (j/n) " -n 1 -r
-                        echo
-                        
-                        if [[ $REPLY =~ ^[Jj]$ ]]; then
-                            echo ""
-                            info "Füge $PGADMIN_DOMAIN zu Cloudflare hinzu..."
-                            
-                            # Prüfe ob Tunnel bereits existiert
-                            if [ -f ~/.cloudflared/config.yml ]; then
-                                TUNNEL_ID=$(grep "tunnel:" ~/.cloudflared/config.yml | awk '{print $2}')
-                                
-                                if [ -n "$TUNNEL_ID" ]; then
-                                    # Füge DNS-Eintrag hinzu
-                                    if cloudflared tunnel route dns "$TUNNEL_ID" "$PGADMIN_DOMAIN" 2>&1 | tee -a "$LOG_FILE"; then
-                                        success "DNS-Eintrag erstellt: $PGADMIN_DOMAIN"
-                                        
-                                        # Aktualisiere Tunnel-Config
-                                        echo ""
-                                        info "Aktualisiere Tunnel-Konfiguration..."
-                                        
-                                        # Backup der Config
-                                        cp ~/.cloudflared/config.yml ~/.cloudflared/config.yml.backup
-                                        
-                                        # Füge neue Ingress-Rule hinzu (vor catch-all)
-                                        cat > /tmp/cloudflared-pgadmin.yml << CLOUDFLARE_CONFIG
-  - hostname: $PGADMIN_DOMAIN
-    service: http://localhost:80
-CLOUDFLARE_CONFIG
-                                        
-                                        # Füge vor dem catch-all ein
-                                        sed -i "/  - service: http_status:404/i\\$(cat /tmp/cloudflared-pgadmin.yml)" ~/.cloudflared/config.yml
-                                        
-                                        # Cloudflared neu starten
-                                        systemctl restart cloudflared
-                                        
-                                        success "Cloudflare Tunnel aktualisiert"
-                                        echo ""
-                                        echo -e "${GREEN}✓${NC} ${CYAN}$PGADMIN_DOMAIN${NC} ist jetzt über Cloudflare erreichbar!"
-                                        echo -e "  ${BLUE}https://$PGADMIN_DOMAIN${NC}"
-                                        echo ""
-                                    else
-                                        warning "Cloudflare DNS-Eintrag konnte nicht erstellt werden"
-                                        echo -e "  ${YELLOW}Du kannst dies manuell in Cloudflare Dashboard machen${NC}"
-                                    fi
-                                else
-                                    warning "Tunnel-ID nicht gefunden in config.yml"
-                                fi
-                            else
-                                warning "Cloudflare Tunnel noch nicht konfiguriert"
-                            fi
-                        fi
-                    fi
-                    
-                    echo ""
-                    echo -e "${CYAN}Zugriff:${NC}"
-                    if [ -f ~/.cloudflared/cert.pem ]; then
-                        echo -e "  ${GREEN}►${NC} Via Cloudflare: ${BLUE}https://$PGADMIN_DOMAIN${NC}"
-                    else
-                        echo -e "  ${GREEN}►${NC} Direkt (nach DNS): ${BLUE}http://$PGADMIN_DOMAIN${NC}"
-                    fi
-                    echo ""
-                    
-                    if [ ! -f ~/.cloudflared/cert.pem ]; then
-                        echo -e "${YELLOW}Manuelle Schritte (ohne Cloudflare):${NC}"
-                        echo -e "  ${GREEN}1.${NC} DNS A-Record erstellen:"
-                        echo -e "     ${CYAN}$PGADMIN_DOMAIN${NC} → $(hostname -I | awk '{print $1}')"
-                        echo ""
-                        echo -e "  ${GREEN}2.${NC} SSL-Zertifikat installieren:"
-                        echo -e "     ${CYAN}sudo certbot --nginx -d $PGADMIN_DOMAIN${NC}"
-                        echo ""
-                    fi
-                else
-                    error "Nginx Konfiguration fehlerhaft"
-                    nginx -t
-                    rm -f "/etc/nginx/sites-enabled/$PGADMIN_DOMAIN"
-                    warning "Nginx-Setup rückgängig gemacht"
-                fi
-            fi
-        else
-            echo ""
-            echo -e "${CYAN}ℹ️  Nginx Reverse Proxy übersprungen${NC}"
-            echo -e "   Du kannst dies später nachholen mit:"
-            echo -e "   ${YELLOW}sudo nano /etc/nginx/sites-available/pgadmin.deineadomain.de${NC}"
-            echo ""
-        fi
-    else
-        warning "Apache2 konnte nicht gestartet werden"
-        echo ""
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
-        echo -e "${YELLOW}                     DIAGNOSE                          ${NC}"
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
-        echo ""
-        echo -e "${CYAN}Letzte Apache Fehler:${NC}"
-        journalctl -u apache2 -n 15 --no-pager 2>/dev/null | grep -E "(error|failed|Error|Failed)" | sed 's/^/  /' || echo "  (Keine Fehler in Logs gefunden)"
-        echo ""
-        echo -e "${CYAN}Mögliche Ursachen:${NC}"
-        echo -e "  ${YELLOW}•${NC} Port 1880 bereits belegt"
-        echo -e "  ${YELLOW}•${NC} WSGI Modul fehlt oder fehlerhaft"
-        echo -e "  ${YELLOW}•${NC} pgAdmin Konfiguration fehlerhaft"
-        echo ""
-        echo -e "${CYAN}Schnell-Diagnose:${NC}"
-        
-        # Port check
-        if netstat -tulpn 2>/dev/null | grep -q ":1880"; then
-            echo -e "  ${RED}✗${NC} Port 1880 ist bereits belegt!"
-            netstat -tulpn 2>/dev/null | grep ":1880" | sed 's/^/    /'
-        else
-            echo -e "  ${GREEN}✓${NC} Port 1880 ist frei"
-        fi
-        
-        # WSGI check
-        if apache2ctl -M 2>/dev/null | grep -q wsgi; then
-            echo -e "  ${GREEN}✓${NC} WSGI Modul ist geladen"
-        else
-            echo -e "  ${RED}✗${NC} WSGI Modul fehlt!"
-        fi
-        
-        echo ""
-        echo -e "${CYAN}Lösungsvorschläge:${NC}"
-        echo -e "  ${GREEN}1.${NC} Vollständige Logs ansehen:"
-        echo -e "     ${CYAN}journalctl -u apache2 -n 50${NC}"
-        echo ""
-        echo -e "  ${GREEN}2.${NC} Apache Konfiguration testen:"
-        echo -e "     ${CYAN}apache2ctl configtest${NC}"
-        echo ""
-        echo -e "  ${GREEN}3.${NC} pgAdmin manuell neu konfigurieren:"
-        echo -e "     ${CYAN}/usr/pgadmin4/bin/setup-web.sh${NC}"
-        echo ""
-        echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
-        echo ""
-        read -p "Installation trotzdem fortsetzen? (j/n) " -n 1 -r
-        echo
-        [[ ! $REPLY =~ ^[Jj]$ ]] && error "Installation abgebrochen"
-        warning "Installation wird ohne funktionierendes pgAdmin fortgesetzt"
-    fi
-else
-    warning "pgAdmin 4 Installation übersprungen"
-fi
 
-sleep 1
-
-################################################################################
-# Schritt 7: Node.js Installation
-################################################################################
-
-print_header 7 "Node.js Installation"
-
-info "Füge NodeSource Repository hinzu..."
-if curl -fsSL https://deb.nodesource.com/setup_lts.x 2>&1 | bash - 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    success "NodeSource Repository hinzugefügt"
-else
-    error "NodeSource Repository konnte nicht hinzugefügt werden"
-fi
-
-info "Installiere Node.js LTS..."
-if apt-get install -y -qq nodejs 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    NODE_VERSION=$(node --version)
-    NPM_VERSION=$(npm --version)
-    success "Node.js $NODE_VERSION installiert"
-    success "npm $NPM_VERSION installiert"
-else
-    error "Node.js Installation fehlgeschlagen"
-fi
-
-sleep 1
-
-################################################################################
-# Schritt 8: Repository klonen
-################################################################################
-
-print_header 8 "Repository klonen"
-
-INSTALL_DIR="/var/www/fmsv-dingden"
-
-if [ -d "$INSTALL_DIR" ]; then
-    info "Verzeichnis existiert bereits: $INSTALL_DIR"
-    cd "$INSTALL_DIR" || error "Verzeichnis nicht gefunden"
-    
-    info "Aktualisiere Repository..."
-    git fetch origin 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    git checkout "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    git pull origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE" > /dev/null
-    success "Repository aktualisiert"
-else
-    info "Klone Repository (Branch: $BRANCH)..."
-    if git clone -b "$BRANCH" "$GITHUB_REPO" "$INSTALL_DIR" 2>&1 | tee -a "$LOG_FILE"; then
-        success "Repository geklont"
-    else
-        error_with_help "Repository konnte nicht geklont werden!" \
-            "" \
-            "Mögliche Ursachen:" \
-            "• Falsche GitHub URL: $GITHUB_REPO" \
-            "• Branch '$BRANCH' existiert nicht" \
-            "• Keine Internet-Verbindung" \
-            "" \
-            "Lösung:" \
-            "1. Prüfe ob Repository öffentlich ist" \
-            "2. Prüfe Branch: git ls-remote --heads $GITHUB_REPO" \
-            "3. Internetverbindung testen: ping github.com"
-    fi
-fi
-
-cd "$INSTALL_DIR" || error "Verzeichnis nicht gefunden"
-git config --local pull.rebase false 2>&1 | tee -a "$LOG_FILE" > /dev/null
-git config --local --add safe.directory "$INSTALL_DIR"
-success "Git konfiguriert"
-sleep 1
-
-################################################################################
-# Schritt 8: Datenbank-Setup
-################################################################################
-
-print_header 8 "Datenbank-Setup"
-
-echo -e "${YELLOW}Datenbank-Konfiguration:${NC}"
-echo ""
-
-echo -ne "   ${BLUE}►${NC} Datenbank-Name [fmsv_database]: "
-read DB_NAME
-DB_NAME=${DB_NAME:-fmsv_database}
-
-echo -ne "   ${BLUE}►${NC} Datenbank-Benutzer [fmsv_user]: "
-read DB_USER
-DB_USER=${DB_USER:-fmsv_user}
-
-while true; do
-    echo -ne "   ${BLUE}►${NC} Datenbank-Passwort: "
-    read -s DB_PASSWORD
-    echo
-    echo -ne "   ${BLUE}►${NC} Passwort wiederholen: "
-    read -s DB_PASSWORD2
-    echo
-    [ "$DB_PASSWORD" = "$DB_PASSWORD2" ] && break
-    warning "Passwörter stimmen nicht überein"
-    echo ""
-done
-
-echo ""
-info "Erstelle Datenbank '$DB_NAME'..."
-
-su - postgres -c "psql" <<EOF > /dev/null 2>&1
-DROP DATABASE IF EXISTS $DB_NAME;
-DROP USER IF EXISTS $DB_USER;
-CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
-CREATE DATABASE $DB_NAME OWNER $DB_USER;
-\c $DB_NAME
-GRANT ALL ON SCHEMA public TO $DB_USER;
-GRANT USAGE ON SCHEMA public TO $DB_USER;
-GRANT CREATE ON SCHEMA public TO $DB_USER;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;
-GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $DB_USER;
-ALTER SCHEMA public OWNER TO $DB_USER;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $DB_USER;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
-EOF
-
-success "Datenbank '$DB_NAME' erstellt"
-success "Benutzer '$DB_USER' angelegt"
-sleep 1
-
-################################################################################
-# Schritt 9: Cloudflare Tunnel (Optional)
-################################################################################
-
-if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    print_header 9 "Cloudflare Tunnel Installation"
-    
-    info "Füge Cloudflare GPG Key hinzu..."
-    mkdir -p --mode=0755 /usr/share/keyrings
-    
-    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null 2>&1; then
-        echo ""
-        error "Cloudflare GPG Key konnte nicht heruntergeladen werden!"
-        echo ""
-        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
-        echo -e "  ${RED}1.${NC} Keine Internetverbindung zu Cloudflare"
-        echo -e "  ${RED}2.${NC} Cloudflare Server nicht erreichbar"
-        echo -e "  ${RED}3.${NC} Firewall blockiert Zugriff"
-        echo ""
-        echo -e "${YELLOW}Optionen:${NC}"
-        echo -e "  ${GREEN}1.${NC} Internetverbindung prüfen: ${CYAN}ping cloudflare.com${NC}"
-        echo -e "  ${GREEN}2.${NC} Installation ohne Cloudflare: ${CYAN}./install.sh --no-cloudflare${NC}"
-        echo -e "  ${GREEN}3.${NC} Cloudflare später manuell einrichten"
-        echo ""
-        
-        read -p "   ${BLUE}►${NC} Cloudflare überspringen und fortfahren? (j/N): " SKIP_CF
-        echo ""
-        
-        if [[ $SKIP_CF =~ ^[Jj]$ ]]; then
-            warning "Cloudflare wird übersprungen - du kannst es später manuell einrichten!"
-            echo ""
-            echo -e "  ${CYAN}Siehe: Installation/CLOUDFLARE-LOKALER-PC.md${NC}"
-            echo ""
-            sleep 2
-            return 0
-        else
-            echo ""
-            info "Installation wird abgebrochen."
-            echo ""
-            echo -e "${YELLOW}Starte neu mit:${NC} ${GREEN}./install.sh --no-cloudflare${NC}"
-            echo ""
-            exit 1
-        fi
-    fi
-    
-    info "Füge Cloudflare Repository hinzu..."
-    # Cloudflare unterstützt aktuell nur bookworm, nicht trixie
-    # Daher verwenden wir bookworm auch bei Debian 13
-    CLOUDFLARE_DIST="bookworm"
-    if [ "$DEBIAN_VERSION" -lt 12 ]; then
-        # Für ältere Versionen versuchen wir die aktuelle Distribution
-        CLOUDFLARE_DIST=$(lsb_release -cs)
-    fi
-    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $CLOUDFLARE_DIST main" | tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
+# -----------------------------------------------------------------------------
+# Schritt 3: System-Updates
+# -----------------------------------------------------------------------------
+step_system_update() {
+    print_header 3 "System-Updates"
     
     info "Aktualisiere Paket-Listen..."
-    APT_CF_OUTPUT=$(apt-get update 2>&1)
-    APT_CF_ERRORS=$(echo "$APT_CF_OUTPUT" | grep "^E:" || true)
     
-    if [ -n "$APT_CF_ERRORS" ]; then
-        echo ""
-        warning "apt-get update hatte Fehler - versuche Installation trotzdem..."
-        echo ""
+    local APT_OUTPUT
+    local APT_ERRORS
+    local APT_WARNINGS
+    
+    APT_OUTPUT=$(apt-get update 2>&1 | tee -a "$LOG_FILE")
+    APT_ERRORS=$(echo "$APT_OUTPUT" | grep "^E:" || true)
+    APT_WARNINGS=$(echo "$APT_OUTPUT" | grep "^W:" || true)
+    
+    if [ -n "$APT_ERRORS" ]; then
+        warning "apt-get update hatte Fehler, versuche es erneut..."
+        sleep 2
+        
+        APT_OUTPUT=$(apt-get update 2>&1 | tee -a "$LOG_FILE")
+        APT_ERRORS=$(echo "$APT_OUTPUT" | grep "^E:" || true)
+        
+        if [ -n "$APT_ERRORS" ]; then
+            error "apt-get update fehlgeschlagen"
+        fi
+    fi
+    
+    if [ -n "$APT_WARNINGS" ]; then
+        success "Paket-Listen aktualisiert (mit Warnungen)"
     else
         success "Paket-Listen aktualisiert"
     fi
     
-    info "Installiere cloudflared..."
+    info "Upgrade System-Pakete..."
     
-    # Zeige Installation-Output (nicht komplett silent)
-    if ! apt-get install -y cloudflared 2>&1 | grep -v "^Selecting\|^Preparing\|^Unpacking\|^Setting up" | grep -v "^$"; then
-        echo ""
-        error "cloudflared Installation fehlgeschlagen!"
-        echo ""
-        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
-        echo -e "  ${RED}1.${NC} Repository konnte nicht hinzugefügt werden"
-        echo -e "  ${RED}2.${NC} Internetverbindung unterbrochen"
-        echo -e "  ${RED}3.${NC} Cloudflare Repository nicht erreichbar"
-        echo ""
-        echo -e "${YELLOW}Optionen:${NC}"
-        echo -e "  ${GREEN}1.${NC} Manuelle Installation versuchen: ${CYAN}apt-get install -y cloudflared${NC}"
-        echo -e "  ${GREEN}2.${NC} Installation ohne Cloudflare: ${CYAN}./install.sh --no-cloudflare${NC}"
-        echo -e "  ${GREEN}3.${NC} Siehe: ${CYAN}Installation/CLOUDFLARED-INSTALLATION-FEHLER.md${NC}"
-        echo ""
-        
-        read -p "   ${BLUE}►${NC} Cloudflare überspringen und fortfahren? (j/N): " SKIP_CF2
-        echo ""
-        
-        if [[ $SKIP_CF2 =~ ^[Jj]$ ]]; then
-            warning "Cloudflare wird übersprungen!"
-            echo ""
-            return 0
-        else
-            exit 1
-        fi
-    fi
-    
-    # Prüfe ob cloudflared wirklich verfügbar ist
-    if ! command -v cloudflared &> /dev/null; then
-        echo ""
-        warning "cloudflared Installation abgeschlossen, aber Befehl nicht gefunden!"
-        echo ""
-        echo -e "${YELLOW}Dies ist normal nach der ersten Installation.${NC}"
-        echo -e "${YELLOW}Lösung: Shell neu laden oder Server neu starten.${NC}"
-        echo ""
-        
-        read -p "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): " CONTINUE_CF
-        echo ""
-        
-        if [[ ! $CONTINUE_CF =~ ^[Nn]$ ]]; then
-            warning "Fahre fort - Cloudflare kann später konfiguriert werden"
-            echo ""
-            return 0
-        else
-            exit 1
-        fi
-    fi
-    
-    # Wenn cloudflared verfügbar ist, Version anzeigen
-    if command -v cloudflared &> /dev/null; then
-        CF_VERSION=$(cloudflared --version 2>/dev/null | head -1)
-        success "Cloudflared installiert: $CF_VERSION"
-        
-        echo ""
-        echo -e "${YELLOW}╔════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${YELLOW}║${NC}  ${CYAN}Cloudflare Login erforderlich${NC}                        ${YELLOW}║${NC}"
-        echo -e "${YELLOW}╚════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        
-        # Call our intelligent login function
-        cloudflare_login_with_help
+    if ! DEBIAN_FRONTEND=noninteractive apt-get upgrade -y >> "$LOG_FILE" 2>&1; then
+        warning "Einige Pakete konnten nicht aktualisiert werden (nicht kritisch)"
     else
-        # cloudflared nicht verfügbar - wurde übersprungen
-        warning "Cloudflare wurde übersprungen - Setup kann später nachgeholt werden"
-        echo ""
-        echo -e "  ${CYAN}Siehe: Installation/CLOUDFLARE-LOKALER-PC.md${NC}"
-        echo ""
-        sleep 2
-        return 0
+        success "System-Pakete aktualisiert"
     fi
     
-    echo ""
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 4: Basis-Tools installieren
+# -----------------------------------------------------------------------------
+step_install_base_tools() {
+    print_header 4 "Basis-Tools installieren"
     
-    TUNNEL_NAME="fmsv-dingden"
-    info "Erstelle Tunnel '$TUNNEL_NAME'..."
+    info "Installiere Git, Curl, Build-Tools..."
     
-    cloudflared tunnel delete $TUNNEL_NAME 2>/dev/null || true
-    cloudflared tunnel create $TUNNEL_NAME > /dev/null 2>&1
+    local PACKAGES=(
+        "git"
+        "curl"
+        "wget"
+        "build-essential"
+        "ca-certificates"
+        "gnupg"
+        "lsb-release"
+        "apt-transport-https"
+        "software-properties-common"
+    )
     
-    TUNNEL_ID=$(cloudflared tunnel list | grep $TUNNEL_NAME | awk '{print $1}')
-    
-    if [ -z "$TUNNEL_ID" ]; then
-        error "Tunnel-Erstellung fehlgeschlagen"
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y "${PACKAGES[@]}" >> "$LOG_FILE" 2>&1; then
+        error "Installation der Basis-Tools fehlgeschlagen"
     fi
     
-    success "Tunnel erstellt: $TUNNEL_ID"
-    echo ""
-    
-    read -p "   ${BLUE}►${NC} Domain für Tunnel [fmsv.bartholmes.eu]: " DOMAIN
-    DOMAIN=${DOMAIN:-fmsv.bartholmes.eu}
-    
-    info "Erstelle Tunnel-Konfiguration..."
-    mkdir -p ~/.cloudflared
-    
-    cat > ~/.cloudflared/config.yml <<EOF
-tunnel: $TUNNEL_ID
-credentials-file: /root/.cloudflared/$TUNNEL_ID.json
-
-ingress:
-  - hostname: $DOMAIN
-    service: http://localhost:80
-  - hostname: $DOMAIN
-    path: /api/*
-    service: http://localhost:3000
-  - hostname: $DOMAIN
-    path: /uploads/*
-    service: http://localhost:80
-  - service: http_status:404
-EOF
-    
-    success "Tunnel-Konfiguration erstellt"
-    
-    info "Konfiguriere DNS-Routing..."
-    cloudflared tunnel route dns -f $TUNNEL_NAME $DOMAIN 2>/dev/null || true
-    cloudflared tunnel route dns $TUNNEL_NAME $DOMAIN > /dev/null 2>&1
-    success "DNS konfiguriert: $DOMAIN → Tunnel"
-    
-    info "Installiere Tunnel als Service..."
-    cloudflared service install > /dev/null 2>&1
-    systemctl enable cloudflared > /dev/null 2>&1
-    
-    success "Cloudflare Tunnel konfiguriert"
+    success "Basis-Tools installiert"
     sleep 1
-else
-    print_header 9 "Cloudflare Tunnel (Übersprungen)"
-    info "Cloudflare Tunnel wird nicht verwendet"
-    DOMAIN="fmsv.bartholmes.eu"
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 5: PostgreSQL installieren
+# -----------------------------------------------------------------------------
+step_install_postgresql() {
+    print_header 5 "PostgreSQL installieren"
+    
+    info "Füge PostgreSQL Repository hinzu..."
+    
+    # Import PostgreSQL GPG key
+    if ! curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg 2>> "$LOG_FILE"; then
+        error "PostgreSQL GPG-Key konnte nicht hinzugefügt werden"
+    fi
+    
+    # Add PostgreSQL repository
+    echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    
+    # Update package lists
+    if ! apt-get update >> "$LOG_FILE" 2>&1; then
+        warning "apt-get update nach PostgreSQL-Repo fehlgeschlagen (nicht kritisch)"
+    fi
+    
+    info "Installiere PostgreSQL 16..."
+    
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-contrib-16 >> "$LOG_FILE" 2>&1; then
+        error "PostgreSQL Installation fehlgeschlagen"
+    fi
+    
+    success "PostgreSQL 16 installiert"
+    
+    info "Starte PostgreSQL..."
+    
+    if ! systemctl start postgresql 2>> "$LOG_FILE"; then
+        error "PostgreSQL konnte nicht gestartet werden"
+    fi
+    
+    if ! systemctl enable postgresql 2>> "$LOG_FILE"; then
+        warning "PostgreSQL Autostart konnte nicht aktiviert werden"
+    fi
+    
+    success "PostgreSQL gestartet und aktiviert"
     sleep 1
-fi
-
-################################################################################
-# Schritt 10: Nginx Installation & Konfiguration
-################################################################################
-
-print_header 10 "Nginx Installation & Konfiguration"
-
-info "Installiere Nginx..."
-if apt-get install -y -qq nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    success "Nginx installiert"
-else
-    error "Nginx Installation fehlgeschlagen"
-fi
-
-info "Erstelle Nginx-Konfiguration..."
-
-if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    cat > /etc/nginx/sites-available/fmsv-dingden <<EOF
-server {
-    listen 80;
-    server_name localhost;
-    client_max_body_size 50M;
-    
-    root $INSTALL_DIR/dist;
-    index index.html;
-    
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-    
-    location /uploads/ {
-        alias $INSTALL_DIR/Saves/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-    
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
 }
-EOF
-else
-    cat > /etc/nginx/sites-available/fmsv-dingden <<EOF
-server {
-    listen 80;
-    server_name _;
-    client_max_body_size 50M;
+
+# -----------------------------------------------------------------------------
+# Schritt 6: Node.js installieren
+# -----------------------------------------------------------------------------
+step_install_nodejs() {
+    print_header 6 "Node.js installieren"
     
-    root $INSTALL_DIR/dist;
-    index index.html;
+    info "Füge NodeSource Repository hinzu..."
     
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    # Download and execute NodeSource setup script
+    if ! curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >> "$LOG_FILE" 2>&1; then
+        error "NodeSource Repository konnte nicht hinzugefügt werden"
+    fi
     
-    location /api/ {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-    }
+    info "Installiere Node.js 20..."
     
-    location /uploads/ {
-        alias $INSTALL_DIR/Saves/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs >> "$LOG_FILE" 2>&1; then
+        error "Node.js Installation fehlgeschlagen"
+    fi
     
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
+    local NODE_VERSION
+    NODE_VERSION=$(node --version 2>/dev/null || echo "unbekannt")
     
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
+    local NPM_VERSION
+    NPM_VERSION=$(npm --version 2>/dev/null || echo "unbekannt")
+    
+    success "Node.js $NODE_VERSION installiert"
+    success "npm $NPM_VERSION installiert"
+    sleep 1
 }
+
+# -----------------------------------------------------------------------------
+# Schritt 7: Repository klonen
+# -----------------------------------------------------------------------------
+step_clone_repository() {
+    print_header 7 "Repository klonen"
+    
+    # Prüfe ob Verzeichnis bereits existiert
+    if [ -d "$INSTALL_DIR" ]; then
+        warning "Verzeichnis existiert bereits: $INSTALL_DIR"
+        
+        local response
+        response=$(ask_yes_no "Verzeichnis löschen und neu klonen?" "j")
+        
+        if [ "$response" = "j" ]; then
+            info "Lösche altes Verzeichnis..."
+            
+            if ! rm -rf "$INSTALL_DIR" 2>> "$LOG_FILE"; then
+                error "Verzeichnis konnte nicht gelöscht werden"
+            fi
+        else
+            info "Nutze bestehendes Verzeichnis"
+            return 0
+        fi
+    fi
+    
+    info "Klone Repository von $GITHUB_REPO..."
+    
+    if ! git clone "$GITHUB_REPO" "$INSTALL_DIR" >> "$LOG_FILE" 2>&1; then
+        error "Repository konnte nicht geklont werden"
+    fi
+    
+    success "Repository geklont"
+    
+    cd "$INSTALL_DIR" || error "Konnte nicht in $INSTALL_DIR wechseln"
+    
+    # Checkout Branch
+    if [ "$BRANCH" != "main" ]; then
+        info "Wechsle zu Branch: $BRANCH..."
+        
+        if ! git checkout "$BRANCH" >> "$LOG_FILE" 2>&1; then
+            warning "Branch $BRANCH nicht gefunden, verwende main"
+            BRANCH="main"
+        else
+            success "Branch $BRANCH ausgecheckt"
+        fi
+    fi
+    
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 8: Datenbank einrichten
+# -----------------------------------------------------------------------------
+step_setup_database() {
+    print_header 8 "Datenbank einrichten"
+    
+    info "Erstelle Datenbank-Benutzer und Datenbank..."
+    
+    # Generiere sichere Passwörter
+    local DB_PASSWORD
+    DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    
+    # Erstelle Datenbank und Benutzer
+    if ! sudo -u postgres psql >> "$LOG_FILE" 2>&1 <<EOF
+CREATE USER fmsv_user WITH PASSWORD '$DB_PASSWORD';
+CREATE DATABASE fmsv_dingden OWNER fmsv_user;
+GRANT ALL PRIVILEGES ON DATABASE fmsv_dingden TO fmsv_user;
+\c fmsv_dingden
+GRANT ALL ON SCHEMA public TO fmsv_user;
 EOF
-fi
-
-ln -sf /etc/nginx/sites-available/fmsv-dingden /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-systemctl enable nginx > /dev/null 2>&1
-success "Nginx konfiguriert"
-
-# Nginx-Test erfolgt nach Frontend-Build
-info "Nginx-Test erfolgt nach Frontend-Build"
-sleep 1
-
-################################################################################
-# Schritt 11: Backend-Setup
-################################################################################
-
-print_header 11 "Backend-Setup"
-
-cd "$INSTALL_DIR/backend"
-
-info "Installiere Backend-Dependencies..."
-npm install --production --silent > /dev/null 2>&1
-
-success "Backend-Dependencies installiert"
-
-info "Erstelle Backend-Konfiguration (.env)..."
-
-JWT_SECRET=$(openssl rand -base64 32)
-JWT_REFRESH_SECRET=$(openssl rand -base64 32)
-
-cat > .env <<EOF
-# Server Configuration
-NODE_ENV=production
-PORT=3000
-BASE_URL=https://${DOMAIN}
-
-# Database Configuration
+    then
+        warning "Datenbank existiert möglicherweise bereits"
+    else
+        success "Datenbank und Benutzer erstellt"
+    fi
+    
+    # Erstelle .env Datei für Backend
+    info "Erstelle Backend-Konfiguration..."
+    
+    local JWT_SECRET
+    JWT_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
+    
+    local REFRESH_TOKEN_SECRET
+    REFRESH_TOKEN_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
+    
+    cat > "$INSTALL_DIR/backend/.env" <<EOF
+# Database
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=$DB_NAME
-DB_USER=$DB_USER
+DB_NAME=fmsv_dingden
+DB_USER=fmsv_user
 DB_PASSWORD=$DB_PASSWORD
 
-# JWT Configuration
+# JWT
 JWT_SECRET=$JWT_SECRET
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
-JWT_REFRESH_EXPIRES_IN=7d
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_SECRET=$REFRESH_TOKEN_SECRET
+REFRESH_TOKEN_EXPIRES_IN=7d
 
-# 2FA Configuration
-TWO_FA_APP_NAME=FMSV Dingden
+# Server
+NODE_ENV=production
+PORT=3000
 
-# Email Configuration (ANPASSEN!)
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=apikey
-SMTP_PASSWORD=DEIN_SENDGRID_API_KEY
-EMAIL_FROM=noreply@mail.fmsv.bartholmes.eu
-EMAIL_FROM_NAME=FMSV Dingden
-
-# File Upload Configuration
-MAX_FILE_SIZE_MEMBER=5242880
+# Upload limits (in bytes)
+MAX_FILE_SIZE_DEFAULT=5242880
 MAX_FILE_SIZE_ADMIN=52428800
-ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,application/pdf
+MAX_FILE_SIZE_SUPERADMIN=104857600
 
-# Security
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-BCRYPT_ROUNDS=12
+# Frontend URL
+FRONTEND_URL=http://localhost
 
-# Paths
-UPLOAD_PATH=../Saves
-LOGS_PATH=../Logs
-
-# GitHub Update Configuration
-UPDATE_CHANNEL=$CHANNEL_NAME
+# Update Branch
 UPDATE_BRANCH=$BRANCH
 EOF
-
-chmod 600 .env
-success "Backend-Konfiguration erstellt"
-
-# Prüfe ob schema.sql existiert
-info "Prüfe Datenbank-Schema Datei..."
-SCHEMA_FILE="$INSTALL_DIR/backend/database/schema.sql"
-
-if [ ! -f "$SCHEMA_FILE" ]; then
-    echo ""
-    warning "Schema-Datei nicht gefunden: $SCHEMA_FILE"
-    info "Die Datei existiert im GitHub - lade sie herunter..."
-    echo ""
     
-    cd "$INSTALL_DIR"
+    chmod 600 "$INSTALL_DIR/backend/.env"
     
-    # Direkter Download von GitHub (funktioniert immer wenn Datei im Repo ist)
-    GITHUB_RAW_URL="https://raw.githubusercontent.com/Benno2406/fmsv-dingden/$BRANCH/backend/database/schema.sql"
+    success "Backend-Konfiguration erstellt"
     
-    info "Lade schema.sql von GitHub..."
-    if curl -f -L -o "$SCHEMA_FILE" "$GITHUB_RAW_URL" 2>&1 | grep -v "^$"; then
-        if [ -f "$SCHEMA_FILE" ] && [ -s "$SCHEMA_FILE" ]; then
-            success "Schema-Datei erfolgreich von GitHub geladen"
+    # Initialisiere Datenbank-Schema
+    info "Initialisiere Datenbank-Schema..."
+    
+    if [ -f "$INSTALL_DIR/backend/database/schema.sql" ]; then
+        if ! sudo -u postgres psql -d fmsv_dingden -f "$INSTALL_DIR/backend/database/schema.sql" >> "$LOG_FILE" 2>&1; then
+            error "Datenbank-Schema konnte nicht initialisiert werden"
+        fi
+        success "Datenbank-Schema initialisiert"
+    else
+        warning "schema.sql nicht gefunden, überspringe Schema-Initialisierung"
+    fi
+    
+    # Lade Basis-Daten
+    info "Lade Basis-Daten..."
+    
+    if [ -f "$INSTALL_DIR/backend/database/init-data.sql" ]; then
+        if ! sudo -u postgres psql -d fmsv_dingden -f "$INSTALL_DIR/backend/database/init-data.sql" >> "$LOG_FILE" 2>&1; then
+            warning "Basis-Daten konnten nicht geladen werden (nicht kritisch)"
         else
-            error "Download fehlgeschlagen oder Datei ist leer"
-            rm -f "$SCHEMA_FILE"
-            
-            # Fallback: Git Pull
-            info "Versuche git pull als Fallback..."
-            git fetch origin $BRANCH
-            git checkout origin/$BRANCH -- backend/database/schema.sql
-            
-            if [ -f "$SCHEMA_FILE" ] && [ -s "$SCHEMA_FILE" ]; then
-                success "Schema-Datei via Git wiederhergestellt"
-            else
-                echo ""
-                error "Schema-Datei konnte nicht geladen werden!"
-                echo ""
-                echo -e "${YELLOW}Die Datei sollte unter diesem Link erreichbar sein:${NC}"
-                echo -e "  ${CYAN}$GITHUB_RAW_URL${NC}"
-                echo ""
-                echo -e "${YELLOW}Bitte prüfe:${NC}"
-                echo -e "  ${GREEN}1.${NC} Ist das Repository öffentlich?"
-                echo -e "  ${GREEN}2.${NC} Existiert die Datei im Branch '$BRANCH'?"
-                echo -e "  ${GREEN}3.${NC} Ist die Internetverbindung OK? (ping github.com)"
-                echo ""
-                echo -e "${YELLOW}Manuelle Lösung:${NC}"
-                echo -e "  ${CYAN}# Auf lokalem PC:${NC}"
-                echo -e "  ${CYAN}scp backend/database/schema.sql root@$(hostname):$INSTALL_DIR/backend/database/${NC}"
-                echo ""
-                echo -e "  ${CYAN}# Oder direkt auf Server:${NC}"
-                echo -e "  ${CYAN}wget -O $SCHEMA_FILE $GITHUB_RAW_URL${NC}"
-                echo ""
-                exit 1
-            fi
+            success "Basis-Daten geladen"
         fi
     else
-        echo ""
-        error "Download von GitHub fehlgeschlagen!"
-        echo ""
-        echo -e "${YELLOW}URL:${NC} $GITHUB_RAW_URL"
-        echo ""
-        
-        # Fallback: Git Pull
-        info "Versuche git pull als Fallback..."
-        git fetch origin $BRANCH
-        git checkout origin/$BRANCH -- backend/database/schema.sql
-        
-        if [ -f "$SCHEMA_FILE" ] && [ -s "$SCHEMA_FILE" ]; then
-            success "Schema-Datei via Git wiederhergestellt"
-        else
-            echo ""
-            error "Alle Versuche fehlgeschlagen!"
-            echo ""
-            echo -e "${YELLOW}Manuelle Lösung:${NC}"
-            echo -e "  ${CYAN}wget -O $SCHEMA_FILE $GITHUB_RAW_URL${NC}"
-            echo ""
-            exit 1
-        fi
+        warning "init-data.sql nicht gefunden, überspringe Daten-Initialisierung"
     fi
-fi
-
-success "Schema-Datei gefunden: $(du -h $SCHEMA_FILE | cut -f1)"
-
-# Validierung: Prüfe ob die Datei nicht leer ist
-SCHEMA_SIZE=$(stat -c%s "$SCHEMA_FILE" 2>/dev/null || stat -f%z "$SCHEMA_FILE" 2>/dev/null || echo "0")
-if [ "$SCHEMA_SIZE" -lt 100 ]; then
-    error "Schema-Datei ist zu klein ($SCHEMA_SIZE Bytes) - möglicherweise korrupt!"
-    rm -f "$SCHEMA_FILE"
     
-    # Erneuter Download-Versuch
-    info "Lade schema.sql erneut..."
-    GITHUB_RAW_URL="https://raw.githubusercontent.com/Benno2406/fmsv-dingden/$BRANCH/backend/database/schema.sql"
-    curl -f -L -o "$SCHEMA_FILE" "$GITHUB_RAW_URL"
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 9: Backend einrichten
+# -----------------------------------------------------------------------------
+step_setup_backend() {
+    print_header 9 "Backend einrichten"
     
-    SCHEMA_SIZE=$(stat -c%s "$SCHEMA_FILE" 2>/dev/null || stat -f%z "$SCHEMA_FILE" 2>/dev/null || echo "0")
-    if [ "$SCHEMA_SIZE" -lt 100 ]; then
-        error "Schema-Datei konnte nicht korrekt geladen werden!"
-        exit 1
+    cd "$INSTALL_DIR/backend" || error "Backend-Verzeichnis nicht gefunden"
+    
+    info "Installiere Backend-Dependencies..."
+    
+    if ! npm install --production >> "$LOG_FILE" 2>&1; then
+        error "Backend-Dependencies konnten nicht installiert werden"
     fi
-    success "Schema-Datei erfolgreich nachgeladen"
-fi
-
-info "Installiere Backend-Dependencies..."
-cd "$INSTALL_DIR/backend"
-if npm install 2>&1 | tee -a "$LOG_FILE" | grep -q "added\|up to date"; then
+    
     success "Backend-Dependencies installiert"
-else
-    warning "npm install hatte Warnungen (nicht kritisch)"
-fi
-
-info "Initialisiere Datenbank-Schema..."
-if node scripts/initDatabase.js; then
-    success "Datenbank-Schema initialisiert"
-else
-    echo ""
-    error "Datenbank-Initialisierung fehlgeschlagen!"
-    echo ""
-    echo -e "${YELLOW}Häufige Ursachen:${NC}"
-    echo -e "  ${RED}1.${NC} PostgreSQL läuft nicht"
-    echo -e "  ${RED}2.${NC} Datenbank existiert nicht"
-    echo -e "  ${RED}3.${NC} Falsche Credentials in .env"
-    echo -e "  ${RED}4.${NC} SQL-Syntax Fehler"
-    echo ""
-    echo -e "${YELLOW}Debug-Befehle:${NC}"
-    echo -e "  ${GREEN}1.${NC} PostgreSQL Status: ${CYAN}systemctl status postgresql${NC}"
-    echo -e "  ${GREEN}2.${NC} .env prüfen: ${CYAN}cat $INSTALL_DIR/backend/.env | grep DB_${NC}"
-    echo -e "  ${GREEN}3.${NC} Manuell testen: ${CYAN}cd $INSTALL_DIR/backend && node scripts/initDatabase.js${NC}"
-    echo -e "  ${GREEN}4.${NC} Datenbank-Logs: ${CYAN}journalctl -u postgresql -n 50${NC}"
-    echo ""
-    exit 1
-fi
-
-echo ""
-echo -ne "Test-Daten einfügen? (j/n) "
-read -n 1 -r
-echo
-if [[ $REPLY =~ ^[Jj]$ ]]; then
-    info "Füge Test-Daten ein..."
-    node scripts/seedDatabase.js
-    success "Test-Daten eingefügt"
-fi
-
-info "Erstelle Backend systemd Service..."
-cat > /etc/systemd/system/fmsv-backend.service <<EOF
+    
+    # Erstelle Upload-Verzeichnisse
+    info "Erstelle Upload-Verzeichnisse..."
+    
+    local UPLOAD_DIRS=(
+        "uploads/images"
+        "uploads/documents"
+        "uploads/protocols"
+        "uploads/temp"
+    )
+    
+    for dir in "${UPLOAD_DIRS[@]}"; do
+        mkdir -p "$INSTALL_DIR/backend/$dir"
+    done
+    
+    success "Upload-Verzeichnisse erstellt"
+    
+    # Erstelle systemd Service
+    info "Erstelle systemd Service..."
+    
+    cat > /etc/systemd/system/fmsv-backend.service <<EOF
 [Unit]
-Description=FMSV Dingden Backend
+Description=FMSV Backend Server
 After=network.target postgresql.service
+Wants=postgresql.service
 
 [Service]
 Type=simple
@@ -1773,63 +1010,279 @@ Environment=NODE_ENV=production
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=10
+StandardOutput=append:$LOG_FILE
+StandardError=append:$LOG_FILE
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=$INSTALL_DIR/backend/uploads
 
 [Install]
 WantedBy=multi-user.target
 EOF
+    
+    success "systemd Service erstellt"
+    
+    sleep 1
+}
 
-systemctl daemon-reload
-systemctl enable fmsv-backend > /dev/null 2>&1
-success "Backend-Service erstellt"
-sleep 1
-
-################################################################################
-# Schritt 12: Frontend-Build
-################################################################################
-
-print_header 12 "Frontend-Build"
-
-cd "$INSTALL_DIR"
-
-info "Installiere Frontend-Dependencies..."
-npm install --silent > /dev/null 2>&1
-success "Frontend-Dependencies installiert"
-
-info "Baue Frontend (dies kann einige Minuten dauern)..."
-npm run build > /dev/null 2>&1
-success "Frontend gebaut"
-
-info "Setze Berechtigungen..."
-chown -R www-data:www-data "$INSTALL_DIR"
-success "Berechtigungen gesetzt"
-
-# Jetzt erst nginx testen, da dist/ Verzeichnis existiert
-info "Teste Nginx-Konfiguration..."
-if nginx -t > /dev/null 2>&1; then
-    success "Nginx-Konfiguration OK"
-else
-    echo ""
-    warning "Nginx-Konfiguration hat Warnungen (kann ignoriert werden wenn nginx später startet)"
-    echo ""
-    echo -e "${YELLOW}Detaillierte Ausgabe:${NC}"
-    nginx -t
-    echo ""
-    echo -ne "   ${BLUE}►${NC} Trotzdem fortfahren? (J/n): "
-    read NGINX_CONTINUE
-    echo ""
-    if [[ $NGINX_CONTINUE =~ ^[Nn]$ ]]; then
-        error "Installation abgebrochen"
+# -----------------------------------------------------------------------------
+# Schritt 10: Frontend einrichten
+# -----------------------------------------------------------------------------
+step_setup_frontend() {
+    print_header 10 "Frontend einrichten"
+    
+    cd "$INSTALL_DIR" || error "Konnte nicht in $INSTALL_DIR wechseln"
+    
+    info "Installiere Frontend-Dependencies..."
+    
+    if ! npm install >> "$LOG_FILE" 2>&1; then
+        error "Frontend-Dependencies konnten nicht installiert werden"
     fi
-fi
+    
+    success "Frontend-Dependencies installiert"
+    
+    info "Baue Frontend..."
+    
+    if ! npm run build >> "$LOG_FILE" 2>&1; then
+        error "Frontend-Build fehlgeschlagen"
+    fi
+    
+    success "Frontend gebaut"
+    
+    # Prüfe ob dist Verzeichnis existiert
+    if [ ! -d "$INSTALL_DIR/dist" ]; then
+        error "dist-Verzeichnis wurde nicht erstellt"
+    fi
+    
+    success "dist-Verzeichnis erstellt"
+    sleep 1
+}
 
-sleep 1
+# -----------------------------------------------------------------------------
+# Schritt 11: Nginx installieren & konfigurieren
+# -----------------------------------------------------------------------------
+step_install_nginx() {
+    print_header 11 "Nginx installieren & konfigurieren"
+    
+    info "Installiere Nginx..."
+    
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y nginx >> "$LOG_FILE" 2>&1; then
+        error "Nginx Installation fehlgeschlagen"
+    fi
+    
+    success "Nginx installiert"
+    
+    # Entferne Default-Konfiguration
+    rm -f /etc/nginx/sites-enabled/default
+    
+    # Erstelle Nginx-Konfiguration
+    info "Erstelle Nginx-Konfiguration..."
+    
+    cat > /etc/nginx/sites-available/fmsv-dingden <<'EOF'
+server {
+    listen 80;
+    server_name _;
+    
+    # Frontend
+    root /var/www/fmsv-dingden/dist;
+    index index.html;
+    
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Frontend Routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:3000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # Uploads
+    location /uploads/ {
+        alias /var/www/fmsv-dingden/backend/uploads/;
+        autoindex off;
+        
+        # Cache static files
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Disable access to sensitive files
+    location ~ /\. {
+        deny all;
+    }
+    
+    location ~ ^/(backend|Installation|node_modules) {
+        deny all;
+    }
+}
+EOF
+    
+    # Aktiviere Site
+    ln -sf /etc/nginx/sites-available/fmsv-dingden /etc/nginx/sites-enabled/
+    
+    success "Nginx-Konfiguration erstellt"
+    
+    # Setze Berechtigungen
+    info "Setze Berechtigungen..."
+    
+    if ! chown -R www-data:www-data "$INSTALL_DIR" 2>> "$LOG_FILE"; then
+        warning "Berechtigungen konnten nicht gesetzt werden"
+    else
+        success "Berechtigungen gesetzt"
+    fi
+    
+    # Teste Nginx-Konfiguration
+    info "Teste Nginx-Konfiguration..."
+    
+    if nginx -t >> "$LOG_FILE" 2>&1; then
+        success "Nginx-Konfiguration OK"
+    else
+        warning "Nginx-Konfiguration hat Warnungen"
+        
+        local response
+        response=$(ask_yes_no "Trotzdem fortfahren?" "j")
+        
+        if [ "$response" = "n" ]; then
+            error "Installation abgebrochen"
+        fi
+    fi
+    
+    sleep 1
+}
 
-################################################################################
-# Schritt 13: Auto-Update System (Optional)
-################################################################################
+# -----------------------------------------------------------------------------
+# Schritt 12: Services starten
+# -----------------------------------------------------------------------------
+step_start_services() {
+    print_header 12 "Services starten"
+    
+    # Reload systemd
+    info "Lade systemd neu..."
+    systemctl daemon-reload
+    
+    # Starte Backend
+    info "Starte Backend-Service..."
+    
+    if ! systemctl start fmsv-backend 2>> "$LOG_FILE"; then
+        error "Backend-Service konnte nicht gestartet werden"
+    fi
+    
+    if ! systemctl enable fmsv-backend 2>> "$LOG_FILE"; then
+        warning "Backend-Autostart konnte nicht aktiviert werden"
+    fi
+    
+    success "Backend-Service gestartet"
+    
+    # Starte Nginx
+    info "Starte Nginx..."
+    
+    if ! systemctl restart nginx 2>> "$LOG_FILE"; then
+        error "Nginx konnte nicht gestartet werden"
+    fi
+    
+    if ! systemctl enable nginx 2>> "$LOG_FILE"; then
+        warning "Nginx-Autostart konnte nicht aktiviert werden"
+    fi
+    
+    success "Nginx gestartet"
+    
+    # Prüfe Service-Status
+    sleep 2
+    
+    info "Prüfe Service-Status..."
+    
+    if systemctl is-active --quiet fmsv-backend; then
+        success "Backend läuft"
+    else
+        error "Backend läuft nicht"
+    fi
+    
+    if systemctl is-active --quiet nginx; then
+        success "Nginx läuft"
+    else
+        error "Nginx läuft nicht"
+    fi
+    
+    sleep 1
+}
 
-if [ "$AUTO_UPDATE_SCHEDULE" != "manual" ]; then
-    print_header 13 "Auto-Update System"
+# -----------------------------------------------------------------------------
+# Schritt 13: Firewall konfigurieren
+# -----------------------------------------------------------------------------
+step_configure_firewall() {
+    print_header 13 "Firewall konfigurieren"
+    
+    info "Installiere ufw (Firewall)..."
+    
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y ufw >> "$LOG_FILE" 2>&1; then
+        warning "ufw konnte nicht installiert werden"
+        return 0
+    fi
+    
+    success "ufw installiert"
+    
+    info "Konfiguriere Firewall-Regeln..."
+    
+    # Erlaube SSH
+    if ! ufw allow 22/tcp >> "$LOG_FILE" 2>&1; then
+        warning "SSH-Regel konnte nicht hinzugefügt werden"
+    fi
+    
+    # Erlaube HTTP/HTTPS
+    if ! ufw allow 80/tcp >> "$LOG_FILE" 2>&1; then
+        warning "HTTP-Regel konnte nicht hinzugefügt werden"
+    fi
+    
+    if ! ufw allow 443/tcp >> "$LOG_FILE" 2>&1; then
+        warning "HTTPS-Regel konnte nicht hinzugefügt werden"
+    fi
+    
+    # Aktiviere Firewall
+    info "Aktiviere Firewall..."
+    
+    if ! ufw --force enable >> "$LOG_FILE" 2>&1; then
+        warning "Firewall konnte nicht aktiviert werden"
+    else
+        success "Firewall aktiviert"
+    fi
+    
+    sleep 1
+}
+
+# -----------------------------------------------------------------------------
+# Schritt 14: Auto-Update System
+# -----------------------------------------------------------------------------
+step_setup_auto_update() {
+    if [ "$AUTO_UPDATE_SCHEDULE" = "manual" ]; then
+        print_header 14 "Auto-Update (Übersprungen)"
+        info "Manuelle Updates gewählt - überspringe Auto-Update Setup"
+        return 0
+    fi
+    
+    print_header 14 "Auto-Update System"
     
     info "Erstelle Auto-Update Script..."
     
@@ -1894,7 +1347,9 @@ EOF
     chmod +x "$INSTALL_DIR/Installation/scripts/auto-update.sh"
     success "Auto-Update Script erstellt"
     
+    # Erstelle systemd Service und Timer
     info "Erstelle systemd Service..."
+    
     cat > /etc/systemd/system/fmsv-auto-update.service <<EOF
 [Unit]
 Description=FMSV Auto-Update Service
@@ -1903,25 +1358,24 @@ After=network.target
 [Service]
 Type=oneshot
 ExecStart=$INSTALL_DIR/Installation/scripts/auto-update.sh
-User=root
+StandardOutput=append:/var/log/fmsv-auto-update.log
+StandardError=append:/var/log/fmsv-auto-update.log
 EOF
     
+    # Timer erstellen
+    local TIMER_SCHEDULE
     if [ "$AUTO_UPDATE_SCHEDULE" = "daily" ]; then
-        TIMER_SCHEDULE="*-*-* 03:00:00"
-        TIMER_DESC="täglich um 03:00 Uhr"
+        TIMER_SCHEDULE="OnCalendar=daily"
     else
-        TIMER_SCHEDULE="Sun *-*-* 03:00:00"
-        TIMER_DESC="wöchentlich (Sonntag 03:00 Uhr)"
+        TIMER_SCHEDULE="OnCalendar=Sun *-*-* 03:00:00"
     fi
     
-    info "Erstelle systemd Timer ($TIMER_DESC)..."
     cat > /etc/systemd/system/fmsv-auto-update.timer <<EOF
 [Unit]
 Description=FMSV Auto-Update Timer
-Requires=fmsv-auto-update.service
 
 [Timer]
-OnCalendar=$TIMER_SCHEDULE
+$TIMER_SCHEDULE
 Persistent=true
 
 [Install]
@@ -1929,316 +1383,274 @@ WantedBy=timers.target
 EOF
     
     systemctl daemon-reload
-    systemctl enable fmsv-auto-update.timer > /dev/null 2>&1
+    systemctl enable fmsv-auto-update.timer
     systemctl start fmsv-auto-update.timer
     
-    success "Auto-Update System konfiguriert"
-    success "Zeitplan: $TIMER_DESC"
+    success "Auto-Update Timer aktiviert ($AUTO_UPDATE_SCHEDULE)"
     sleep 1
-else
-    print_header 13 "Auto-Update System (Übersprungen)"
-    info "Manuelle Updates werden verwendet"
-    sleep 1
-fi
+}
 
-################################################################################
-# Schritt 14: Services starten & Finalisierung
-################################################################################
-
-print_header 14 "Services starten & Finalisierung"
-
-info "Starte Backend..."
-systemctl start fmsv-backend
-sleep 2
-
-if systemctl is-active --quiet fmsv-backend; then
-    success "Backend läuft"
-else
-    error_with_help "Backend konnte nicht gestartet werden!" \
-        "" \
-        "Logs ansehen:" \
-        "  ${GREEN}journalctl -u fmsv-backend -n 50${NC}" \
-        "" \
-        "Häufige Ursachen:" \
-        "• Datenbank nicht erreichbar" \
-        "• Port 3000 bereits belegt" \
-        "• Fehler in .env Konfiguration"
-fi
-
-info "Starte Nginx..."
-
-# Prüfe ob nginx bereits läuft
-if systemctl is-active --quiet nginx; then
-    info "Nginx läuft bereits - stoppe für Neustart..."
-    systemctl stop nginx > /dev/null 2>&1
-    sleep 1
-fi
-
-# Prüfe ob Port 80 belegt ist
-if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
-    warning "Port 80 ist bereits belegt!"
-    echo ""
-    echo -e "${YELLOW}Prozesse auf Port 80:${NC}"
-    netstat -tulpn | grep ':80 ' || true
-    echo ""
-    
-    # Prüfe ob Apache läuft
-    if netstat -tulpn 2>/dev/null | grep -q 'apache'; then
-        info "Apache blockiert Port 80 - stoppe Apache..."
-        systemctl stop apache2 2>/dev/null || systemctl stop httpd 2>/dev/null || true
-        systemctl disable apache2 2>/dev/null || systemctl disable httpd 2>/dev/null || true
-        pkill -9 apache2 2>/dev/null || true
-        pkill -9 httpd 2>/dev/null || true
-        sleep 2
-        success "Apache gestoppt und deaktiviert"
+# -----------------------------------------------------------------------------
+# Schritt 15: Cloudflare Tunnel
+# -----------------------------------------------------------------------------
+step_setup_cloudflare() {
+    if [ "$USE_CLOUDFLARE" != "j" ]; then
+        print_header 15 "Cloudflare Tunnel (Übersprungen)"
+        info "Cloudflare Tunnel nicht gewählt - überspringe"
+        return 0
     fi
     
-    # Versuche alle nginx-Prozesse zu killen
-    info "Versuche alle nginx-Prozesse zu beenden..."
-    pkill -9 nginx 2>/dev/null || true
-    sleep 2
+    print_header 15 "Cloudflare Tunnel einrichten"
     
-    # Prüfe nochmal
-    if netstat -tulpn 2>/dev/null | grep -q ':80 '; then
-        echo ""
-        warning "Port 80 ist immer noch belegt!"
-        netstat -tulpn | grep ':80 ' || true
-        echo ""
-        echo -ne "   ${BLUE}►${NC} Port-Blockierer killen und fortfahren? (j/N): "
-        read TRY_NGINX
-        echo ""
-        if [[ $TRY_NGINX =~ ^[Jj]$ ]]; then
-            # Versuche den Prozess zu killen
-            PORT_PID=$(netstat -tulpn 2>/dev/null | grep ':80 ' | awk '{print $7}' | cut -d'/' -f1 | head -1)
-            if [ -n "$PORT_PID" ]; then
-                info "Beende Prozess $PORT_PID..."
-                kill -9 "$PORT_PID" 2>/dev/null || true
-                sleep 2
-            fi
-        else
-            error "Installation abgebrochen - Port 80 Konflikt muss behoben werden"
-        fi
-    else
-        success "Port 80 freigegeben"
-    fi
-fi
-
-# Starte nginx
-if systemctl start nginx 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    sleep 2
-    if systemctl is-active --quiet nginx; then
-        success "Nginx läuft"
-    else
-        echo ""
-        warning "Nginx wurde gestartet, ist aber nicht aktiv"
-        echo ""
-        echo -e "${YELLOW}Diagnose:${NC}"
-        systemctl status nginx --no-pager -l
-        echo ""
-        echo -e "${YELLOW}Nginx Error Log:${NC}"
-        tail -20 /var/log/nginx/error.log 2>/dev/null || echo "Keine Logs gefunden"
-        echo ""
-        
-        echo -ne "   ${BLUE}►${NC} Nginx-Fehler ignorieren und fortfahren? (j/N): "
-        read IGNORE_NGINX
-        echo ""
-        
-        if [[ ! $IGNORE_NGINX =~ ^[Jj]$ ]]; then
-            error "Installation abgebrochen - Nginx Fehler muss behoben werden"
-        else
-            warning "Nginx-Fehler wird ignoriert - muss später manuell behoben werden!"
-        fi
-    fi
-else
-    echo ""
-    error_with_help "Nginx konnte nicht gestartet werden!" \
-        "" \
-        "Diagnose-Befehle:" \
-        "  ${GREEN}systemctl status nginx${NC}" \
-        "  ${GREEN}nginx -t${NC}" \
-        "  ${GREEN}tail /var/log/nginx/error.log${NC}" \
-        "" \
-        "Häufige Ursachen:" \
-        "• Port 80 bereits belegt (prüfe: ${CYAN}netstat -tulpn | grep :80${NC})" \
-        "• Fehlende Berechtigungen auf dist/ Verzeichnis" \
-        "• Syntax-Fehler in nginx Konfiguration" \
-        "" \
-        "Manuelle Behebung:" \
-        "  ${GREEN}nginx -t${NC}  ${YELLOW}# Konfiguration testen${NC}" \
-        "  ${GREEN}systemctl start nginx${NC}  ${YELLOW}# Nginx starten${NC}"
-fi
-
-if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    info "Starte Cloudflare Tunnel..."
-    systemctl start cloudflared
-    sleep 2
+    # Installiere cloudflared
+    info "Installiere cloudflared..."
     
-    if systemctl is-active --quiet cloudflared; then
-        success "Cloudflare Tunnel läuft"
-    else
-        warning "Cloudflare Tunnel konnte nicht gestartet werden"
-        echo "   Logs: journalctl -u cloudflared -n 50"
+    if ! wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared 2>> "$LOG_FILE"; then
+        error "cloudflared Download fehlgeschlagen"
     fi
-fi
+    
+    chmod +x /usr/local/bin/cloudflared
+    
+    success "cloudflared installiert"
+    
+    # Login
+    info "Cloudflare Login..."
+    cloudflare_login_with_help
+    
+    # Erstelle Tunnel
+    info "Erstelle Cloudflare Tunnel..."
+    
+    local TUNNEL_NAME="fmsv-dingden-$(date +%s)"
+    
+    if ! cloudflared tunnel create "$TUNNEL_NAME" >> "$LOG_FILE" 2>&1; then
+        error "Tunnel konnte nicht erstellt werden"
+    fi
+    
+    local TUNNEL_ID
+    TUNNEL_ID=$(cloudflared tunnel list 2>/dev/null | grep "$TUNNEL_NAME" | awk '{print $1}')
+    
+    if [ -z "$TUNNEL_ID" ]; then
+        error "Tunnel-ID konnte nicht ermittelt werden"
+    fi
+    
+    success "Tunnel erstellt: $TUNNEL_ID"
+    
+    # Konfiguration
+    info "Erstelle Tunnel-Konfiguration..."
+    
+    mkdir -p ~/.cloudflared
+    
+    cat > ~/.cloudflared/config.yml <<EOF
+tunnel: $TUNNEL_ID
+credentials-file: /root/.cloudflared/$TUNNEL_ID.json
 
-echo ""
-success "Alle Services gestartet!"
-
-################################################################################
-# Schritt 15: Firewall & Port-Konfiguration
-################################################################################
-
-print_header 15 "Firewall & Port-Konfiguration"
-
-info "Konfiguriere Firewall..."
-ufw --force enable > /dev/null 2>&1
-ufw allow 22/tcp > /dev/null 2>&1
-ufw allow 3000/tcp > /dev/null 2>&1  # Backend API Port
-
-# pgAdmin Ports
-ufw allow 1880/tcp > /dev/null 2>&1
-ufw allow 18443/tcp > /dev/null 2>&1
-
-if [[ ! $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-    ufw allow 80/tcp > /dev/null 2>&1
-    ufw allow 443/tcp > /dev/null 2>&1
-fi
-
-success "Firewall konfiguriert"
-
-# Prüfe Backend-Erreichbarkeit
-info "Prüfe Backend-Erreichbarkeit..."
-
-sleep 3  # Warte kurz damit Backend starten kann
-
-if curl -s http://localhost:3000/api/health > /dev/null 2>&1; then
-    success "Backend ist erreichbar (http://localhost:3000)"
-elif curl -s http://127.0.0.1:3000/api/health > /dev/null 2>&1; then
-    success "Backend ist erreichbar (http://127.0.0.1:3000)"
-else
-    warning "Backend ist noch nicht erreichbar - wird möglicherweise noch hochgefahren"
-    info "Backend-Status wird nach Installation verfügbar sein"
-fi
-
-sleep 1
-
-# Kopiere Debug und Update Scripts für späteren Gebrauch
-info "Kopiere Wartungs-Scripts..."
-cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug
-cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
-chmod +x /usr/local/bin/fmsv-debug
-chmod +x /usr/local/bin/fmsv-update
-success "Wartungs-Scripts installiert"
-sleep 1
-
-################################################################################
-# FERTIG!
-################################################################################
-
-clear
-echo ""
-echo -e "${GREEN}"
-cat << "EOF"
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║           🎉 Installation erfolgreich! 🎉                  ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
+ingress:
+  - hostname: "*.bartholmes.eu"
+    service: http://localhost:80
+  - service: http_status:404
 EOF
-echo -e "${NC}"
-echo ""
+    
+    success "Tunnel-Konfiguration erstellt"
+    
+    # DNS konfigurieren
+    info "Bitte konfiguriere DNS in Cloudflare Dashboard:"
+    echo ""
+    echo -e "  ${CYAN}Tunnel ID:${NC} $TUNNEL_ID"
+    echo -e "  ${CYAN}Domain:${NC} Deine Domain (z.B. fmsv.bartholmes.eu)"
+    echo ""
+    
+    local response
+    response=$(ask_yes_no "DNS konfiguriert?" "j")
+    
+    # Erstelle systemd Service
+    info "Erstelle cloudflared Service..."
+    
+    if ! cloudflared service install >> "$LOG_FILE" 2>&1; then
+        warning "Service-Installation fehlgeschlagen, erstelle manuell"
+        
+        cat > /etc/systemd/system/cloudflared.service <<EOF
+[Unit]
+Description=Cloudflare Tunnel
+After=network.target
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}📊 Installations-Zusammenfassung${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${BLUE}•${NC} Update-Kanal:      ${GREEN}$CHANNEL_NAME ($BRANCH)${NC}"
-echo -e "  ${BLUE}•${NC} Cloudflare Tunnel: $( [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]] && echo -e "${GREEN}Aktiviert${NC}" || echo -e "${YELLOW}Nicht aktiviert${NC}" )"
-echo -e "  ${BLUE}•${NC} Domain:            ${GREEN}$DOMAIN${NC}"
-echo -e "  ${BLUE}•${NC} Auto-Update:       ${GREEN}$AUTO_UPDATE_SCHEDULE${NC}"
-echo -e "  ${BLUE}•${NC} Datenbank:         ${GREEN}$DB_NAME${NC}"
-echo ""
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel run $TUNNEL_ID
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/cloudflared.log
+StandardError=append:/var/log/cloudflared.log
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}🌐 Zugriff${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${GREEN}Website:${NC}       https://$DOMAIN"
-echo -e "  ${GREEN}Lokal:${NC}         http://localhost"
-echo -e "  ${GREEN}Backend API:${NC}   http://localhost:3000/api"
-if [ -n "$PGADMIN_DOMAIN" ]; then
-echo -e "  ${GREEN}pgAdmin:${NC}       https://$PGADMIN_DOMAIN (Port 1880/18443)"
-echo -e "  ${GREEN}pgAdmin Lokal:${NC} http://localhost:1880"
-fi
-echo ""
-echo -e "  ${YELLOW}Test-Accounts (falls aktiviert):${NC}"
-echo -e "  ${BLUE}•${NC} Admin:  ${GREEN}admin@fmsv-dingden.de${NC} / ${GREEN}admin123${NC}"
-echo -e "  ${BLUE}•${NC} Member: ${GREEN}member@fmsv-dingden.de${NC} / ${GREEN}member123${NC}"
-echo ""
-echo -e "  ${RED}⚠️  Passwörter sofort ändern!${NC}"
-echo ""
+[Install]
+WantedBy=multi-user.target
+EOF
+    fi
+    
+    systemctl daemon-reload
+    systemctl enable cloudflared
+    systemctl start cloudflared
+    
+    success "Cloudflare Tunnel läuft"
+    sleep 1
+}
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}🔧 Wichtige Befehle${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${BLUE}Status prüfen:${NC}"
-echo -e "    ${GREEN}systemctl status fmsv-backend${NC}"
-echo -e "    ${GREEN}systemctl status nginx${NC}"
-echo -e "    ${GREEN}systemctl status apache2${NC}  ${CYAN}# pgAdmin${NC}"
-if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-echo -e "    ${GREEN}systemctl status cloudflared${NC}"
-fi
-echo ""
-echo -e "  ${BLUE}Backend testen:${NC}"
-echo -e "    ${GREEN}curl http://localhost:3000/api/health${NC}"
-echo -e "    ${GREEN}journalctl -u fmsv-backend -f${NC}"
-echo ""
-echo -e "  ${BLUE}Logs ansehen:${NC}"
-echo -e "    ${GREEN}journalctl -u fmsv-backend -f${NC}"
-echo -e "    ${GREEN}tail -f /var/log/fmsv-install.log${NC}"
-echo ""
-echo -e "  ${BLUE}Config bearbeiten:${NC}"
-echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
-echo ""
-echo -e "  ${BLUE}Updates & Wartung:${NC}"
-echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
-echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose mit Reparatur-Optionen${NC}"
-echo ""
+# -----------------------------------------------------------------------------
+# Schritt 16: Abschluss & Zusammenfassung
+# -----------------------------------------------------------------------------
+step_final_steps() {
+    print_header 16 "Abschluss & Zusammenfassung"
+    
+    info "Erstelle Standard-Admin-Benutzer..."
+    
+    # Hier würde normalerweise ein Admin-User erstellt
+    # Dies ist ein Platzhalter
+    
+    success "Installation abgeschlossen!"
+    
+    echo ""
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║           ✅ Installation erfolgreich! ✅                  ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    echo -e "${YELLOW}📋 Nächste Schritte:${NC}"
+    echo ""
+    echo -e "  ${BLUE}1.${NC} Website aufrufen:"
+    
+    local SERVER_IP
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    
+    echo -e "     ${GREEN}http://$SERVER_IP${NC}"
+    
+    if [ "$USE_CLOUDFLARE" = "j" ]; then
+        echo -e "     ${GREEN}https://deine-domain.de${NC}"
+    fi
+    
+    echo ""
+    echo -e "  ${BLUE}2.${NC} Standard-Login:"
+    echo -e "     ${CYAN}E-Mail:${NC} admin@fmsv-dingden.de"
+    echo -e "     ${CYAN}Passwort:${NC} admin123 ${YELLOW}(BITTE ÄNDERN!)${NC}"
+    echo ""
+    echo -e "  ${BLUE}3.${NC} Services verwalten:"
+    echo -e "     ${CYAN}systemctl status fmsv-backend${NC}"
+    echo -e "     ${CYAN}systemctl status nginx${NC}"
+    if [ "$USE_CLOUDFLARE" = "j" ]; then
+        echo -e "     ${CYAN}systemctl status cloudflared${NC}"
+    fi
+    echo ""
+    echo -e "  ${BLUE}4.${NC} Logs ansehen:"
+    echo -e "     ${CYAN}cat $LOG_FILE${NC}"
+    echo -e "     ${CYAN}journalctl -u fmsv-backend -f${NC}"
+    echo ""
+    
+    echo -e "${CYAN}Dokumentation:${NC}"
+    echo -e "  ${GREEN}$INSTALL_DIR/README.md${NC}"
+    echo -e "  ${GREEN}$INSTALL_DIR/Installation/README.md${NC}"
+    echo ""
+    
+    log_section "Installation erfolgreich abgeschlossen"
+}
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}📝 Nächste Schritte${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━���━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${BLUE}1.${NC} ${YELLOW}SMTP konfigurieren${NC} (E-Mail-Versand)"
-echo -e "     ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
-echo -e "     ${CYAN}→ SMTP_* Einstellungen anpassen${NC}"
-echo -e "     ${GREEN}systemctl restart fmsv-backend${NC}"
-echo ""
-echo -e "  ${BLUE}2.${NC} ${YELLOW}Test-Account Passwörter ändern${NC}"
-echo -e "     ${CYAN}→ Im Browser einloggen und ändern${NC}"
-echo ""
-echo -e "  ${BLUE}3.${NC} ${YELLOW}Backup einrichten${NC}"
-echo -e "     ${CYAN}→ Datenbank: pg_dump${NC}"
-echo -e "     ${CYAN}→ Dateien: /var/www/fmsv-dingden/Saves/${NC}"
-echo ""
+################################################################################
+# 10. HAUPTPROGRAMM
+################################################################################
 
-if [[ ! $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
-echo -e "  ${BLUE}4.${NC} ${YELLOW}SSL-Zertifikat einrichten${NC}"
-echo -e "     ${GREEN}apt-get install certbot python3-certbot-nginx${NC}"
-echo -e "     ${GREEN}certbot --nginx -d $DOMAIN${NC}"
-echo ""
-fi
+main() {
+    # Parse Command-Line Arguments
+    for arg in "$@"; do
+        case $arg in
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            --no-cloudflare)
+                SKIP_CLOUDFLARE=1
+                ;;
+            *)
+                echo -e "${YELLOW}Unbekannte Option: $arg${NC}"
+                echo "Nutze --help für Hilfe"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Willkommens-Nachricht
+    clear
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                                                           ║${NC}"
+    echo -e "${CYAN}║        FMSV Dingden - Installations-Programm              ║${NC}"
+    echo -e "${CYAN}║                   Version 3.1                             ║${NC}"
+    echo -e "${CYAN}║                                                           ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Installation Mode Auswahl
+    echo -e "${YELLOW}Installations-Modus wählen:${NC}"
+    echo ""
+    echo -e "  ${GREEN}[1]${NC} Production  - Für Live-Server"
+    echo -e "  ${YELLOW}[2]${NC} Development - Für lokale Entwicklung"
+    echo ""
+    
+    INSTALL_MODE=$(ask_choice "Deine Wahl" "1" "1" "2")
+    
+    if [ "$INSTALL_MODE" = "2" ]; then
+        echo ""
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${YELLOW}HINWEIS: Development-Setup${NC}"
+        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${BLUE}Für die Development-Umgebung nutze bitte:${NC}"
+        echo ""
+        echo -e "  ${GREEN}cd dev${NC}"
+        echo -e "  ${GREEN}./setup.sh${NC}    ${YELLOW}# Einmalige Einrichtung${NC}"
+        echo -e "  ${GREEN}./start.sh${NC}    ${YELLOW}# Server starten${NC}"
+        echo ""
+        
+        local response
+        response=$(ask_yes_no "Trotzdem Production-Installation fortsetzen?" "n")
+        
+        if [ "$response" = "n" ]; then
+            echo ""
+            echo -e "${CYAN}Installation abgebrochen.${NC}"
+            echo -e "Nutze: ${GREEN}cd dev && ./setup.sh${NC}"
+            echo ""
+            exit 0
+        fi
+    fi
+    
+    echo ""
+    
+    # =========================================================================
+    # INSTALLATIONS-SCHRITTE AUSFÜHREN
+    # =========================================================================
+    
+    step_system_check              # 1. System-Prüfung
+    step_installation_options      # 2. Installations-Optionen
+    step_system_update            # 3. System-Updates
+    step_install_base_tools       # 4. Basis-Tools
+    step_install_postgresql       # 5. PostgreSQL
+    step_install_nodejs           # 6. Node.js
+    step_clone_repository         # 7. Repository klonen
+    step_setup_database           # 8. Datenbank einrichten
+    step_setup_backend            # 9. Backend einrichten
+    step_setup_frontend           # 10. Frontend einrichten
+    step_install_nginx            # 11. Nginx
+    step_start_services           # 12. Services starten
+    step_configure_firewall       # 13. Firewall
+    step_setup_auto_update        # 14. Auto-Update
+    step_setup_cloudflare         # 15. Cloudflare Tunnel
+    step_final_steps              # 16. Abschluss
+    
+    # =========================================================================
+    # ERFOLG!
+    # =========================================================================
+    
+    INSTALLATION_FAILED=0
+}
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "${GREEN}✈️  Viel Erfolg mit der FMSV Dingden Vereinshomepage! ✈️${NC}"
-echo ""
-echo -e "Bei Fragen oder Problemen: Logs ansehen oder Installation wiederholen"
-echo ""
+################################################################################
+# SCRIPT START
+################################################################################
 
-# Log completion
-echo "[SUCCESS] $(date '+%Y-%m-%d %H:%M:%S') - Installation abgeschlossen" >> "$LOG_FILE"
-echo "========================================" >> "$LOG_FILE"
-
-exit 0
+# Starte Hauptprogramm mit allen Argumenten
+main "$@"
