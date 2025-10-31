@@ -70,9 +70,58 @@ sudo ./debug.sh
 
 ## 🛠️ Wartungs-Tools
 
-Nach der Installation stehen dir zwei wichtige Tools zur Verfügung:
+Nach der Installation stehen dir folgende Tools zur Verfügung:
 
-### fmsv-update
+### fmsv-test - Backend Test & Diagnose
+
+Schneller Test der Backend-Erreichbarkeit (NEU!)
+
+```bash
+sudo fmsv-test
+```
+
+**Prüft:**
+- ✅ Service Status
+- ✅ Port Verfügbarkeit (3000)
+- ✅ API Erreichbarkeit
+- ✅ Environment Variablen
+- ✅ Datenbank-Verbindung
+- ✅ Nginx Proxy
+- ✅ Firewall-Regeln
+
+### fmsv-fix - Automatische Reparatur
+
+Behebt häufige Probleme automatisch (NEU!)
+
+```bash
+sudo fmsv-fix
+```
+
+**Repariert:**
+- ✅ Backend Service neu starten
+- ✅ Ports freigeben (3000, 1880, 18443)
+- ✅ Firewall-Regeln korrigieren
+- ✅ Berechtigungen setzen
+- ✅ Services starten (nginx, apache2)
+- ✅ API-Erreichbarkeit testen
+
+### fmsv-errors - Fehler-Logs
+
+Zeigt Backend-Fehler und Logs an (NEU!)
+
+```bash
+sudo fmsv-errors
+```
+
+### fmsv-manual - Manueller Start
+
+Startet Backend manuell im Debug-Modus (NEU!)
+
+```bash
+sudo fmsv-manual
+```
+
+### fmsv-update - System Update
 
 Aktualisiert das gesamte System (Code + Dependencies).
 
@@ -102,7 +151,7 @@ cd /var/www/fmsv-dingden/Installation/scripts && sudo ./debug.sh
 2. **Quick-Fix** - Behebt häufige Probleme automatisch
 3. **Backend-Logs anzeigen** - Live-Logs
 4. **Backend manuell starten** - Für Debugging
-5. **Dienste-Status prüfen** - PostgreSQL, Backend, Nginx
+5. **Dienste-Status prüfen** - PostgreSQL, Backend, Nginx, Apache2
 6. **Node Modules installieren** - Dependencies neu installieren
 7. **Datenbank testen** - Verbindung und Tabellen prüfen
 8. **.env Konfiguration prüfen** - Zeigt und validiert .env
@@ -188,6 +237,54 @@ Automatische Updates per systemd Timer.
 - Logs und Monitoring
 
 [→ Auto-Update-System.md lesen](Anleitung/Auto-Update-System.md)
+
+### PGADMIN-SETUP.md
+pgAdmin 4 mit Apache2 auf Ports 1880/18443 (NEU!)
+
+**Inhalte:**
+- Zugriff über Subdomain und Ports
+- Apache2 & nginx Parallelbetrieb
+- Erste Einrichtung
+- Troubleshooting
+- Sicherheits-Tipps
+
+[→ PGADMIN-SETUP.md lesen](PGADMIN-SETUP.md)
+
+### BACKEND-DIAGNOSE.md
+Umfassende Backend-Fehlerbehebung (NEU!)
+
+**Inhalte:**
+- Schritt-für-Schritt Diagnose
+- Häufige Fehler und Lösungen
+- Nginx Proxy Probleme
+- Performance-Optimierung
+- Debugging-Techniken
+
+[→ BACKEND-DIAGNOSE.md lesen](BACKEND-DIAGNOSE.md)
+
+### NACH-INSTALLATION.md
+Post-Installation Checkliste (NEU!)
+
+**Inhalte:**
+- Backend-Erreichbarkeit prüfen
+- SMTP konfigurieren
+- pgAdmin einrichten
+- SSL/HTTPS Setup
+- Backup-System
+- Monitoring
+
+[→ NACH-INSTALLATION.md lesen](NACH-INSTALLATION.md)
+
+### INSTALL-UPDATE-SUMMARY.md
+Übersicht aller Neuerungen (NEU!)
+
+**Inhalte:**
+- pgAdmin 4 Integration
+- Neue Diagnose-Tools
+- Port-Übersicht
+- Changelog
+
+[→ INSTALL-UPDATE-SUMMARY.md lesen](INSTALL-UPDATE-SUMMARY.md)
 
 ---
 

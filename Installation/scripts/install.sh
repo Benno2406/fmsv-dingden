@@ -26,7 +26,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Total steps
-TOTAL_STEPS=15
+TOTAL_STEPS=16
 
 ################################################################################
 # HILFE-FUNKTIONEN
@@ -1085,13 +1085,17 @@ else
 fi
 
 ################################################################################
-# Schritt 10: Nginx Installation
+# Schritt 10: Nginx & Apache2 Installation
 ################################################################################
 
-print_header 10 "Nginx Installation & Konfiguration"
+print_header 10 "Nginx & Apache2 Installation & Konfiguration"
 
 info "Installiere Nginx..."
 apt-get install -y -qq nginx > /dev/null 2>&1
+
+info "Installiere Apache2 für pgAdmin 4..."
+apt-get install -y -qq apache2 libapache2-mod-wsgi-py3 > /dev/null 2>&1
+success "Apache2 installiert"
 
 info "Erstelle Nginx-Konfiguration..."
 
@@ -1172,6 +1176,169 @@ rm -f /etc/nginx/sites-enabled/default
 
 systemctl enable nginx > /dev/null 2>&1
 success "Nginx installiert und konfiguriert"
+
+################################################################################
+# pgAdmin 4 Setup mit Apache2
+################################################################################
+
+info "Konfiguriere pgAdmin 4 Subdomain..."
+
+# Frage nach pgAdmin Subdomain
+echo ""
+echo -ne "   ${BLUE}►${NC} pgAdmin Subdomain [db.$DOMAIN]: "
+read PGADMIN_DOMAIN
+PGADMIN_DOMAIN=${PGADMIN_DOMAIN:-db.$DOMAIN}
+
+# Prüfe ob pgAdmin 4 bereits installiert ist
+if command -v pgadmin4 &> /dev/null || [ -d "/usr/pgadmin4" ] || [ -d "/usr/local/lib/python*/dist-packages/pgadmin4" ]; then
+    info "pgAdmin 4 ist bereits installiert"
+    
+    # Finde pgAdmin Installation
+    PGADMIN_PATH=""
+    if [ -d "/usr/pgadmin4" ]; then
+        PGADMIN_PATH="/usr/pgadmin4"
+    elif [ -d "/usr/lib/pgadmin4" ]; then
+        PGADMIN_PATH="/usr/lib/pgadmin4"
+    else
+        PGADMIN_PATH=$(find /usr -name "pgadmin4" -type d 2>/dev/null | head -1)
+    fi
+    
+    if [ -z "$PGADMIN_PATH" ]; then
+        warning "pgAdmin Path nicht automatisch gefunden"
+        echo -ne "   ${BLUE}►${NC} pgAdmin Installations-Pfad: "
+        read PGADMIN_PATH
+    fi
+    
+    success "pgAdmin gefunden: $PGADMIN_PATH"
+else
+    warning "pgAdmin 4 ist nicht installiert"
+    info "Installiere pgAdmin 4..."
+    
+    # Füge pgAdmin Repository hinzu
+    curl -fsSL https://www.pgadmin.org/static/packages_pgadmin_org.pub | apt-key add - 2>&1 | tee -a "$LOG_FILE" > /dev/null
+    echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list
+    
+    apt-get update -qq > /dev/null 2>&1
+    apt-get install -y -qq pgadmin4-web > /dev/null 2>&1
+    
+    if [ $? -eq 0 ]; then
+        success "pgAdmin 4 installiert"
+        PGADMIN_PATH="/usr/pgadmin4"
+    else
+        warning "pgAdmin 4 Installation fehlgeschlagen - wird übersprungen"
+        PGADMIN_PATH=""
+    fi
+fi
+
+# Konfiguriere Apache2 für pgAdmin auf Ports 1880/18443
+if [ -n "$PGADMIN_PATH" ]; then
+    info "Konfiguriere Apache2 für pgAdmin..."
+    
+    # Apache Module aktivieren
+    a2enmod ssl > /dev/null 2>&1
+    a2enmod proxy > /dev/null 2>&1
+    a2enmod proxy_http > /dev/null 2>&1
+    a2enmod headers > /dev/null 2>&1
+    a2enmod rewrite > /dev/null 2>&1
+    
+    # Apache Ports anpassen
+    cat > /etc/apache2/ports.conf <<EOF
+# Ports für pgAdmin (parallel zu nginx)
+Listen 1880
+<IfModule ssl_module>
+    Listen 18443
+</IfModule>
+<IfModule mod_gnutls.c>
+    Listen 18443
+</IfModule>
+EOF
+    
+    # Apache VirtualHost für pgAdmin
+    cat > /etc/apache2/sites-available/pgadmin.conf <<EOF
+<VirtualHost *:1880>
+    ServerName $PGADMIN_DOMAIN
+    ServerAdmin webmaster@$DOMAIN
+    
+    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=$PGADMIN_PATH/venv
+    WSGIScriptAlias / $PGADMIN_PATH/web/pgAdmin4.wsgi
+    
+    <Directory $PGADMIN_PATH/web/>
+        WSGIProcessGroup pgadmin
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+    
+    ErrorLog \${APACHE_LOG_DIR}/pgadmin_error.log
+    CustomLog \${APACHE_LOG_DIR}/pgadmin_access.log combined
+</VirtualHost>
+
+<IfModule mod_ssl.c>
+<VirtualHost *:18443>
+    ServerName $PGADMIN_DOMAIN
+    ServerAdmin webmaster@$DOMAIN
+    
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
+    SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+    
+    WSGIDaemonProcess pgadmin-ssl processes=1 threads=25 python-home=$PGADMIN_PATH/venv
+    WSGIScriptAlias / $PGADMIN_PATH/web/pgAdmin4.wsgi
+    
+    <Directory $PGADMIN_PATH/web/>
+        WSGIProcessGroup pgadmin-ssl
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+    
+    ErrorLog \${APACHE_LOG_DIR}/pgadmin_ssl_error.log
+    CustomLog \${APACHE_LOG_DIR}/pgadmin_ssl_access.log combined
+</VirtualHost>
+</IfModule>
+EOF
+    
+    # Aktiviere pgAdmin Site
+    a2ensite pgadmin > /dev/null 2>&1
+    a2dissite 000-default > /dev/null 2>&1
+    
+    # Apache neu starten
+    systemctl restart apache2 > /dev/null 2>&1
+    
+    if systemctl is-active --quiet apache2; then
+        success "Apache2 für pgAdmin konfiguriert (Ports 1880/18443)"
+        
+        # Cloudflare Tunnel Konfiguration erweitern wenn aktiviert
+        if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
+            info "Erweitere Cloudflare Tunnel für pgAdmin Subdomain..."
+            
+            cat > ~/.cloudflared/config.yml <<EOF
+tunnel: $TUNNEL_ID
+credentials-file: /root/.cloudflared/$TUNNEL_ID.json
+
+ingress:
+  - hostname: $DOMAIN
+    service: http://localhost:80
+  - hostname: $DOMAIN
+    path: /api/*
+    service: http://localhost:3000
+  - hostname: $DOMAIN
+    path: /uploads/*
+    service: http://localhost:80
+  - hostname: $PGADMIN_DOMAIN
+    service: http://localhost:1880
+  - service: http_status:404
+EOF
+            
+            cloudflared tunnel route dns $TUNNEL_NAME $PGADMIN_DOMAIN > /dev/null 2>&1 || true
+            success "pgAdmin Subdomain zu Cloudflare Tunnel hinzugefügt"
+        fi
+    else
+        warning "Apache2 konnte nicht gestartet werden"
+        echo "   Logs: journalctl -u apache2 -n 50"
+    fi
+else
+    warning "pgAdmin Setup übersprungen"
+fi
+
 info "Nginx-Test erfolgt nach Frontend-Build"
 sleep 1
 
@@ -1710,10 +1877,20 @@ fi
 echo ""
 success "Alle Services gestartet!"
 
-# Configure Firewall
+################################################################################
+# Schritt 15: Firewall & Port-Konfiguration
+################################################################################
+
+print_header 15 "Firewall & Port-Konfiguration"
+
 info "Konfiguriere Firewall..."
 ufw --force enable > /dev/null 2>&1
 ufw allow 22/tcp > /dev/null 2>&1
+ufw allow 3000/tcp > /dev/null 2>&1  # Backend API Port
+
+# pgAdmin Ports
+ufw allow 1880/tcp > /dev/null 2>&1
+ufw allow 18443/tcp > /dev/null 2>&1
 
 if [[ ! $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
     ufw allow 80/tcp > /dev/null 2>&1
@@ -1721,6 +1898,21 @@ if [[ ! $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
 fi
 
 success "Firewall konfiguriert"
+
+# Prüfe Backend-Erreichbarkeit
+info "Prüfe Backend-Erreichbarkeit..."
+
+sleep 3  # Warte kurz damit Backend starten kann
+
+if curl -s http://localhost:3000/api/health > /dev/null 2>&1; then
+    success "Backend ist erreichbar (http://localhost:3000)"
+elif curl -s http://127.0.0.1:3000/api/health > /dev/null 2>&1; then
+    success "Backend ist erreichbar (http://127.0.0.1:3000)"
+else
+    warning "Backend ist noch nicht erreichbar - wird möglicherweise noch hochgefahren"
+    info "Backend-Status wird nach Installation verfügbar sein"
+fi
+
 sleep 1
 
 # Kopiere Debug und Update Scripts für späteren Gebrauch
@@ -1774,6 +1966,11 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  ${GREEN}Website:${NC}       https://$DOMAIN"
 echo -e "  ${GREEN}Lokal:${NC}         http://localhost"
+echo -e "  ${GREEN}Backend API:${NC}   http://localhost:3000/api"
+if [ -n "$PGADMIN_DOMAIN" ]; then
+echo -e "  ${GREEN}pgAdmin:${NC}       https://$PGADMIN_DOMAIN (Port 1880/18443)"
+echo -e "  ${GREEN}pgAdmin Lokal:${NC} http://localhost:1880"
+fi
 echo ""
 echo -e "  ${YELLOW}Test-Accounts (falls aktiviert):${NC}"
 echo -e "  ${BLUE}•${NC} Admin:  ${GREEN}admin@fmsv-dingden.de${NC} / ${GREEN}admin123${NC}"
@@ -1789,9 +1986,14 @@ echo ""
 echo -e "  ${BLUE}Status prüfen:${NC}"
 echo -e "    ${GREEN}systemctl status fmsv-backend${NC}"
 echo -e "    ${GREEN}systemctl status nginx${NC}"
+echo -e "    ${GREEN}systemctl status apache2${NC}  ${CYAN}# pgAdmin${NC}"
 if [[ $USE_CLOUDFLARE =~ ^[Jj]$ ]]; then
 echo -e "    ${GREEN}systemctl status cloudflared${NC}"
 fi
+echo ""
+echo -e "  ${BLUE}Backend testen:${NC}"
+echo -e "    ${GREEN}curl http://localhost:3000/api/health${NC}"
+echo -e "    ${GREEN}journalctl -u fmsv-backend -f${NC}"
 echo ""
 echo -e "  ${BLUE}Logs ansehen:${NC}"
 echo -e "    ${GREEN}journalctl -u fmsv-backend -f${NC}"
