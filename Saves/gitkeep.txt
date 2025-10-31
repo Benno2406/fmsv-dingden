@@ -1,4 +1,0 @@
-# Keep this directory in git
-
-# WICHTIG: Diese Datei umbenennen zu: .gitkeep (ohne .txt)
-# Befehl: mv gitkeep.txt .gitkeep
