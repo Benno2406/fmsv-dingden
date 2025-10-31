@@ -248,26 +248,39 @@ ask_choice() {
     shift
     local options=("$@")
     
-    # WICHTIG: echo (ohne -e) für einfachen Text!
-    echo ""
-    echo "   ${CYAN}$question${NC}"
-    echo ""
+    # DEBUG: Zeige Array-Inhalt
+    debug "ask_choice aufgerufen mit $# Optionen: ${options[*]}"
     
-    # Optionen anzeigen mit echo (ohne -e)
+    # Leere Zeile OHNE Farbe
+    echo "" >&2
+    
+    # Frage OHNE Farbe (zum Testen)
+    echo "   $question" >&2
+    
+    # Leere Zeile
+    echo "" >&2
+    
+    # Optionen anzeigen - DIREKT auf stderr für sofortige Anzeige
     for i in "${!options[@]}"; do
-        echo "     ${GREEN}$((i+1)).${NC} ${options[$i]}"
+        echo "     $((i+1)). ${options[$i]}" >&2
     done
     
-    echo ""
-    # Flush stdout vor Prompt
-    echo -n "   ${BLUE}►${NC} Auswahl (1-${#options[@]}): "
+    # Leere Zeile
+    echo "" >&2
+    
+    # Prompt OHNE Farbe - auf stderr mit explizitem flush
+    echo -n "   Auswahl (1-${#options[@]}): " >&2
+    
+    # Lese Eingabe
     read -r choice
     
+    # Validierung
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
+        # Return auf stdout (damit Capture funktioniert)
         echo $((choice-1))
         return 0
     else
-        error "Ungültige Auswahl!"
+        echo "   FEHLER: Ungültige Auswahl!" >&2
         return 1
     fi
 }
