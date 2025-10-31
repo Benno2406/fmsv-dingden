@@ -6,25 +6,44 @@ Moderne Vereinshomepage für den Flugmodellsportverein Dingden mit integrierter 
 
 ## ⚡ SCHNELLSTART
 
-### Development lokal starten:
+### 🔧 Lokale Entwicklung (Development)
+
+**Für Entwickler - Code lokal testen:**
 ```bash
-cd /var/www/fmsv-dingden
-chmod +x start-dev.sh
-./start-dev.sh
+cd dev
+./setup.sh    # Nur beim ersten Mal
+./start.sh    # Frontend + Backend starten
 ```
 → Frontend: `http://localhost:5173`  
 → Backend: `http://localhost:3000`
 
-**Ausführliche Anleitung:** [SCHNELLSTART.md](SCHNELLSTART.md)
+**📚 Anleitung:** [dev/README.md](dev/README.md) | [dev/SCHNELLSTART.md](dev/SCHNELLSTART.md)
 
-### Neu hier? → [`START-HIER.md`](START-HIER.md)
+---
 
-**Setup in 3 Schritten:**
-1. `rename-files.bat` / `rename-files.sh` ausführen
-2. Code zu GitHub pushen
-3. Auf Server installieren
+### 🚀 Server-Installation (Production)
 
-**Alle Details:** [`START-HIER.md`](START-HIER.md)
+**Für Server-Admins - Live-Website deployen:**
+```bash
+# Auf dem Linux-Server:
+cd /tmp
+git clone https://github.com/Achim-Sommer/fmsv-dingden.git
+cd fmsv-dingden/Installation/scripts
+sudo ./install.sh
+```
+
+**📚 Anleitung:** [Installation/README.md](Installation/README.md)
+
+---
+
+### ⚠️ WICHTIG
+
+**Development und Production NICHT mischen!**
+
+- **Lokal entwickeln?** → Gehe zu [dev/](dev/)
+- **Auf Server deployen?** → Gehe zu [Installation/](Installation/)
+
+**Mehr Info:** [ENTWICKLUNG-VS-PRODUCTION.md](ENTWICKLUNG-VS-PRODUCTION.md)
 
 ---
 

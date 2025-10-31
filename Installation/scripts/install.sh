@@ -727,24 +727,30 @@ EOF
     echo -e "${YELLOW}└────────────────────────────────────────────┘${NC}"
     echo ""
     
-    # Run pgAdmin setup
-    /usr/pgadmin4/bin/setup-web.sh --yes 2>&1 | tee -a "$LOG_FILE"
-    
-    # Apache2 VirtualHost für pgAdmin vollständig neu schreiben
-    info "Erstelle pgAdmin VirtualHost-Konfiguration..."
-    
-    # Entferne ALLE existierenden pgAdmin Configs (auch aus conf-*)
+    # Entferne ALTE pgAdmin Configs VORHER (von vorherigen Installationen)
     info "Bereinige alte pgAdmin-Konfigurationen..."
     rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
     rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
     rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
     rm -f /etc/apache2/conf-available/*pgadmin* 2>/dev/null
+    a2dissite pgadmin4 2>/dev/null || true
+    a2disconf pgadmin4 2>/dev/null || true
+    success "Alte Konfigurationen entfernt"
     
-    # Deaktiviere eventuell aktivierte pgAdmin-Configs
+    # Run pgAdmin setup (erstellt neue Config)
+    /usr/pgadmin4/bin/setup-web.sh --yes 2>&1 | tee -a "$LOG_FILE"
+    
+    # Jetzt entfernen wir die vom setup-web.sh erstellten Configs,
+    # da wir unsere eigene auf Port 1880 erstellen
+    info "Erstelle pgAdmin VirtualHost-Konfiguration..."
+    
+    # Deaktiviere die vom setup-web.sh erstellten Configs
     a2dissite pgadmin4 2>/dev/null || true
     a2disconf pgadmin4 2>/dev/null || true
     
-    success "Alte Konfigurationen entfernt"
+    # Entferne die automatisch erstellten Configs (um Konflikte zu vermeiden)
+    rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
+    rm -f /etc/apache2/conf-enabled/*pgadmin* 2>/dev/null
     
     # Erstelle neue, saubere pgAdmin Konfiguration
     cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
@@ -816,10 +822,106 @@ EOF
         echo -e "  ${GREEN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
         echo -e "  ${GREEN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
         echo ""
-        echo -e "${YELLOW}Optional - Nginx Reverse Proxy:${NC}"
-        echo -e "  Du kannst später eine Nginx-Konfiguration erstellen für:"
-        echo -e "  ${CYAN}pgadmin.deineadomain.de${NC} → http://localhost:1880"
+        
+        # Optional: Nginx Reverse Proxy Setup
+        echo -e "${YELLOW}Optional - Nginx Reverse Proxy einrichten?${NC}"
+        echo -e "  Ermöglicht Zugriff über: ${CYAN}pgadmin.deineadomain.de${NC}"
+        echo -e "  (Mit SSL-Unterstützung via Certbot)"
         echo ""
+        read -p "Nginx Reverse Proxy jetzt einrichten? (j/n) " -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Jj]$ ]]; then
+            echo ""
+            info "Richte Nginx Reverse Proxy für pgAdmin ein..."
+            
+            # Frage nach Domain
+            echo ""
+            echo -e "${CYAN}Subdomain für pgAdmin:${NC}"
+            read -p "Domain eingeben (z.B. pgadmin.deineadomain.de): " PGADMIN_DOMAIN
+            
+            if [ -z "$PGADMIN_DOMAIN" ]; then
+                warning "Keine Domain eingegeben, überspringe Nginx-Setup"
+            else
+                # Erstelle Nginx Config
+                cat > "/etc/nginx/sites-available/$PGADMIN_DOMAIN" << EOF
+# pgAdmin 4 Reverse Proxy
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $PGADMIN_DOMAIN;
+    
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Logging
+    access_log /var/log/nginx/${PGADMIN_DOMAIN}_access.log;
+    error_log /var/log/nginx/${PGADMIN_DOMAIN}_error.log;
+    
+    # Reverse Proxy zu Apache auf Port 1880
+    location / {
+        proxy_pass http://localhost:1880;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # WebSocket Support (für pgAdmin Features)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Timeouts für lange Queries
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
+        proxy_read_timeout 300;
+        send_timeout 300;
+    }
+}
+EOF
+                
+                # Aktiviere Site
+                ln -sf "/etc/nginx/sites-available/$PGADMIN_DOMAIN" "/etc/nginx/sites-enabled/"
+                
+                # Teste Nginx Config
+                if nginx -t > /dev/null 2>&1; then
+                    systemctl reload nginx
+                    success "Nginx Reverse Proxy konfiguriert"
+                    
+                    echo ""
+                    echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
+                    echo -e "${GREEN}║         Nginx Reverse Proxy eingerichtet! ✓           ║${NC}"
+                    echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
+                    echo ""
+                    echo -e "${CYAN}Zugriff (nach DNS-Setup):${NC}"
+                    echo -e "  ${GREEN}►${NC} http://$PGADMIN_DOMAIN"
+                    echo ""
+                    echo -e "${YELLOW}Nächste Schritte:${NC}"
+                    echo -e "  ${GREEN}1.${NC} DNS A-Record erstellen:"
+                    echo -e "     ${CYAN}$PGADMIN_DOMAIN${NC} → $(hostname -I | awk '{print $1}')"
+                    echo ""
+                    echo -e "  ${GREEN}2.${NC} SSL-Zertifikat installieren (optional):"
+                    echo -e "     ${CYAN}sudo certbot --nginx -d $PGADMIN_DOMAIN${NC}"
+                    echo ""
+                    echo -e "  ${GREEN}3.${NC} Firewall öffnen (falls aktiv):"
+                    echo -e "     ${CYAN}sudo ufw allow 'Nginx Full'${NC}"
+                    echo ""
+                else
+                    error "Nginx Konfiguration fehlerhaft"
+                    nginx -t
+                    rm -f "/etc/nginx/sites-enabled/$PGADMIN_DOMAIN"
+                    warning "Nginx-Setup rückgängig gemacht"
+                fi
+            fi
+        else
+            echo ""
+            echo -e "${CYAN}ℹ️  Nginx Reverse Proxy übersprungen${NC}"
+            echo -e "   Du kannst dies später nachholen mit:"
+            echo -e "   ${YELLOW}sudo nano /etc/nginx/sites-available/pgadmin.deineadomain.de${NC}"
+            echo ""
+        fi
     else
         warning "Apache2 konnte nicht gestartet werden"
         echo ""

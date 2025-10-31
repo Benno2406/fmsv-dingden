@@ -402,6 +402,25 @@ sudo a2disconf pgadmin4 2>/dev/null
 
 **Siehe auch:** [PGADMIN-WSGI-DUPLIKAT-FIX.md](PGADMIN-WSGI-DUPLIKAT-FIX.md) für Details
 
+### pgAdmin Probleme
+
+**Problem 1:** `ERROR: Conf pgadmin4 does not exist!`  
+**Problem 2:** Nginx Reverse Proxy für pgAdmin gewünscht
+
+**Lösung:**
+```bash
+# Beide Probleme sind im neuesten install.sh behoben!
+
+# Nachträgliches Nginx-Setup:
+cd /var/www/fmsv-dingden/Installation/scripts
+chmod +x setup-pgadmin-nginx.sh
+sudo ./setup-pgadmin-nginx.sh
+```
+
+**Dokumentation:**
+- [PGADMIN-FIXES-SUMMARY.md](PGADMIN-FIXES-SUMMARY.md) - Übersicht der Fixes
+- [PGADMIN-NGINX-SETUP.md](PGADMIN-NGINX-SETUP.md) - Ausführliche Nginx-Anleitung
+
 ### Updates schlagen fehl
 
 **Problem:** `fmsv-update` bricht ab
