@@ -26,7 +26,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Total steps
-TOTAL_STEPS=15
+TOTAL_STEPS=14
 
 ################################################################################
 # HILFE-FUNKTIONEN
@@ -642,384 +642,10 @@ success "PostgreSQL $PG_VERSION läuft"
 sleep 1
 
 ################################################################################
-# Schritt 6: pgAdmin 4 Installation (Web Interface)
+# Schritt 6: Node.js Installation
 ################################################################################
 
-print_header 6 "pgAdmin 4 Installation"
-
-info "Installiere pgAdmin 4 Web Interface..."
-
-# pgAdmin Repository hinzufügen
-info "Füge pgAdmin Repository hinzu..."
-curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub 2>&1 | gpg --dearmor -o /usr/share/keyrings/packages-pgadmin-org.gpg 2>&1 | tee -a "$LOG_FILE" > /dev/null
-
-# Repository zur sources.list hinzufügen
-sh -c 'echo "deb [signed-by=/usr/share/keyrings/packages-pgadmin-org.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list'
-
-# Paketliste aktualisieren
-info "Aktualisiere Paketliste..."
-apt-get update -qq 2>&1 | tee -a "$LOG_FILE" > /dev/null
-
-# pgAdmin installieren
-info "Installiere pgAdmin 4 Web-Version..."
-if apt-get install -y -qq pgadmin4-web 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
-    success "pgAdmin 4 installiert"
-else
-    warning "pgAdmin 4 konnte nicht installiert werden (nicht kritisch)"
-    echo ""
-    echo -e "${YELLOW}Du kannst pgAdmin 4 später manuell installieren mit:${NC}"
-    echo -e "  ${CYAN}sudo /usr/pgadmin4/bin/setup-web.sh${NC}"
-    echo ""
-    sleep 3
-fi
-
-# Prüfe ob Installation erfolgreich war
-if command -v /usr/pgadmin4/bin/setup-web.sh &> /dev/null; then
-    echo ""
-    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║         pgAdmin 4 Konfiguration                           ║${NC}"
-    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${CYAN}pgAdmin 4 Web Interface Setup${NC}"
-    echo ""
-    echo -e "  ${GREEN}•${NC} Erreichbar später unter: ${CYAN}http://deine-ip:5050${NC}"
-    echo -e "  ${GREEN}•${NC} Oder via Nginx: ${CYAN}http://pgadmin.fmsv.bartholmes.eu${NC}"
-    echo ""
-    echo -e "${YELLOW}Jetzt Admin-Benutzer erstellen:${NC}"
-    echo ""
-    
-    # Manuelle pgAdmin Konfiguration (OHNE Apache2!)
-    info "Konfiguriere pgAdmin 4 (nur mit nginx, ohne Apache2)..."
-    
-    # pgAdmin User-Konfiguration erstellen
-    echo ""
-    echo -ne "   ${BLUE}►${NC} E-Mail für pgAdmin Admin: "
-    read PGADMIN_EMAIL
-    echo -ne "   ${BLUE}►${NC} Passwort für pgAdmin Admin: "
-    read -s PGADMIN_PASSWORD
-    echo ""
-    echo ""
-    
-    # Konfigurationsdatei erstellen
-    mkdir -p /var/lib/pgadmin
-    
-    cat > /var/lib/pgadmin/config_local.py <<EOF
-# pgAdmin 4 Konfiguration (ohne Apache2, nur Python Server)
-import os
-
-# Server Mode
-SERVER_MODE = True
-
-# Bind-Adresse (nur localhost, nginx proxied darauf)
-DEFAULT_SERVER = '127.0.0.1'
-DEFAULT_SERVER_PORT = 5050
-
-# Session und Security
-SECRET_KEY = '$(openssl rand -base64 32)'
-SECURITY_PASSWORD_SALT = '$(openssl rand -base64 32)'
-
-# Datenverzeichnis
-DATA_DIR = '/var/lib/pgadmin'
-LOG_FILE = '/var/log/pgadmin/pgadmin4.log'
-SQLITE_PATH = os.path.join(DATA_DIR, 'pgadmin4.db')
-SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions')
-STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
-
-# Disable Update Check
-UPGRADE_CHECK_ENABLED = False
-EOF
-    
-    # Verzeichnisse und Berechtigungen
-    mkdir -p /var/log/pgadmin
-    chown -R www-data:www-data /var/lib/pgadmin
-    chown -R www-data:www-data /var/log/pgadmin
-    chmod 700 /var/lib/pgadmin
-    
-    # pgAdmin initialisieren OHNE Apache2 (wichtig!)
-    info "Initialisiere pgAdmin (ohne Apache2)..."
-    
-    # NIEMALS setup-web.sh verwenden - das installiert Apache2!
-    # Stattdessen: Manuelle Initialisierung
-    
-    cd /usr/pgadmin4/web
-    
-    # Python-Script für manuelle Initialisierung
-    sudo -u www-data python3 << EOF
-import sys
-import os
-
-# Python-Pfad setzen
-sys.path.insert(0, '/usr/pgadmin4/web')
-
-print("╔════════════════════════════════════════════════════════════╗")
-print("║   pgAdmin 4 Initialisierung (Server Mode, OHNE Apache2)  ║")
-print("╚════════════════════════════════════════════════════════════╝")
-print("")
-
-# Erstelle Verzeichnisse
-print("✓ Erstelle Datenverzeichnisse...")
-os.makedirs('/var/lib/pgadmin', exist_ok=True)
-os.makedirs('/var/lib/pgadmin/sessions', exist_ok=True)
-os.makedirs('/var/lib/pgadmin/storage', exist_ok=True)
-os.makedirs('/var/log/pgadmin', exist_ok=True)
-
-# Importiere pgAdmin Module
-try:
-    from pgadmin.model import db, User, Version, Role
-    from pgadmin.setup import db as setup_db
-    from werkzeug.security import generate_password_hash
-    from pgadmin import create_app
-    
-    print("✓ pgAdmin Module geladen")
-    
-    # Erstelle App
-    app = create_app()
-    
-    with app.app_context():
-        print("✓ App-Context erstellt")
-        
-        # Datenbank initialisieren
-        print("✓ Initialisiere Datenbank...")
-        db.create_all()
-        
-        # Admin-User erstellen
-        email = '${PGADMIN_EMAIL}'
-        password = '${PGADMIN_PASSWORD}'
-        
-        print(f"✓ Erstelle Admin-User: {email}")
-        
-        # Prüfe ob User existiert
-        user = User.query.filter_by(email=email).first()
-        
-        if user:
-            print(f"⚠ User {email} existiert bereits - aktualisiere Passwort")
-            user.password = generate_password_hash(password)
-        else:
-            # Erstelle neuen User
-            user = User(
-                email=email,
-                password=generate_password_hash(password),
-                active=True,
-                role=1  # Administrator
-            )
-            db.session.add(user)
-        
-        db.session.commit()
-        
-        print("")
-        print("╔════════════════════════════════════════════════════════════╗")
-        print("║              ✅ pgAdmin erfolgreich initialisiert!        ║")
-        print("╚════════════════════════════════════════════════════════════╝")
-        print("")
-        print(f"Admin-User: {email}")
-        print("Status: READY")
-        print("")
-        
-except Exception as e:
-    print("")
-    print("╔════════════════════════════════════════════════════════════╗")
-    print("║              ⚠️  Initialisierung teilweise fehlgeschlagen  ║")
-    print("╚════════════════════════════════════════════════════════════╝")
-    print("")
-    print(f"Fehler: {e}")
-    print("")
-    print("Das ist NICHT kritisch!")
-    print("Der Admin-User wird beim ersten Start von pgAdmin erstellt.")
-    print("")
-    print("Verzeichnisse wurden erstellt ✓")
-    print("pgAdmin kann gestartet werden ✓")
-    print("")
-EOF
-    
-    success "pgAdmin Initialisierung abgeschlossen"
-    
-    # systemd Service für pgAdmin erstellen
-    info "Erstelle pgAdmin systemd Service..."
-    cat > /etc/systemd/system/pgadmin4.service <<EOF
-[Unit]
-Description=pgAdmin 4 Web Service
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/usr/pgadmin4/web
-Environment="PGADMIN_SETUP_EMAIL=${PGADMIN_EMAIL}"
-Environment="PGADMIN_SETUP_PASSWORD=${PGADMIN_PASSWORD}"
-
-# pgAdmin starten
-ExecStart=/usr/bin/python3 /usr/pgadmin4/web/pgAdmin4.py
-
-# Auto-Restart bei Fehler
-Restart=always
-RestartSec=10
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    # WICHTIG: Apache2 entfernen falls es installiert wurde
-    if systemctl is-active --quiet apache2 2>/dev/null || systemctl is-enabled apache2 2>/dev/null; then
-        warning "Apache2 wurde gefunden - wird entfernt (nicht benötigt!)"
-        systemctl stop apache2 2>/dev/null || true
-        systemctl disable apache2 2>/dev/null || true
-        success "Apache2 deaktiviert"
-        
-        echo ""
-        echo -ne "Apache2 komplett entfernen? (j/N): "
-        read REMOVE_APACHE
-        if [[ $REMOVE_APACHE =~ ^[Jj]$ ]]; then
-            apt-get remove --purge -y apache2 apache2-bin apache2-data apache2-utils > /dev/null 2>&1 || true
-            apt-get autoremove -y > /dev/null 2>&1 || true
-            success "Apache2 entfernt"
-        fi
-        echo ""
-    fi
-    
-    # Service aktivieren und starten
-    systemctl daemon-reload
-    systemctl enable pgadmin4 > /dev/null 2>&1
-    systemctl start pgadmin4
-    
-    # Warte kurz damit Service startet
-    sleep 5
-    
-    # Prüfe ob Service läuft
-    if systemctl is-active --quiet pgadmin4; then
-        success "pgAdmin 4 Service läuft"
-        
-        # Nginx-Config für pgAdmin erstellen
-        info "Erstelle Nginx-Konfiguration für pgAdmin..."
-        cat > /etc/nginx/sites-available/pgadmin << 'NGINX_PGADMIN'
-# pgAdmin 4 - PostgreSQL Web Interface
-server {
-    listen 80;
-    server_name pgadmin.fmsv.bartholmes.eu;
-    
-    # IP-Whitelist - WICHTIG: Passe deine IPs an!
-    # IPv4 Beispiele:
-    # allow 88.123.45.67;        # Einzelne IPv4
-    # allow 88.123.45.0/24;      # IPv4 Range
-    
-    # IPv6 Beispiele:
-    # allow 2a01:1234:5678:9abc::1;      # Einzelne IPv6
-    # allow 2a01:1234:5678:9abc::/64;    # IPv6 Subnet
-    
-    # Localhost erlauben
-    allow 127.0.0.1;
-    allow ::1;
-    
-    # ALLE ANDEREN BLOCKIEREN
-    # deny all;  # Aktiviere nach IP-Whitelist-Konfiguration!
-    
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5050;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-        
-        # Timeout Settings
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
-        send_timeout 300;
-    }
-}
-NGINX_PGADMIN
-
-        # Nginx Config aktivieren
-        ln -sf /etc/nginx/sites-available/pgadmin /etc/nginx/sites-enabled/
-        
-        # Nginx neu laden damit pgAdmin-Config aktiv wird
-        systemctl reload nginx 2>&1 | tee -a "$LOG_FILE" || true
-        
-        success "Nginx-Konfiguration erstellt und aktiviert"
-        echo ""
-        echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║         ✅ pgAdmin 4 erfolgreich installiert! ✅          ║${NC}"
-        echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
-        echo ""
-        echo -e "${YELLOW}📝 Zugriff und Konfiguration:${NC}"
-        echo ""
-        echo -e "${CYAN}🌐 pgAdmin öffnen:${NC}"
-        echo -e "    • Via Domain: ${GREEN}http://pgadmin.$DOMAIN${NC}"
-        echo -e "    • Lokal:      ${GREEN}http://$(hostname -I | awk '{print $1}'):5050${NC}"
-        echo ""
-        echo -e "${CYAN}🔐 Login-Daten:${NC}"
-        echo -e "    • E-Mail:   ${GREEN}${PGADMIN_EMAIL}${NC}"
-        echo -e "    • Passwort: ${GREEN}[Das gerade eingegebene Passwort]${NC}"
-        echo ""
-        echo -e "${CYAN}🔧 PostgreSQL-Server in pgAdmin hinzufügen:${NC}"
-        echo -e "    1. Rechtsklick auf 'Servers' → 'Register' → 'Server'"
-        echo -e "    2. Name:     ${GREEN}FMSV Dingden${NC}"
-        echo -e "    3. Host:     ${GREEN}localhost${NC}"
-        echo -e "    4. Port:     ${GREEN}5432${NC}"
-        echo -e "    5. Database: ${GREEN}${DB_NAME}${NC}"
-        echo -e "    6. Username: ${GREEN}${DB_USER}${NC}"
-        echo -e "    7. Password: ${GREEN}[DB Passwort]${NC}"
-        echo ""
-        echo -e "${CYAN}📊 Service-Befehle:${NC}"
-        echo -e "    • Status:   ${GREEN}systemctl status pgadmin4${NC}"
-        echo -e "    • Stop:     ${GREEN}systemctl stop pgadmin4${NC}"
-        echo -e "    • Start:    ${GREEN}systemctl start pgadmin4${NC}"
-        echo -e "    • Restart:  ${GREEN}systemctl restart pgadmin4${NC}"
-        echo -e "    • Logs:     ${GREEN}journalctl -u pgadmin4 -f${NC}"
-        echo ""
-        echo -e "${YELLOW}⚠️  SICHERHEITSHINWEIS:${NC}"
-        echo -e "    Konfiguriere die IP-Whitelist in:"
-        echo -e "    ${CYAN}/etc/nginx/sites-available/pgadmin${NC}"
-        echo -e "    Aktiviere 'deny all' nach dem Hinzufügen deiner IPs!"
-        echo ""
-        echo -e "${YELLOW}💡 pgAdmin läuft jetzt als systemd Service (kein Apache2)!${NC}"
-        echo ""
-        echo -ne "${GREEN}Drücke Enter um fortzufahren...${NC}"
-        read
-    else
-        error "pgAdmin 4 Service konnte nicht gestartet werden!"
-        echo ""
-        echo -e "${YELLOW}Mögliche Ursachen:${NC}"
-        echo -e "  ${RED}1.${NC} Python-Abhängigkeiten fehlen (Flask, etc.)"
-        echo -e "  ${RED}2.${NC} Konfigurationsfehler"
-        echo -e "  ${RED}3.${NC} Port 5050 bereits belegt"
-        echo ""
-        echo -e "${YELLOW}Debug-Befehle:${NC}"
-        echo -e "  ${CYAN}systemctl status pgadmin4${NC}"
-        echo -e "  ${CYAN}journalctl -u pgadmin4 -n 50${NC}"
-        echo -e "  ${CYAN}sudo -u www-data python3 /usr/pgadmin4/web/pgAdmin4.py${NC} (Manueller Test)"
-        echo ""
-        echo -e "${YELLOW}Schnell-Fix:${NC}"
-        echo -e "  ${CYAN}# Installiere pgAdmin neu mit Dependencies:${NC}"
-        echo -e "  ${CYAN}apt-get install --reinstall -y pgadmin4-web${NC}"
-        echo -e "  ${CYAN}systemctl restart pgadmin4${NC}"
-        echo ""
-        echo -e "${YELLOW}⚠️  Installation wird trotzdem fortgesetzt!${NC}"
-        echo -e "${YELLOW}   Du kannst pgAdmin später reparieren.${NC}"
-        echo ""
-        sleep 3
-    fi
-else
-    info "pgAdmin 4 wurde nicht installiert"
-fi
-
-sleep 1
-
-################################################################################
-# Schritt 7: Node.js Installation
-################################################################################
-
-print_header 7 "Node.js Installation"
+print_header 6 "Node.js Installation"
 
 info "Füge NodeSource Repository hinzu..."
 if curl -fsSL https://deb.nodesource.com/setup_lts.x 2>&1 | bash - 2>&1 | tee -a "$LOG_FILE" > /dev/null; then
@@ -1041,10 +667,10 @@ fi
 sleep 1
 
 ################################################################################
-# Schritt 8: Repository klonen
+# Schritt 7: Repository klonen
 ################################################################################
 
-print_header 8 "Repository klonen"
+print_header 7 "Repository klonen"
 
 INSTALL_DIR="/var/www/fmsv-dingden"
 
@@ -1083,10 +709,10 @@ success "Git konfiguriert"
 sleep 1
 
 ################################################################################
-# Schritt 9: Datenbank-Setup
+# Schritt 8: Datenbank-Setup
 ################################################################################
 
-print_header 9 "Datenbank-Setup"
+print_header 8 "Datenbank-Setup"
 
 echo -e "${YELLOW}Datenbank-Konfiguration:${NC}"
 echo ""
@@ -1352,17 +978,17 @@ EOF
     success "Cloudflare Tunnel konfiguriert"
     sleep 1
 else
-    print_header 10 "Cloudflare Tunnel (Übersprungen)"
+    print_header 9 "Cloudflare Tunnel (Übersprungen)"
     info "Cloudflare Tunnel wird nicht verwendet"
     DOMAIN="fmsv.bartholmes.eu"
     sleep 1
 fi
 
 ################################################################################
-# Schritt 11: Nginx Installation
+# Schritt 10: Nginx Installation
 ################################################################################
 
-print_header 11 "Nginx Installation & Konfiguration"
+print_header 10 "Nginx Installation & Konfiguration"
 
 info "Installiere Nginx..."
 apt-get install -y -qq nginx > /dev/null 2>&1
@@ -1463,10 +1089,10 @@ info "Nginx-Test erfolgt nach Frontend-Build"
 sleep 1
 
 ################################################################################
-# Schritt 12: Backend-Setup
+# Schritt 11: Backend-Setup
 ################################################################################
 
-print_header 12 "Backend-Setup"
+print_header 11 "Backend-Setup"
 
 cd "$INSTALL_DIR/backend"
 
@@ -1697,10 +1323,10 @@ success "Backend-Service erstellt"
 sleep 1
 
 ################################################################################
-# Schritt 13: Frontend-Build
+# Schritt 12: Frontend-Build
 ################################################################################
 
-print_header 13 "Frontend-Build"
+print_header 12 "Frontend-Build"
 
 cd "$INSTALL_DIR"
 
@@ -1756,11 +1382,11 @@ fi
 sleep 1
 
 ################################################################################
-# Schritt 14: Auto-Update System (Optional)
+# Schritt 13: Auto-Update System (Optional)
 ################################################################################
 
 if [ "$AUTO_UPDATE_SCHEDULE" != "manual" ]; then
-    print_header 14 "Auto-Update System"
+    print_header 13 "Auto-Update System"
     
     info "Erstelle Auto-Update Script..."
     
