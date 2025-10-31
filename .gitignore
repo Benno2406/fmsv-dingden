@@ -61,7 +61,12 @@ Saves/*
 # ============================================
 *.backup
 *.bak
+
+# SQL Dumps & Backups - ABER schema.sql behalten!
 *.sql
+!backend/database/schema.sql
+
+# SQLite & andere Datenbanken
 *.sqlite
 *.db
 
