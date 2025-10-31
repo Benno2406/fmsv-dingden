@@ -730,17 +730,41 @@ EOF
     # Run pgAdmin setup
     /usr/pgadmin4/bin/setup-web.sh --yes 2>&1 | tee -a "$LOG_FILE"
     
-    # Apache2 VirtualHost für pgAdmin anpassen (Port 1880)
-    info "Passe pgAdmin VirtualHost an..."
+    # Apache2 VirtualHost für pgAdmin vollständig neu schreiben
+    info "Erstelle pgAdmin VirtualHost-Konfiguration..."
     
-    # Finde pgAdmin Apache Config
-    PGADMIN_CONF=$(find /etc/apache2/sites-enabled -name "*pgadmin*" 2>/dev/null | head -1)
+    # Entferne alle existierenden pgAdmin Configs
+    rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
+    rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
     
-    if [ -n "$PGADMIN_CONF" ]; then
-        # Ersetze Port 80 mit 1880
-        sed -i 's/<VirtualHost \*:80>/<VirtualHost *:1880>/' "$PGADMIN_CONF"
-        success "pgAdmin VirtualHost auf Port 1880 angepasst"
-    fi
+    # Erstelle neue, saubere pgAdmin Konfiguration
+    cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
+<VirtualHost *:1880>
+    ServerName localhost
+    
+    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=/usr/pgadmin4/venv
+    WSGIScriptAlias / /usr/pgadmin4/web/pgAdmin4.wsgi
+    
+    <Directory /usr/pgadmin4/web>
+        WSGIProcessGroup pgadmin
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+    
+    # Static files
+    Alias /static /usr/pgadmin4/web/static
+    <Directory /usr/pgadmin4/web/static>
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/pgadmin_error.log
+    CustomLog ${APACHE_LOG_DIR}/pgadmin_access.log combined
+</VirtualHost>
+EOF
+    
+    # Aktiviere Site
+    a2ensite pgadmin.conf > /dev/null 2>&1
+    success "pgAdmin VirtualHost konfiguriert (Port 1880)"
     
     # Apache2 Konfiguration testen
     info "Teste Apache Konfiguration..."
@@ -750,6 +774,10 @@ EOF
     else
         warning "Apache Konfiguration hat Warnungen:"
         echo "$APACHE_TEST" | grep -v "AH00558" | sed 's/^/   /'
+        echo ""
+        echo -e "${CYAN}Vollständige Diagnose:${NC}"
+        apache2ctl configtest 2>&1 | sed 's/^/   /'
+        echo ""
     fi
     
     # Apache2 neu starten
@@ -1835,16 +1863,8 @@ sleep 1
 info "Kopiere Wartungs-Scripts..."
 cp -f /var/www/fmsv-dingden/Installation/scripts/debug.sh /usr/local/bin/fmsv-debug
 cp -f /var/www/fmsv-dingden/Installation/scripts/update.sh /usr/local/bin/fmsv-update
-cp -f /var/www/fmsv-dingden/Installation/scripts/test-backend.sh /usr/local/bin/fmsv-test
-cp -f /var/www/fmsv-dingden/Installation/scripts/show-backend-errors.sh /usr/local/bin/fmsv-errors
-cp -f /var/www/fmsv-dingden/Installation/scripts/manual-start.sh /usr/local/bin/fmsv-manual
-cp -f /var/www/fmsv-dingden/Installation/scripts/quick-fix.sh /usr/local/bin/fmsv-fix
 chmod +x /usr/local/bin/fmsv-debug
 chmod +x /usr/local/bin/fmsv-update
-chmod +x /usr/local/bin/fmsv-test
-chmod +x /usr/local/bin/fmsv-errors
-chmod +x /usr/local/bin/fmsv-manual
-chmod +x /usr/local/bin/fmsv-fix
 success "Wartungs-Scripts installiert"
 sleep 1
 
@@ -1920,11 +1940,7 @@ echo -e "    ${GREEN}nano /var/www/fmsv-dingden/backend/.env${NC}"
 echo ""
 echo -e "  ${BLUE}Updates & Wartung:${NC}"
 echo -e "    ${GREEN}fmsv-update${NC}  ${CYAN}# System aktualisieren${NC}"
-echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose${NC}"
-echo -e "    ${GREEN}fmsv-fix${NC}     ${CYAN}# Probleme automatisch beheben${NC}"
-echo -e "    ${GREEN}fmsv-manual${NC}  ${CYAN}# Backend manuell starten${NC}"
-echo -e "    ${GREEN}fmsv-test${NC}    ${CYAN}# Backend-Tests ausführen${NC}"
-echo -e "    ${GREEN}fmsv-errors${NC}  ${CYAN}# Backend-Fehler anzeigen${NC}"
+echo -e "    ${GREEN}fmsv-debug${NC}   ${CYAN}# Vollständige Diagnose mit Reparatur-Optionen${NC}"
 echo ""
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

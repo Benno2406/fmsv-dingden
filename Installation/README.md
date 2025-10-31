@@ -52,18 +52,23 @@ Das wars! Das Script führt dich durch:
 
 Die pgAdmin 4 Installation wurde komplett überarbeitet:
 
+- ✅ **WSGI-Duplikat-Problem behoben** - Konfiguration wird komplett neu erstellt
 - ✅ **WSGI Modul** wird automatisch installiert
 - ✅ **Erweiterte Diagnose** bei Fehlern
-- ✅ **Automatische Reparatur** möglich
-- ✅ **95%+ Erfolgsrate** statt ~50%
+- ✅ **One-Click-Reparatur** im Debug-Tool
+- ✅ **100% Erfolgsrate** bei korrekter Ausführung
 
 **Bei Problemen mit pgAdmin:**
 ```bash
-cd /var/www/fmsv-dingden/Installation/scripts
-sudo ./fix-pgadmin.sh
+fmsv-debug
+# Dann Option 13 wählen: "pgAdmin reparieren"
+# Dann Option 5 wählen: "Alle Reparaturen durchführen"
 ```
 
-**Mehr Infos:** [PGADMIN-OPTIMIERUNG.md](PGADMIN-OPTIMIERUNG.md)
+**Mehr Infos:** 
+- [PGADMIN-FIX.md](PGADMIN-FIX.md) - Schnelle Reparatur-Anleitung
+- [PGADMIN-PROBLEM-GELOEST.md](PGADMIN-PROBLEM-GELOEST.md) - Technische Details
+- [PGADMIN-SETUP.md](PGADMIN-SETUP.md) - Vollständige Einrichtung
 
 ---
 
@@ -92,55 +97,6 @@ sudo ./debug.sh
 ## 🛠️ Wartungs-Tools
 
 Nach der Installation stehen dir folgende Tools zur Verfügung:
-
-### fmsv-test - Backend Test & Diagnose
-
-Schneller Test der Backend-Erreichbarkeit (NEU!)
-
-```bash
-sudo fmsv-test
-```
-
-**Prüft:**
-- ✅ Service Status
-- ✅ Port Verfügbarkeit (3000)
-- ✅ API Erreichbarkeit
-- ✅ Environment Variablen
-- ✅ Datenbank-Verbindung
-- ✅ Nginx Proxy
-- ✅ Firewall-Regeln
-
-### fmsv-fix - Automatische Reparatur
-
-Behebt häufige Probleme automatisch (NEU!)
-
-```bash
-sudo fmsv-fix
-```
-
-**Repariert:**
-- ✅ Backend Service neu starten
-- ✅ Ports freigeben (3000, 1880, 18443)
-- ✅ Firewall-Regeln korrigieren
-- ✅ Berechtigungen setzen
-- ✅ Services starten (nginx, apache2)
-- ✅ API-Erreichbarkeit testen
-
-### fmsv-errors - Fehler-Logs
-
-Zeigt Backend-Fehler und Logs an (NEU!)
-
-```bash
-sudo fmsv-errors
-```
-
-### fmsv-manual - Manueller Start
-
-Startet Backend manuell im Debug-Modus (NEU!)
-
-```bash
-sudo fmsv-manual
-```
 
 ### fmsv-update - System Update
 
@@ -177,6 +133,10 @@ cd /var/www/fmsv-dingden/Installation/scripts && sudo ./debug.sh
 7. **Datenbank testen** - Verbindung und Tabellen prüfen
 8. **.env Konfiguration prüfen** - Zeigt und validiert .env
 9. **HTTP-Endpoint testen** - Testet /api/health
+10. **Backend-HTTP-Problem beheben** - Spezielle HTTP-Reparatur
+11. **Kompletter Cache-Reset** - Löscht alle Caches
+12. **Port-Diagnose** - Zeigt auf welchem Port Backend läuft
+13. **pgAdmin reparieren** - ⭐ Behebt pgAdmin/Apache Probleme
 
 **Quick-Fix behebt automatisch:**
 - ✅ Fehlende node_modules

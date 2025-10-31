@@ -13,6 +13,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m'
 
 BACKEND_DIR="/var/www/fmsv-dingden/backend"
@@ -70,9 +71,10 @@ show_menu() {
     echo -e "  ${CYAN}10${NC}) Backend-HTTP-Problem beheben ${YELLOW}⭐${NC}"
     echo -e "  ${RED}11${NC}) Kompletter Cache-Reset ${YELLOW}💣${NC}"
     echo -e "  ${YELLOW}12${NC}) Port-Diagnose (Auf welchem Port läuft Backend?) ${YELLOW}🔍${NC}"
+    echo -e "  ${MAGENTA}13${NC}) pgAdmin reparieren ${YELLOW}🔧${NC}"
     echo -e "  ${GREEN}0${NC}) Beenden"
     echo ""
-    read -p "Auswahl [0-12]: " choice
+    read -p "Auswahl [0-13]: " choice
     echo ""
     
     case $choice in
@@ -82,6 +84,7 @@ show_menu() {
         4) manual_start ;;
         11) complete_cache_reset ;;
         12) port_diagnosis ;;
+        13) fix_pgadmin ;;
         5) check_services ;;
         6) install_modules ;;
         7) test_database ;;
@@ -1185,6 +1188,263 @@ port_diagnosis() {
     else
         echo -e "  ${YELLOW}Tatsächlicher Port:${NC} ${RED}Keiner (Backend läuft nicht richtig)${NC}"
     fi
+    
+    echo ""
+    read -p "Zurück zum Menü (Enter)" -r
+    show_menu
+}
+
+################################################################################
+# 13. pgAdmin reparieren
+################################################################################
+
+fix_pgadmin() {
+    print_section "PGADMIN REPARATUR"
+    
+    info "Prüfe pgAdmin Installation..."
+    
+    # Prüfe ob pgAdmin installiert ist
+    if [ ! -d "/usr/pgadmin4" ]; then
+        error "pgAdmin ist nicht installiert!"
+        echo ""
+        read -p "Zurück zum Menü (Enter)" -r
+        show_menu
+        return
+    fi
+    
+    success "pgAdmin ist installiert"
+    echo ""
+    
+    # Prüfe Apache Status
+    echo -e "${CYAN}Apache2 Status:${NC}"
+    if systemctl is-active --quiet apache2; then
+        success "Apache2 läuft"
+        APACHE_RUNNING=true
+    else
+        warning "Apache2 läuft nicht"
+        APACHE_RUNNING=false
+    fi
+    echo ""
+    
+    # Zeige Apache Fehler
+    echo -e "${CYAN}Letzte Apache Fehler:${NC}"
+    journalctl -u apache2 -n 10 --no-pager 2>/dev/null | grep -E "(error|failed|Error|Failed)" | tail -5 | sed 's/^/  /' || echo "  Keine Fehler gefunden"
+    echo ""
+    
+    # Teste Apache Konfiguration
+    echo -e "${CYAN}Apache Konfiguration Test:${NC}"
+    APACHE_TEST=$(apache2ctl configtest 2>&1)
+    if echo "$APACHE_TEST" | grep -q "Syntax OK"; then
+        success "Apache Konfiguration OK"
+    else
+        error "Apache Konfiguration fehlerhaft:"
+        echo "$APACHE_TEST" | sed 's/^/  /'
+    fi
+    echo ""
+    
+    # Reparatur anbieten
+    echo -e "${YELLOW}═══ Reparatur-Optionen ═══${NC}"
+    echo ""
+    echo -e "  ${GREEN}1${NC}) pgAdmin Konfiguration neu erstellen (behebt WSGI-Duplikat-Fehler)"
+    echo -e "  ${GREEN}2${NC}) Apache vollständig neu starten"
+    echo -e "  ${GREEN}3${NC}) WSGI Module neu installieren"
+    echo -e "  ${GREEN}4${NC}) Apache Logs anzeigen"
+    echo -e "  ${GREEN}5${NC}) Alle Reparaturen durchführen ${YELLOW}⭐${NC}"
+    echo -e "  ${GREEN}0${NC}) Zurück"
+    echo ""
+    read -p "Auswahl [0-5]: " fix_choice
+    echo ""
+    
+    case $fix_choice in
+        1)
+            info "Erstelle neue pgAdmin Konfiguration..."
+            
+            # Stoppe Apache
+            systemctl stop apache2 2>/dev/null || true
+            
+            # Entferne alle existierenden pgAdmin Configs
+            rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
+            
+            # Erstelle neue, saubere pgAdmin Konfiguration
+            cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
+<VirtualHost *:1880>
+    ServerName localhost
+    
+    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=/usr/pgadmin4/venv
+    WSGIScriptAlias / /usr/pgadmin4/web/pgAdmin4.wsgi
+    
+    <Directory /usr/pgadmin4/web>
+        WSGIProcessGroup pgadmin
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+    
+    # Static files
+    Alias /static /usr/pgadmin4/web/static
+    <Directory /usr/pgadmin4/web/static>
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/pgadmin_error.log
+    CustomLog ${APACHE_LOG_DIR}/pgadmin_access.log combined
+</VirtualHost>
+EOF
+            
+            # Aktiviere Site
+            a2ensite pgadmin.conf > /dev/null 2>&1
+            
+            fix_applied "pgAdmin Konfiguration neu erstellt"
+            
+            # Teste Konfiguration
+            info "Teste Apache Konfiguration..."
+            if apache2ctl configtest 2>&1 | grep -q "Syntax OK"; then
+                success "Apache Konfiguration OK"
+                
+                # Starte Apache
+                info "Starte Apache..."
+                if systemctl start apache2; then
+                    success "Apache gestartet"
+                    echo ""
+                    success "pgAdmin sollte jetzt erreichbar sein: http://localhost:1880/pgadmin4"
+                else
+                    error "Apache konnte nicht gestartet werden"
+                    echo ""
+                    journalctl -u apache2 -n 20 --no-pager
+                fi
+            else
+                error "Apache Konfiguration immer noch fehlerhaft:"
+                apache2ctl configtest 2>&1 | sed 's/^/  /'
+            fi
+            ;;
+            
+        2)
+            info "Starte Apache neu..."
+            systemctl stop apache2 2>/dev/null || true
+            pkill -9 apache2 2>/dev/null || true
+            sleep 2
+            
+            if systemctl start apache2; then
+                fix_applied "Apache neu gestartet"
+                
+                if systemctl is-active --quiet apache2; then
+                    success "Apache läuft"
+                else
+                    error "Apache läuft nicht"
+                fi
+            else
+                error "Apache konnte nicht gestartet werden"
+                journalctl -u apache2 -n 20 --no-pager
+            fi
+            ;;
+            
+        3)
+            info "Installiere WSGI Module neu..."
+            apt-get install -y --reinstall libapache2-mod-wsgi-py3
+            a2enmod wsgi > /dev/null 2>&1
+            fix_applied "WSGI Module neu installiert"
+            
+            info "Starte Apache neu..."
+            systemctl restart apache2
+            
+            if systemctl is-active --quiet apache2; then
+                success "Apache läuft"
+            else
+                error "Apache läuft nicht"
+            fi
+            ;;
+            
+        4)
+            echo -e "${CYAN}═══ Apache Error Log ═══${NC}"
+            tail -50 /var/log/apache2/error.log 2>/dev/null || echo "Keine Logs gefunden"
+            echo ""
+            echo -e "${CYAN}═══ pgAdmin Error Log ═══${NC}"
+            tail -50 /var/log/apache2/pgadmin_error.log 2>/dev/null || echo "Keine Logs gefunden"
+            ;;
+            
+        5)
+            info "Führe alle Reparaturen durch..."
+            echo ""
+            
+            # 1. WSGI Module
+            info "[1/4] WSGI Module neu installieren..."
+            apt-get install -y --reinstall libapache2-mod-wsgi-py3 > /dev/null 2>&1
+            a2enmod wsgi > /dev/null 2>&1
+            success "WSGI Module installiert"
+            
+            # 2. Apache stoppen
+            info "[2/4] Apache stoppen..."
+            systemctl stop apache2 2>/dev/null || true
+            pkill -9 apache2 2>/dev/null || true
+            sleep 2
+            success "Apache gestoppt"
+            
+            # 3. Konfiguration neu erstellen
+            info "[3/4] pgAdmin Konfiguration neu erstellen..."
+            rm -f /etc/apache2/sites-enabled/*pgadmin* 2>/dev/null
+            rm -f /etc/apache2/sites-available/*pgadmin* 2>/dev/null
+            
+            cat > /etc/apache2/sites-available/pgadmin.conf << 'EOF'
+<VirtualHost *:1880>
+    ServerName localhost
+    
+    WSGIDaemonProcess pgadmin processes=1 threads=25 python-home=/usr/pgadmin4/venv
+    WSGIScriptAlias / /usr/pgadmin4/web/pgAdmin4.wsgi
+    
+    <Directory /usr/pgadmin4/web>
+        WSGIProcessGroup pgadmin
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+    
+    # Static files
+    Alias /static /usr/pgadmin4/web/static
+    <Directory /usr/pgadmin4/web/static>
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/pgadmin_error.log
+    CustomLog ${APACHE_LOG_DIR}/pgadmin_access.log combined
+</VirtualHost>
+EOF
+            
+            a2ensite pgadmin.conf > /dev/null 2>&1
+            success "Konfiguration erstellt"
+            
+            # 4. Apache starten
+            info "[4/4] Apache starten..."
+            if systemctl start apache2; then
+                sleep 2
+                if systemctl is-active --quiet apache2; then
+                    success "Apache läuft"
+                    echo ""
+                    echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
+                    echo -e "${GREEN}║          pgAdmin erfolgreich repariert!                ║${NC}"
+                    echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
+                    echo ""
+                    echo -e "${CYAN}Zugriff:${NC}"
+                    echo -e "  ${GREEN}►${NC} Lokal:   http://localhost:1880/pgadmin4"
+                    echo -e "  ${GREEN}►${NC} Extern:  http://$(hostname -I | awk '{print $1}'):1880/pgadmin4"
+                    echo ""
+                else
+                    error "Apache läuft nicht"
+                    journalctl -u apache2 -n 20 --no-pager
+                fi
+            else
+                error "Apache konnte nicht gestartet werden"
+                journalctl -u apache2 -n 20 --no-pager
+            fi
+            ;;
+            
+        0)
+            show_menu
+            return
+            ;;
+            
+        *)
+            warning "Ungültige Auswahl"
+            ;;
+    esac
     
     echo ""
     read -p "Zurück zum Menü (Enter)" -r
