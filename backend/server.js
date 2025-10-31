@@ -1,33 +1,26 @@
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import compression from 'compression';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const compression = require('compression');
+require('dotenv').config();
+const path = require('path');
 
 // Import utilities
-import { logger } from './utils/logger.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { setupRateLimiter } from './middleware/rateLimiter.js';
-import pool from './config/database.js';
+const { logger } = require('./utils/logger');
+const { errorHandler } = require('./middleware/errorHandler');
+const { setupRateLimiter } = require('./middleware/rateLimiter');
+const pool = require('./config/database');
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import articleRoutes from './routes/articles.js';
-import eventRoutes from './routes/events.js';
-import imageRoutes from './routes/images.js';
-import flugbuchRoutes from './routes/flugbuch.js';
-import protocolRoutes from './routes/protocols.js';
-import notificationRoutes from './routes/notifications.js';
-
-// Initialize environment variables
-dotenv.config();
-
-// ES Module dirname fix
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const articleRoutes = require('./routes/articles');
+const eventRoutes = require('./routes/events');
+const imageRoutes = require('./routes/images');
+const flugbuchRoutes = require('./routes/flugbuch');
+const protocolRoutes = require('./routes/protocols');
+const notificationRoutes = require('./routes/notifications');
+const rbacRoutes = require('./routes/rbac');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -95,6 +88,7 @@ app.use('/api/images', imageRoutes);
 app.use('/api/flugbuch', flugbuchRoutes);
 app.use('/api/protocols', protocolRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/rbac', rbacRoutes); // NEU: RBAC-Verwaltung
 
 // 404 Handler
 app.use((req, res) => {
@@ -120,6 +114,12 @@ async function startServer() {
       logger.info(`🚀 FMSV Backend läuft auf Port ${PORT}`);
       logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`🔗 Base URL: ${process.env.BASE_URL || 'http://localhost:' + PORT}`);
+      logger.info('');
+      logger.info('🔐 RBAC-System: AKTIV');
+      logger.info('🔑 2FA-Support: AKTIV');
+      logger.info('📊 Upload-Limits: Pro Rolle konfigurierbar');
+      logger.info('');
+      logger.info('✨ Backend bereit!');
     }).on('error', (err) => {
       logger.error('❌ Server konnte nicht gestartet werden:', err);
       if (err.code === 'EADDRINUSE') {
