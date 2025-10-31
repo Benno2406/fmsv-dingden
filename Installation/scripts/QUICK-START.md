@@ -16,6 +16,8 @@ sudo ./install-modular.sh
 |-------|---------|-----------|
 | Installation starten? | `j` | Ja, starten |
 | Vorherige Installation entfernen? | `j` | Ja, cleanup |
+| Backend .env löschen? | `n` | Nein, behalten |
+| Uploads löschen? | `n` | Nein, behalten |
 | Log-Dateien löschen? | `n` | Nein, behalten |
 | Installations-Modus? | `1` | Production |
 | Update-Kanal? | `1` | Stable |

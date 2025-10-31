@@ -64,9 +64,11 @@ sudo ./install-modular.sh
 - Stoppt FMSV Backend Service
 - Entfernt Nginx Konfiguration
 - Löscht PostgreSQL Datenbank & User
-- Entfernt Installations-Verzeichnis
-- Optional: Log-Dateien behalten
-- Sicherheits-Check: Nur 'fmsv' Pfade
+- Bereinigt Build-Dateien (node_modules, dist)
+- Optional: Backend .env behalten/löschen
+- Optional: Uploads (Saves/) behalten/löschen
+- Optional: Log-Dateien behalten/löschen
+- ⚠️ **Scripts bleiben erhalten** (selektiver Cleanup!)
 
 **Ablauf:**
 ```
@@ -78,12 +80,15 @@ sudo ./install-modular.sh
 
 Folgendes wird entfernt:
   • FMSV Backend Service
-  • FMSV Datenbank
+  • FMSV Datenbank (fmsv_database)
+  • Datenbank-User (fmsv_user)
   • Nginx Konfiguration
-  • Installations-Verzeichnis
-  • Alle Dateien in /var/www/fmsv-dingden
+  • Build-Dateien (node_modules, dist)
+  • Optional: Backend .env
+  • Optional: Uploads (Saves/)
 
-⚠️  ALLE DATEN GEHEN VERLOREN!
+ℹ️  Installation Scripts bleiben erhalten!
+⚠️  Datenbank-Daten gehen VERLOREN!
 
    ► Vorherige Installation WIRKLICH entfernen? (j/N): 
 ```

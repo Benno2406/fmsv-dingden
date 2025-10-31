@@ -37,12 +37,15 @@ echo -e "${RED}⚠️  WARNUNG: Vorherige Installation gefunden!${NC}"
 echo ""
 echo -e "${YELLOW}Folgendes wird entfernt:${NC}"
 echo -e "  ${RED}•${NC} FMSV Backend Service"
-echo -e "  ${RED}•${NC} FMSV Datenbank"
+echo -e "  ${RED}•${NC} FMSV Datenbank (${CYAN}fmsv_database${NC})"
+echo -e "  ${RED}•${NC} Datenbank-User (${CYAN}fmsv_user${NC})"
 echo -e "  ${RED}•${NC} Nginx Konfiguration"
-echo -e "  ${RED}•${NC} Installations-Verzeichnis"
-echo -e "  ${RED}•${NC} Alle Dateien in ${CYAN}$INSTALL_DIR${NC}"
+echo -e "  ${RED}•${NC} Build-Dateien (node_modules, dist)"
+echo -e "  ${YELLOW}•${NC} Optional: Backend .env"
+echo -e "  ${YELLOW}•${NC} Optional: Uploads (Saves/)"
 echo ""
-echo -e "${RED}⚠️  ALLE DATEN GEHEN VERLOREN!${NC}"
+echo -e "${YELLOW}ℹ️  Installation Scripts bleiben erhalten!${NC}"
+echo -e "${RED}⚠️  Datenbank-Daten gehen VERLOREN!${NC}"
 echo ""
 
 if ! ask_yes_no "Vorherige Installation WIRKLICH entfernen?" "n"; then
@@ -140,23 +143,63 @@ else
 fi
 
 ################################################################################
-# 4. Installations-Verzeichnis
+# 4. Installations-Verzeichnis (selektiver Cleanup)
 ################################################################################
 
 echo ""
-info "Entferne Installations-Verzeichnis..."
+info "Bereinige Installations-Verzeichnis..."
 
 if [ -d "$INSTALL_DIR" ]; then
-    log_info "Removing installation directory: $INSTALL_DIR"
+    log_info "Cleaning installation directory: $INSTALL_DIR"
     
-    # Sicherheits-Check: Nur FMSV-Verzeichnisse löschen
-    if [[ "$INSTALL_DIR" == *"fmsv"* ]]; then
-        rm -rf "$INSTALL_DIR"
-        success "Verzeichnis gelöscht: $INSTALL_DIR"
-    else
-        warning "Sicherheits-Check: Verzeichnis wird nicht gelöscht (kein 'fmsv' im Pfad)"
-        log_warning "Skipped directory removal: $INSTALL_DIR (safety check)"
+    # WICHTIG: Wir löschen das Verzeichnis NICHT komplett (Scripts laufen darin!)
+    # Stattdessen: Nur spezifische Unterverzeichnisse aufräumen
+    
+    # Backend Node Modules
+    if [ -d "$INSTALL_DIR/backend/node_modules" ]; then
+        log_info "Removing backend/node_modules"
+        rm -rf "$INSTALL_DIR/backend/node_modules"
+        success "Backend node_modules gelöscht"
     fi
+    
+    # Frontend Node Modules
+    if [ -d "$INSTALL_DIR/node_modules" ]; then
+        log_info "Removing frontend node_modules"
+        rm -rf "$INSTALL_DIR/node_modules"
+        success "Frontend node_modules gelöscht"
+    fi
+    
+    # Frontend Dist
+    if [ -d "$INSTALL_DIR/dist" ]; then
+        log_info "Removing frontend dist"
+        rm -rf "$INSTALL_DIR/dist"
+        success "Frontend dist gelöscht"
+    fi
+    
+    # Backend .env (alte Konfiguration)
+    if [ -f "$INSTALL_DIR/backend/.env" ]; then
+        if ask_yes_no "Backend .env Datei auch löschen?" "n"; then
+            log_info "Removing backend/.env"
+            rm -f "$INSTALL_DIR/backend/.env"
+            success "Backend .env gelöscht"
+        else
+            info "Backend .env beibehalten"
+        fi
+    fi
+    
+    # Saves Verzeichnis
+    if [ -d "$INSTALL_DIR/Saves" ] && [ "$(ls -A $INSTALL_DIR/Saves 2>/dev/null | grep -v gitkeep)" ]; then
+        if ask_yes_no "Uploads im Saves/ Verzeichnis löschen?" "n"; then
+            log_info "Removing Saves/* (keeping gitkeep)"
+            find "$INSTALL_DIR/Saves" -type f ! -name 'gitkeep.txt' -delete
+            find "$INSTALL_DIR/Saves" -type d ! -name 'Saves' -exec rm -rf {} + 2>/dev/null || true
+            success "Saves Verzeichnis bereinigt"
+        else
+            info "Saves Verzeichnis beibehalten"
+        fi
+    fi
+    
+    success "Verzeichnis bereinigt (Scripts bleiben erhalten)"
 else
     echo -e "  ${DIM}Verzeichnis nicht gefunden: $INSTALL_DIR${NC}"
 fi

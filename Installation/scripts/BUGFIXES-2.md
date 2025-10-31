@@ -24,10 +24,12 @@
 - ✅ Stoppt FMSV Backend Service
 - ✅ Entfernt Nginx Konfiguration
 - ✅ Löscht PostgreSQL Datenbank & User
-- ✅ Entfernt Installations-Verzeichnis
+- ✅ Bereinigt Build-Dateien (node_modules, dist)
+- ✅ Optional: Backend .env löschen
+- ✅ Optional: Uploads (Saves/) löschen
 - ✅ Optional: Log-Dateien löschen
-- ✅ Sicherheits-Check: Nur 'fmsv' Pfade
-- ✅ Bestätigung erforderlich (ALLE DATEN GEHEN VERLOREN!)
+- ⚠️ **Scripts bleiben erhalten** (kein Verzeichnis-Delete!)
+- ✅ Bestätigung erforderlich
 
 ### Integration:
 ```bash
@@ -49,12 +51,15 @@ run_module "01-system-check" "System-Prüfung" "no" "1" "19"
 
 Folgendes wird entfernt:
   • FMSV Backend Service
-  • FMSV Datenbank
+  • FMSV Datenbank (fmsv_database)
+  • Datenbank-User (fmsv_user)
   • Nginx Konfiguration
-  • Installations-Verzeichnis
-  • Alle Dateien in /var/www/fmsv-dingden
+  • Build-Dateien (node_modules, dist)
+  • Optional: Backend .env
+  • Optional: Uploads (Saves/)
 
-⚠️  ALLE DATEN GEHEN VERLOREN!
+ℹ️  Installation Scripts bleiben erhalten!
+⚠️  Datenbank-Daten gehen VERLOREN!
 
    ► Vorherige Installation WIRKLICH entfernen? (j/N): j
 
@@ -71,11 +76,21 @@ Folgendes wird entfernt:
 ✓ Datenbank gelöscht
 ✓ Datenbank-User gelöscht
 
-✓ Entferne Installations-Verzeichnis...
-✓ Verzeichnis gelöscht: /var/www/fmsv-dingden
+✓ Bereinige Installations-Verzeichnis...
+✓ Backend node_modules gelöscht
+✓ Frontend node_modules gelöscht
+✓ Frontend dist gelöscht
+
+   ► Backend .env Datei auch löschen? (j/N): n
+✓ Backend .env beibehalten
+
+   ► Uploads im Saves/ Verzeichnis löschen? (j/N): n
+✓ Saves Verzeichnis beibehalten
 
    ► Log-Dateien auch löschen? (j/N): n
 ✓ Log-Dateien werden beibehalten
+
+✓ Verzeichnis bereinigt (Scripts bleiben erhalten)
 
 ═══════════════════════════════════════════════════════
 ✅ Cleanup abgeschlossen
@@ -275,10 +290,17 @@ sudo ./install-modular.sh
 - **Nachher:** 19 Schritte (0-18)
 
 ### Code:
-- **00-cleanup.sh:** 187 Zeilen
-- **Geänderte Zeilen:** ~100
+- **00-cleanup.sh:** ~210 Zeilen (selektiver Cleanup)
+- **Geänderte Zeilen:** ~120
 - **Neue Funktionen:** 1 (Cleanup)
 - **Fixed Funktionen:** 4 (UI)
+
+### ⚠️ WICHTIG: Selektiver Cleanup!
+Das Cleanup-Modul löscht **NICHT** das gesamte Verzeichnis, weil:
+- Die Installations-Scripts darin laufen
+- Ein vollständiges Delete würde das Script selbst löschen
+- Stattdessen: Nur Build-Artefakte & Datenbank bereinigen
+- Repository bleibt erhalten → Schritt 7 aktualisiert via `git pull`
 
 ---
 
@@ -290,13 +312,15 @@ sudo ./install-modular.sh
 ✅ INSTALL_MODE Variable-Fehler  
 ✅ Error-Handling bei User-Input  
 ✅ Fallbacks bei ungültiger Eingabe  
+✅ **Scripts löschen sich nicht selbst!**  
 
 ### Installation jetzt:
-1. **Cleanup** → Alte Installation entfernen
+1. **Cleanup** → Selektive Bereinigung (Scripts bleiben!)
 2. **System-Check** → Voraussetzungen prüfen
 3. **Options** → Robust mit Retry-Logic
 4. **...** → Rest wie vorher
-5. **Fertig!** → 19 Schritte statt 18
+5. **Repository** → git pull (schnell!)
+6. **Fertig!** → 19 Schritte statt 18
 
 ### Nächste Schritte:
 ```bash
