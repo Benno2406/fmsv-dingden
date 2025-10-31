@@ -456,46 +456,24 @@ systemctl start fmsv-auto-update.service
 
 ### 9.3 Workflow-Diagramm
 
+**Entwicklungs-Workflow:**
+
+1. **Lokaler PC:** Feature entwickeln
+2. **Push zu GitHub:** `git push origin testing`
+3. **Testing-Server:** Auto-Update zieht Updates
+4. **Testen:** Feature auf Testing-Server testen
+5. **Merge:** `git checkout main && git merge testing`
+6. **Push zu GitHub:** `git push origin main`
+7. **Production-Server:** Auto-Update zieht Updates
+
+**Visualisiert:**
 ```
-┌─────────────────┐
-│  Lokaler PC     │
-│                 │
-│  Feature        │
-│  entwickeln     │
-└────────┬────────┘
-         │ git push origin testing
-         ▼
-┌─────────────────┐
-│  GitHub         │
-│  (testing)      │
-└────────┬────────┘
-         │ Auto-Update
-         ▼
-┌─────────────────┐
-│ Testing-Server  │
-│                 │
-│ Testen...       │
-└────────┬────────┘
-         │ Alles OK?
-         ▼
-┌─────────────────┐
-│  Lokaler PC     │
-│                 │
-│  git merge      │
-│  testing→main   │
-└────────┬────────┘
-         │ git push origin main
-         ▼
-┌─────────────────┐
-│  GitHub         │
-│  (main)         │
-└────────┬────────┘
-         │ Auto-Update
-         ▼
-┌─────────────────┐
-│ Production-     │
-│ Server          │
-└─────────────────┘
+Lokaler PC → GitHub (testing) → Testing-Server
+                                      ↓
+                                  Alles OK?
+                                      ↓
+Lokaler PC → GitHub (main) → Production-Server
+   (merge)
 ```
 
 ---
@@ -777,13 +755,13 @@ git push origin main
 
 ### Update-Flow
 
-```
-Entwickeln → Testing-Branch → GitHub → Testing-Server
-                                            ↓
-                                     Alles OK?
-                                            ↓
-Merge → Main-Branch → GitHub → Production-Server
-```
+**Schritt für Schritt:**
+1. Entwickeln → Testing-Branch pushen → GitHub
+2. Testing-Server zieht Updates automatisch
+3. Testen auf Testing-Server
+4. Bei Erfolg: Merge Testing → Main
+5. Main-Branch pushen → GitHub
+6. Production-Server zieht Updates automatisch
 
 ---
 

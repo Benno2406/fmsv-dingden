@@ -138,7 +138,7 @@ if [ "$ACTION" = "1" ]; then
     # Backup database
     info "Sichere Datenbank..."
     DB_NAME=$(grep DB_NAME backend/.env | cut -d '=' -f2 | tr -d ' ')
-    sudo -u postgres pg_dump "$DB_NAME" > "$BACKUP_DIR/database.sql" 2>/dev/null
+    su - postgres -c "pg_dump \"$DB_NAME\"" > "$BACKUP_DIR/database.sql" 2>/dev/null
     success "Datenbank gesichert"
     
     # Backup uploads
@@ -337,7 +337,7 @@ elif [ "$ACTION" = "2" ]; then
     DB_NAME=$(grep DB_NAME backend/.env | cut -d '=' -f2 | tr -d ' ')
     
     info "Sichere Datenbank..."
-    sudo -u postgres pg_dump "$DB_NAME" > "$BACKUP_DIR/database.sql" 2>/dev/null
+    su - postgres -c "pg_dump \"$DB_NAME\"" > "$BACKUP_DIR/database.sql" 2>/dev/null
     success "Datenbank gesichert"
     
     info "Sichere Uploads..."

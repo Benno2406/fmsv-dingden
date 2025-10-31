@@ -66,6 +66,46 @@ Dokumentation für Installation und Konfiguration.
 
 ---
 
+### pgAdmin-Setup.md
+**PostgreSQL Datenbank-Verwaltung**
+
+- pgAdmin 4 Web Interface
+- IP-Whitelist konfigurieren
+- HTTP Basic Auth
+- Server hinzufügen
+- Backup & Restore
+- Troubleshooting
+
+→ [`pgAdmin-Setup.md`](pgAdmin-Setup.md)
+
+---
+
+### Frontend-Backend-Verbindung.md
+**API-Verbindung & Troubleshooting**
+
+- Wie funktioniert die Verbindung?
+- "Backend nicht erreichbar" beheben
+- Frontend neu builden
+- API-Tests durchführen
+- Debugging-Tipps
+
+→ [`Frontend-Backend-Verbindung.md`](Frontend-Backend-Verbindung.md)
+
+---
+
+### ENV-Dateien.md
+**Environment-Variablen erklärt**
+
+- Frontend vs Backend `.env`
+- Warum nicht im Git?
+- Automatische Erstellung
+- Manuelle Erstellung
+- Troubleshooting
+
+→ [`ENV-Dateien.md`](ENV-Dateien.md)
+
+---
+
 ## 🚀 Wo anfangen?
 
 **Neu hier?**
